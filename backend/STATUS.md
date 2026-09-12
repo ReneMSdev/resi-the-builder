@@ -363,21 +363,68 @@ Following `frontend/STATUS.md`'s phased build guide, Phase 1 is done and verifie
   If the cream/salmon theme still looks dark after this change, Dark Reader (or a similar
   extension) repainting `localhost:3000` is the first thing to check — not the app.
 
+## Frontend Phase 5 — Cover letter mode (2026-09-12)
+
+- `app/types.ts` gained `CoverLetterMeta`, `Paragraph`, `CoverLetter` types mirroring
+  `backend/app/models.py`.
+- `page.tsx` gained a `mode: "resume" | "cover_letter"` state with a Resume/Cover Letter
+  tab toggle above the generate form. `GenerateState` is now a discriminated union
+  (`kind: "resume" | "cover_letter"`) so the resume-only code (`handleRevise`,
+  `ResumePreview` + `RevisionChat`) only ever runs against a `Resume`, never a
+  `CoverLetter` — `handleRevise` bails immediately if the current state isn't
+  `kind: "resume"`. `handleGenerate` sends `type: mode` to `/generate` and branches on
+  which of `data.resume` / `data.cover_letter` should be present for the current mode.
+  The button label also switches ("Generate Resume" / "Generate Cover Letter").
+- New `app/components/CoverLetterPreview.tsx`: styled as a business letter — right-aligned
+  date (only if `meta.date` is non-empty, never fabricated), a "Re: {role} at {company}"
+  line when either is present, "Dear Hiring Manager," salutation (no addressee name in
+  the schema), each paragraph, then "Sincerely," + name + contact line. Visually distinct
+  from `ResumePreview` (letter format vs. resume sections) while matching its polish
+  level (same surface/border/shadow tokens).
+- Paragraph-level selection reuses the existing `Selectable` component (same hover/click/
+  persistent pattern as resume bullets) — included for interaction consistency, but
+  `RevisionChat` gained a `disabledReason` prop: when set, it forces the bar disabled
+  regardless of `selectionCount` and shows that message in both the status line and the
+  input's placeholder instead of the normal "Editing: ..." text, so a cover-letter
+  paragraph can be selected but the chat visibly refuses to do anything with it (message
+  used: "Cover letter editing isn't available yet — download and edit directly for now."),
+  matching the phase's explicit instruction not to let a user submit an instruction that
+  would silently fail.
+- **Found and fixed during testing, not explicitly speced but a clear usability gap**:
+  switching the mode tab did not reset `generateState`, so toggling from a just-generated
+  cover letter back to "Resume" (without regenerating) left the old cover letter content
+  on screen underneath the now-active "Resume" tab — confusing, since the visible content
+  no longer matched the selected tab. Added `handleModeChange` (used by both tab buttons
+  instead of calling `setMode` directly) which resets `generateState` to `idle` and
+  clears `selectedIds` whenever the mode actually changes, so switching tabs always
+  clears the previous mode's stale preview.
+- Verified end-to-end in the browser: generated a real cover letter from a job
+  description, confirmed it renders as a distinct business-letter layout (not a resume
+  dump), selected a paragraph and saw the persistent salmon selection ring, confirmed the
+  chat bar's disabled explanation shows in place of the normal prompt with the input and
+  Revise button both disabled. Also generated a resume, switched to Cover Letter and back
+  to Resume, and regenerated to confirm both modes still work independently and that
+  switching tabs clears stale content per the fix above. No console errors from app code.
+- Cover letter revision remains blocked on the same backend gap already tracked (not
+  new): `/revise` doesn't handle the `cover_letter` field on `ReviseRequest` yet.
+
 ## Not yet built (explicitly deferred so far)
 
-1. **Next.js frontend** — Phases 1–4 done, see above. Phases 5–6 (cover letter mode,
-   download) not yet started — see `frontend/STATUS.md` for the full phased plan.
+1. **Next.js frontend** — Phases 1–5 done, see above. Phase 6 (download) not yet started
+   — see `frontend/STATUS.md` for the full phased plan.
 2. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
    Vercel-hosted frontend. Not started.
 
 ## Open questions worth strategizing on
 
 - **Backend trio is now complete**: `/generate`, `/revise`, and `/render` are all built
-  and verified, alongside `/profile` and the usage guardrails. Frontend Phases 1–4
-  (connectivity, generate view, styled preview + selection, chat-scoped revision) are
-  done — next step is Phase 5 (cover letter mode), per `frontend/STATUS.md`'s phased
-  plan. A confirmed backend gap from Phase 4: `REVISE_SYSTEM_PROMPT` needs to learn how
-  to expand a **section** id to all of that section's bullets (the same way it already
-  expands an entry id) before section-level selection can be re-enabled in the frontend.
+  and verified, alongside `/profile` and the usage guardrails. Frontend Phases 1–5
+  (connectivity, generate view, styled preview + selection, chat-scoped revision, cover
+  letter mode) are done — next step is Phase 6 (download), per `frontend/STATUS.md`'s
+  phased plan. Two confirmed backend gaps remain, both already tracked: `REVISE_SYSTEM_
+  PROMPT` needs to learn how to expand a **section** id to all of that section's bullets
+  (the same way it already expands an entry id) before section-level selection can be
+  re-enabled in the frontend; and `/revise` doesn't yet branch on `ReviseRequest.cover_
+  letter` to support cover-letter paragraph revision.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

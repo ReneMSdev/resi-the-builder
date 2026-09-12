@@ -32,3 +32,20 @@ export type Resume = {
   summary: { id: string; text: string };
   sections: Section[];
 };
+
+export type CoverLetterMeta = {
+  name: string;
+  email: string;
+  phone: string;
+  date?: string;
+  company?: string;
+  role?: string;
+};
+
+export type Paragraph = { id: string; text: string };
+
+export type CoverLetter = {
+  type: string;
+  meta: CoverLetterMeta;
+  paragraphs: Paragraph[];
+};

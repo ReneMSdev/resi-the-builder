@@ -1,17 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Resume } from './types'
+import { CoverLetter, Resume } from './types'
 import { ResumePreview } from './components/ResumePreview'
+import { CoverLetterPreview } from './components/CoverLetterPreview'
 import { RevisionChat } from './components/RevisionChat'
 import { applyRevisionUpdates, describeSelection } from './lib/resume'
 
 type BackendStatus = { state: 'loading' } | { state: 'ok' } | { state: 'error'; message: string }
 
+type Mode = 'resume' | 'cover_letter'
+
 type GenerateState =
   | { state: 'idle' }
   | { state: 'loading' }
-  | { state: 'success'; resume: Resume }
+  | { state: 'success'; kind: 'resume'; resume: Resume }
+  | { state: 'success'; kind: 'cover_letter'; coverLetter: CoverLetter }
   | { state: 'error'; message: string }
 
 type ReviseState = { state: 'idle' } | { state: 'loading' } | { state: 'error'; message: string }
@@ -22,6 +26,7 @@ export default function Home() {
       ? { state: 'loading' }
       : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' },
   )
+  const [mode, setMode] = useState<Mode>('resume')
   const [jobDescription, setJobDescription] = useState('')
   const [companyContext, setCompanyContext] = useState('')
   const [generateState, setGenerateState] = useState<GenerateState>({
@@ -72,7 +77,7 @@ export default function Home() {
         body: JSON.stringify({
           job_description: jobDescription,
           company_context: companyContext || undefined,
-          type: 'resume',
+          type: mode,
         }),
       })
 
@@ -81,12 +86,19 @@ export default function Home() {
         throw new Error(`${res.status}: ${body}`)
       }
 
-      const data: { resume: Resume | null } = await res.json()
-      if (!data.resume) {
-        throw new Error('Response did not include a resume.')
-      }
+      const data: { resume: Resume | null; cover_letter: CoverLetter | null } = await res.json()
 
-      setGenerateState({ state: 'success', resume: data.resume })
+      if (mode === 'resume') {
+        if (!data.resume) {
+          throw new Error('Response did not include a resume.')
+        }
+        setGenerateState({ state: 'success', kind: 'resume', resume: data.resume })
+      } else {
+        if (!data.cover_letter) {
+          throw new Error('Response did not include a cover letter.')
+        }
+        setGenerateState({ state: 'success', kind: 'cover_letter', coverLetter: data.cover_letter })
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       setGenerateState({ state: 'error', message })
@@ -106,7 +118,7 @@ export default function Home() {
   }
 
   async function handleRevise(instruction: string) {
-    if (generateState.state !== 'success') return
+    if (generateState.state !== 'success' || generateState.kind !== 'resume') return
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
@@ -138,9 +150,10 @@ export default function Home() {
       const data: { updates: { id: string; text: string }[] } = await res.json()
 
       setGenerateState((prev) =>
-        prev.state === 'success'
+        prev.state === 'success' && prev.kind === 'resume'
           ? {
               state: 'success',
+              kind: 'resume',
               resume: applyRevisionUpdates(prev.resume, data.updates),
             }
           : prev,
@@ -152,7 +165,21 @@ export default function Home() {
     }
   }
 
+  function handleModeChange(newMode: Mode) {
+    if (newMode === mode) return
+    setMode(newMode)
+    setGenerateState({ state: 'idle' })
+    setSelectedIds(new Set())
+  }
+
   const isGenerating = generateState.state === 'loading'
+
+  const tabClass = (tab: Mode) =>
+    `rounded px-3 py-1.5 text-sm font-medium transition-colors hover:cursor-pointer ${
+      mode === tab
+        ? 'bg-[var(--accent)] text-[var(--surface)]'
+        : 'border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent-soft)]'
+    }`
 
   return (
     <div className='flex flex-col flex-1 items-center bg-[var(--background)] font-sans'>
@@ -170,6 +197,23 @@ export default function Home() {
               Backend unreachable: {status.message}
             </p>
           )}
+        </div>
+
+        <div className='flex gap-2 self-center'>
+          <button
+            type='button'
+            onClick={() => handleModeChange('resume')}
+            className={tabClass('resume')}
+          >
+            Resume
+          </button>
+          <button
+            type='button'
+            onClick={() => handleModeChange('cover_letter')}
+            className={tabClass('cover_letter')}
+          >
+            Cover Letter
+          </button>
         </div>
 
         <form
@@ -200,17 +244,21 @@ export default function Home() {
             disabled={isGenerating || !jobDescription.trim()}
             className='self-start rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--surface)] transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50 hover:cursor-pointer'
           >
-            {isGenerating ? 'Generating...' : 'Generate Resume'}
+            {isGenerating
+              ? 'Generating...'
+              : mode === 'resume'
+                ? 'Generate Resume'
+                : 'Generate Cover Letter'}
           </button>
         </form>
 
         {generateState.state === 'error' && (
           <p className='font-medium text-[var(--danger)]'>
-            Error generating resume: {generateState.message}
+            Error generating {mode === 'resume' ? 'resume' : 'cover letter'}: {generateState.message}
           </p>
         )}
 
-        {generateState.state === 'success' && (
+        {generateState.state === 'success' && generateState.kind === 'resume' && (
           <div className='flex flex-col gap-2'>
             <p className='text-xs text-[var(--muted)]'>
               {selectedIds.size === 0
@@ -234,6 +282,35 @@ export default function Home() {
               loading={reviseState.state === 'loading'}
               errorMessage={reviseState.state === 'error' ? reviseState.message : null}
               onSubmit={handleRevise}
+            />
+          </div>
+        )}
+
+        {generateState.state === 'success' && generateState.kind === 'cover_letter' && (
+          <div className='flex flex-col gap-2'>
+            <p className='text-xs text-[var(--muted)]'>
+              {selectedIds.size === 0
+                ? 'Click a paragraph to select it.'
+                : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+            </p>
+            <CoverLetterPreview
+              coverLetter={generateState.coverLetter}
+              selectedIds={selectedIds}
+              onToggle={toggleSelected}
+            />
+            <details className='text-xs text-[var(--muted)]'>
+              <summary className='cursor-pointer select-none'>Raw JSON</summary>
+              <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
+                {JSON.stringify(generateState.coverLetter, null, 2)}
+              </pre>
+            </details>
+            <RevisionChat
+              selectionSummary=''
+              selectionCount={0}
+              loading={false}
+              errorMessage={null}
+              onSubmit={() => {}}
+              disabledReason="Cover letter editing isn't available yet — download and edit directly for now."
             />
           </div>
         )}

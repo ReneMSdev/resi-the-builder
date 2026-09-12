@@ -48,7 +48,7 @@ export function RevisionChat({
         <button
           type="submit"
           disabled={disabled || loading || !instruction.trim()}
-          className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50"
+          className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--surface)] transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50"
         >
           {loading ? "Revising..." : "Revise"}
         </button>

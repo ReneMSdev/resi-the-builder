@@ -84,3 +84,7 @@ class ReviseUpdate(BaseModel):
 
 class ReviseResponse(BaseModel):
     updates: list[ReviseUpdate]
+
+
+class RenderRequest(BaseModel):
+    resume: Resume

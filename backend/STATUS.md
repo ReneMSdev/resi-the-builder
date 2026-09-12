@@ -6,7 +6,7 @@ _Last updated: 2026-09-12_
 
 Personal tool to speed up job applications. Paste a job description → FastAPI backend
 calls Claude to tailor a resume from a master profile → user edits pieces via chat-scoped
-revision → (future) export docx/pdf. See `CLAUDE_CODE_CONTEXT.md` for the full original
+revision → downloads a formatted .docx. See `CLAUDE_CODE_CONTEXT.md` for the full original
 spec/architecture doc this was built from.
 
 ## Repo state
@@ -36,6 +36,29 @@ spec/architecture doc this was built from.
     since `ReviseUpdate` is just `{id, text}` and only bullet/summary ids map to an actual
     string field). Entries with no bullets (education/certifications) are skipped rather
     than having bullets invented for them.
+- `POST /render` (new) → takes `{resume: Resume}`, returns a downloadable `.docx` file
+  (not a JSON body). Pure templating via `python-docx` — **makes no LLM call**, so it does
+  not go through `usage_guard` and never counts against the daily call cap (explicitly
+  commented in `app/routes/render.py` so the omission reads as intentional, not missed).
+  - **Format decision: `.docx`, not PDF** — `python-docx` produces clean, well-formatted
+    output directly; `.docx` is a normal, expected format for job applications, and
+    avoids pulling in a separate PDF-rendering pipeline for no real benefit here.
+  - Output layout: centered bold name + contact line, summary paragraph, then each
+    section as an uppercase bold heading; experience/project entries get a bold
+    `Title — Organization` line with the dates right-tab-aligned on the same line, an
+    italic location line, and bullets rendered with Word's built-in "List Bullet" style;
+    education/certification entries render as a single plain line; skills groups render
+    as `**Label:** item, item, ...`. No tables, columns, headers/footers, or graphics —
+    plain and ATS-friendly by construction.
+  - File is written to a fresh `tempfile.mkdtemp()` directory per request and deleted via
+    a `BackgroundTask` after the response is sent — nothing persists on disk afterward.
+  - Verified: ran a resume through `/generate` → `/revise` → `/render` in sequence, then
+    inspected the resulting `.docx` programmatically with `python-docx` (paragraph text,
+    styles, bold/italic/size on every run) to confirm structure and formatting are all
+    correct — name/contact/summary at top, section headings present, experience/project
+    bullets are actual "List Bullet"-styled paragraphs, education/certs are single lines,
+    skills groups render with a bold label. Also confirmed `GET /usage` was unaffected by
+    the `/render` calls.
 
 **`app/services/llm.py`**: `generate_resume` and `revise_resume` share a single
 `_extract_json` helper for stripping markdown fences and parsing/validating the model's
@@ -113,20 +136,31 @@ build this out have been removed from the repo (identical copies remain at
   process (e.g. on any tracked file save), so don't rely on `/usage` reflecting cumulative
   usage across a dev session with frequent code edits. This is expected and fine for the
   guardrail's actual purpose (catching a runaway loop within one running process).
+- **The `.venv` can silently get corrupted by something outside this session** (most
+  likely IDE Python tooling) running `python3.14 -m venv .venv` on top of the existing
+  3.13 venv without clearing it first. This happened once already: `pyvenv.cfg` got
+  rewritten to point at 3.14, a stray `.venv/bin/python3.14` symlink appeared, and `pip`
+  started installing packages into a 3.14 `site-packages` tree while `.venv/bin/python`
+  still resolved to 3.13 — so newly-installed packages (`python-docx`) were invisible to
+  the actual interpreter uvicorn runs, and the server crashed on import. Fix was to
+  `rm -rf .venv` and rebuild fresh with `/usr/local/bin/python3.13 -m venv .venv`. If
+  `ModuleNotFoundError` shows up for a package `pip show` claims is installed, check
+  `.venv/pyvenv.cfg` and `.venv/bin/python*` symlinks for this same mismatch before
+  assuming it's a code bug.
 
 ## Not yet built (explicitly deferred so far)
 
-1. **`/render` endpoint** — Resume JSON → downloadable docx/pdf (likely `python-docx`).
-2. **Next.js frontend** — two-pane layout: selectable resume preview + chat input scoped
+1. **Next.js frontend** — two-pane layout: selectable resume preview + chat input scoped
    to the current selection. Deploys to Vercel. Not started.
-3. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
+2. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
    Vercel-hosted frontend. Not started.
 
 ## Open questions worth strategizing on
 
-- **Next build target**: `/render` (docx/pdf generation — unblocks actually producing a
-  usable resume file end-to-end) vs. starting the Next.js frontend skeleton (see the UX
-  shape, exercise `/generate` + `/revise` from a real client). Not picking one
-  unilaterally — flagging for the same strategizing pass as last time.
+- **Backend trio is now complete**: `/generate`, `/revise`, and `/render` are all built
+  and verified, alongside `/profile` and the usage guardrails. The next step is starting
+  the **Next.js frontend skeleton** (two-pane layout, selection + chat-scoped revision,
+  wired up to these four endpoints) — flagging this as the natural next pass, not
+  starting it yet.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

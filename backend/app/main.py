@@ -4,7 +4,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import profile, generate, revise
+from app.routes import profile, generate, revise, render
 
 app = FastAPI(title="Resume Builder API")
 
@@ -18,6 +18,7 @@ app.add_middleware(
 app.include_router(profile.router)
 app.include_router(generate.router)
 app.include_router(revise.router)
+app.include_router(render.router)
 
 
 @app.get("/health")

@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from app.models import RenderRequest
-from app.services.render import render_resume_docx, convert_docx_to_pdf
+from app.services.render import render_resume_docx, render_cover_letter_docx, convert_docx_to_pdf
 
 router = APIRouter()
 
@@ -23,19 +23,30 @@ def render(req: RenderRequest):
     if req.format not in ("docx", "pdf"):
         raise HTTPException(status_code=400, detail=f"Unsupported format: {req.format!r}. Use 'docx' or 'pdf'.")
 
-    resume_dict = req.resume.model_dump()
-    name = resume_dict.get("meta", {}).get("name", "Resume").replace(" ", "_")
-    docx_filename = f"{name}_Resume.docx"
+    if req.cover_letter is None and req.resume is None:
+        raise HTTPException(status_code=400, detail="Request must include either 'resume' or 'cover_letter'.")
+
+    if req.cover_letter is not None:
+        data = req.cover_letter.model_dump()
+        render_fn = render_cover_letter_docx
+        doc_label = "CoverLetter"
+    else:
+        data = req.resume.model_dump()
+        render_fn = render_resume_docx
+        doc_label = "Resume"
+
+    name = data.get("meta", {}).get("name", doc_label).replace(" ", "_")
+    docx_filename = f"{name}_{doc_label}.docx"
 
     tmp_dir = tempfile.mkdtemp()
     docx_path = str(Path(tmp_dir) / docx_filename)
 
     try:
-        render_resume_docx(resume_dict, docx_path)
+        render_fn(data, docx_path)
 
         if req.format == "pdf":
             pdf_path = convert_docx_to_pdf(docx_path, tmp_dir)
-            pdf_filename = f"{name}_Resume.pdf"
+            pdf_filename = f"{name}_{doc_label}.pdf"
             return FileResponse(
                 path=pdf_path,
                 media_type=PDF_MEDIA_TYPE,
@@ -47,7 +58,7 @@ def render(req: RenderRequest):
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise HTTPException(status_code=500, detail=f"Failed to render resume: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to render {doc_label.lower()}: {e}")
 
     return FileResponse(
         path=docx_path,

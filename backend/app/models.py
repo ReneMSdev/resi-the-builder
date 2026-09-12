@@ -110,5 +110,6 @@ class ReviseResponse(BaseModel):
 
 
 class RenderRequest(BaseModel):
-    resume: Resume
+    resume: Optional[Resume] = None
+    cover_letter: Optional[CoverLetter] = None
     format: str = "docx"  # "docx" or "pdf"

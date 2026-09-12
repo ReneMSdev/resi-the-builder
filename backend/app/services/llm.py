@@ -70,6 +70,14 @@ Each selected ID refers to something in the resume JSON:
   entry id itself is not a directly revisable field and must not appear in your output.
   If the entry has no bullets (e.g. an education or certification entry with an empty
   bullets list), there is nothing to revise — skip that id entirely, do not invent bullets.
+- A section ID (e.g. "sec_experience") — this means "revise every bullet in every entry
+  under this section." Apply the instruction across ALL bullets in ALL entries belonging
+  to that section, and return one update per bullet using each bullet's OWN id (not the
+  section's id, and not any entry id either) — the section id itself must not appear in
+  your output. If the section has no bullet-bearing entries (e.g. a "skills" section,
+  which has "groups" not "entries", or an "education"/"certifications" section whose
+  entries have no bullets), there is nothing to revise — skip that id entirely, do not
+  invent bullets or touch groups.
 
 Rules:
 - Only touch the text of the exact IDs implied above. Never modify, rewrite, or return
@@ -85,6 +93,10 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
     { "id": "b_salo_2", "text": "revised text here" }
   ]
 }
+
+If none of the selected IDs have anything to revise (e.g. every selected id was a
+skills/education/certifications section or entry with no bullets), return
+{"updates": []} — always include the "updates" key, even when it's an empty list.
 """
 
 
@@ -124,6 +136,35 @@ paragraphs. The frontend will handle salutation/sign-off separately.
 """
 
 
+COVER_LETTER_REVISE_SYSTEM_PROMPT = """You are a cover-letter-editing assistant. You will be given:
+1. The full current cover letter JSON (for context and consistency of tone/voice)
+2. A list of selected paragraph IDs the user wants revised
+3. A free-text instruction describing how to revise them (e.g. "make this punchier",
+   "shorten to two sentences", "emphasize leadership")
+
+Each selected ID refers to a paragraph in the cover letter JSON's "paragraphs" array
+(e.g. "p2") — revise that paragraph's text per the instruction.
+
+Rules:
+- Only touch the text of the exact paragraph IDs selected. Never modify, rewrite, or
+  return anything for paragraph IDs that were not selected.
+- Do not fabricate new facts, numbers, skills, or experience not already present in the
+  cover letter JSON's existing content. Only rephrase/restructure what's already there.
+- Preserve the existing tone/voice of the letter unless the instruction says otherwise.
+
+Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
+
+{
+  "updates": [
+    { "id": "p2", "text": "revised text here" }
+  ]
+}
+
+If none of the selected IDs have anything to revise, return {"updates": []} — always
+include the "updates" key, even when it's an empty list.
+"""
+
+
 def _extract_json(text: str) -> dict:
     text = text.strip()
     if text.startswith("```"):
@@ -136,6 +177,14 @@ def _extract_json(text: str) -> dict:
         return json.loads(text)
     except json.JSONDecodeError as e:
         raise ValueError(f"Model did not return valid JSON: {e}\nRaw output:\n{text[:500]}")
+
+
+def _normalize_revise_result(result: dict) -> dict:
+    """Defensively ensure the "updates" key is always present, since the model
+    sometimes returns bare {} instead of {"updates": []} when there's nothing to
+    revise — don't rely on prompt wording alone to guarantee this shape."""
+    result.setdefault("updates", [])
+    return result
 
 
 def generate_resume(profile: dict, job_description: str, company_context: str | None = None) -> dict:
@@ -218,4 +267,31 @@ INSTRUCTION:
     )
 
     text = "".join(block.text for block in response.content if block.type == "text")
-    return _extract_json(text)
+    return _normalize_revise_result(_extract_json(text))
+
+
+def revise_cover_letter(cover_letter: dict, selected_ids: list[str], instruction: str) -> dict:
+    if len(instruction) > MAX_INPUT_CHARS:
+        raise ValueError(f"instruction exceeds the {MAX_INPUT_CHARS}-character limit.")
+
+    check_and_increment()
+
+    user_content = f"""CURRENT COVER LETTER JSON:
+{json.dumps(cover_letter, indent=2)}
+
+SELECTED IDS:
+{json.dumps(selected_ids)}
+
+INSTRUCTION:
+{instruction}
+"""
+
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=2048,
+        system=COVER_LETTER_REVISE_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_content}],
+    )
+
+    text = "".join(block.text for block in response.content if block.type == "text")
+    return _normalize_revise_result(_extract_json(text))

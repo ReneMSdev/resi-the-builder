@@ -48,26 +48,34 @@ spec/architecture doc this was built from.
     `CoverLetter` (`type: "cover_letter"`, `meta: CoverLetterMeta`,
     `paragraphs: list[Paragraph]`) — same selection model as resume bullets, each
     paragraph independently addressable by `id` for future revision.
-  - **Known gap, intentional**: `ReviseRequest` now accepts an optional `cover_letter`
-    field alongside `resume`, but `revise_resume`/the `/revise` route have **not** been
-    updated to branch on it — `/revise` does not yet support revising cover letter
-    paragraphs. This is deferred to the frontend-adjacent backend pass that builds out
-    cover letter selection/revision in the UI, not an oversight in this pass.
-- `POST /revise` → takes `{selected_ids, instruction, resume}`, returns
+  - **(Closed 2026-09-12, see "Backend gap-closure" section below)**: `/revise` now
+    branches on `ReviseRequest.cover_letter` and supports cover letter paragraph revision.
+- `POST /revise` → takes `{selected_ids, instruction, resume?, cover_letter?}` (exactly one
+  of `resume`/`cover_letter` expected; neither present is a clean 400), returns
   `{updates: [{id, text}]}` for only the requested IDs. Does not read `profile.json` at all
-  — operates solely on the resume JSON in the request body, since revision needs no master
-  data. Verified with both:
+  — operates solely on the JSON in the request body, since revision needs no master data.
+  Verified with:
   - **Bullet-level IDs** — returns revised text for exactly those bullets, nothing else touched.
   - **Entry-level IDs** (a whole job block) — expands to one update per bullet under that
     entry, using each bullet's own id (the entry id itself never appears in the response,
     since `ReviseUpdate` is just `{id, text}` and only bullet/summary ids map to an actual
     string field). Entries with no bullets (education/certifications) are skipped rather
     than having bullets invented for them.
-- `POST /render` (new) → takes `{resume: Resume, format: "docx" | "pdf"}` (`format`
-  defaults to `"docx"`), returns a downloadable file (not a JSON body). Pure templating
-  via `python-docx` — **makes no LLM call**, so it does not go through `usage_guard` and
-  never counts against the daily call cap (explicitly commented in `app/routes/render.py`
-  so the omission reads as intentional, not missed).
+  - **Section-level IDs** (new, 2026-09-12) — expands to one update per bullet across ALL
+    entries in that section (e.g. `sec_experience` → all 9 bullets across its 2 entries).
+    Sections with no bullet-bearing entries (`skills`, or `education`/`certifications`
+    whose entries have no bullets) correctly no-op with `{"updates": []}` rather than
+    erroring. See "Backend gap-closure" section below for full verification detail.
+  - **Cover letter paragraph IDs** (new, 2026-09-12) — `revise_cover_letter` revises only
+    the selected paragraph(s) by id. See "Backend gap-closure" section below.
+- `POST /render` → takes `{resume?: Resume, cover_letter?: CoverLetter, format: "docx" |
+  "pdf"}` (exactly one of `resume`/`cover_letter` expected; neither present is a clean 400;
+  `format` defaults to `"docx"`), returns a downloadable file (not a JSON body). Pure
+  templating via `python-docx` — **makes no LLM call**, so it does not go through
+  `usage_guard` and never counts against the daily call cap (explicitly commented in
+  `app/routes/render.py` so the omission reads as intentional, not missed). Cover letter
+  rendering (`render_cover_letter_docx`, new 2026-09-12) is documented in "Backend
+  gap-closure" below; resume rendering is unchanged from before that pass.
   - **`.docx` generation**: centered bold name + contact line, summary paragraph, then
     each section as an uppercase bold heading; experience/project entries get a bold
     `Title — Organization` line with the dates right-tab-aligned on the same line, an
@@ -445,6 +453,78 @@ backend gaps above (cover letter revise, cover letter render — plus the newly-
 section-id revise gap from Phase 4), then the Cloudflare Tunnel + Vercel deployment
 infrastructure pass.
 
+## Backend gap-closure — section revise, cover letter revise, cover letter render (2026-09-12)
+
+All three backend gaps tracked from the frontend build are now closed and verified
+directly against the running server (`curl` against `/revise` and `/render` with
+hand-built payloads, checking status codes and response shapes, not just "should work").
+
+**1. Section-id expansion in `/revise`** (`app/services/llm.py`)
+- `REVISE_SYSTEM_PROMPT` gained a fourth ID-expansion rule alongside bullet/summary/entry:
+  a section ID (e.g. `sec_experience`) now expands to one update per bullet across ALL
+  entries in that section, using each bullet's own id — the section id itself must never
+  appear in the output, matching the existing entry-expansion convention.
+- Sections with nothing to revise (`skills`, which has `groups` not `entries`; or
+  `education`/`certifications`, whose entries have no bullets) are documented as a clean
+  no-op returning `{"updates": []}`, not an error.
+- **Defensive fix, not just a prompt tweak**: added `_normalize_revise_result()`, called
+  on the parsed JSON in both `revise_resume` and the new `revise_cover_letter` (below),
+  which does `result.setdefault("updates", [])`. This was necessary because the model was
+  observed returning bare `{}` for a no-op case instead of `{"updates": []}`, which would
+  otherwise fail `ReviseResponse` validation and 500 instead of cleanly no-opping — the
+  fix does not rely on prompt wording alone to guarantee the response shape.
+- Verified against a real generated resume: selecting `sec_experience` (2 entries, 9
+  bullets total) returned exactly 9 updates, one per bullet, keyed by bullet id, no
+  section/entry id in the output; selecting `sec_skills` (groups only, no entries)
+  returned `{"updates": []}` with a 200; selecting `sec_education` (entries with no
+  bullets) also returned `{"updates": []}` with a 200. Also re-verified bullet-level
+  revision still returns exactly one update for exactly the selected bullet (regression
+  check, unchanged behavior).
+
+**2. Cover letter revision** (`app/services/llm.py`, `app/routes/revise.py`)
+- New `COVER_LETTER_REVISE_SYSTEM_PROMPT` + `revise_cover_letter(cover_letter, selected_ids,
+  instruction)`: simpler than the resume prompt since selected ids are always paragraph
+  ids directly (no entry/section expansion needed) — same `MAX_INPUT_CHARS` instruction
+  check, same `check_and_increment()` guard ordering as every other LLM-calling function,
+  same `_normalize_revise_result()` defensive pass on the output.
+- `/revise` route now branches: `req.cover_letter` present → `revise_cover_letter`;
+  `req.resume` present → existing `revise_resume`; neither present → clean **400**
+  (`"Request must include either 'resume' or 'cover_letter'."`) checked before either
+  branch runs, so it can't be swallowed by the `ValueError`/`RuntimeError` handlers.
+- Verified: generated a real cover letter, selected `p1`, submitted "make this more
+  concise, one sentence" — response contained exactly one update for `p1`, untouched
+  `p2`/`p3`; a request with neither `resume` nor `cover_letter` returned 400 as designed.
+
+**3. Cover letter rendering** (`app/services/render.py`, `app/routes/render.py`,
+`app/models.py`)
+- `RenderRequest.resume` is now `Optional`; added `RenderRequest.cover_letter:
+  Optional[CoverLetter] = None` (same shape as `ReviseRequest`).
+- New `render_cover_letter_docx(cover_letter, output_path)`: right-aligned date (only
+  emitted if `meta.date` is non-empty — matches `generate_cover_letter` always leaving it
+  blank, so in practice no date line renders yet, which is correct, not a bug), a bold
+  `Re: {role} at {company}` line when either is present, `"Dear Hiring Manager,"`, each
+  paragraph as its own paragraph, `"Sincerely,"`, bold name, then an `email | phone`
+  contact line. Same Calibri 10.5pt / 0.75in-margin setup as `render_resume_docx` (both
+  now pull from the same style/margin block pattern).
+- `/render` route branches the same way as `/revise` (cover_letter → cover letter render;
+  resume → existing behavior; neither → 400) and derives the downloaded filename from
+  whichever is present: `{name}_CoverLetter.docx`/`.pdf` vs `{name}_Resume.docx`/`.pdf`
+  (previously hardcoded to `_Resume`).
+- Verified: rendered a real generated cover letter to `.docx` — 200, correct
+  `Content-Type`, `Content-Disposition: ...CoverLetter.docx`, and (via `python-docx`)
+  confirmed the actual paragraph text, subject line, salutation, and sign-off all render
+  correctly with no stray date line (since `meta.date` was empty). Also rendered the same
+  cover letter to `.pdf` — 200, real 1-page PDF, `...CoverLetter.pdf` filename. Re-verified
+  resume rendering is completely unchanged: `.docx` still names `{name}_Resume.docx`; an
+  invalid `format` (`"txt"`) still returns a clean 400; a request with neither `resume`
+  nor `cover_letter` returns 400. `GET /usage` was unaffected by any of the render calls
+  above (still doesn't go through the usage guard, as before).
+
+**All three tracked backend gaps are now closed.** The frontend session (`frontend-2c`)
+has been notified so it can re-enable section-level selection in `ResumePreview.tsx`,
+wire cover-letter revision into `handleRevise`/`RevisionChat`, and add a download control
+for cover letters.
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled
@@ -455,25 +535,19 @@ infrastructure pass.
 
 ## Open questions worth strategizing on
 
-- **Both the backend trio and the frontend's 6 phases are now complete**: `/generate`,
-  `/revise`, and `/render` are all built and verified, alongside `/profile` and the usage
-  guardrails; the frontend covers connectivity, generate, styled preview + selection,
-  chat-scoped revision, cover letter mode, and download. Three confirmed backend gaps
-  remain, all already tracked: `REVISE_SYSTEM_PROMPT` needs to learn how to expand a
-  **section** id to all of that section's bullets (the same way it already expands an
-  entry id) before section-level selection can be re-enabled in the frontend; `/revise`
-  doesn't yet branch on `ReviseRequest.cover_letter` to support cover-letter paragraph
-  revision; and `/render` only accepts a `Resume` body, not a `CoverLetter`, so cover
-  letter download has no backend support yet. The natural next pass is a small backend
-  follow-up closing those three gaps, then the Cloudflare Tunnel + Vercel deployment
-  infrastructure work.
-- **2026-09-12**: work on the three gaps above has been handed to a separate,
-  backend-focused Claude Code session (this repo is being worked in two parallel
-  sessions — one frontend-only, one backend-only). That session's prompt already flags
-  the section-id-expansion pitfall found and reverted here: a section id with no
-  revisable bullets (e.g. `sec_skills`) can make the model return bare `{}` instead of
-  `{"updates": []}`, which fails `ReviseResponse` validation and 500s — needs a
-  defensive default in code, not just prompt wording. See `frontend/STATUS.md`'s
-  "Workflow note" for the frontend-side flags waiting on this work.
+- **Everything in the original plan is now complete**, confirmed 2026-09-12 by the
+  frontend session (`frontend-2c`) after its own end-to-end browser verification:
+  `/generate`, `/revise`, and `/render` all support both resumes and cover letters
+  (generate, revise — including section-level resume revision — and render/download),
+  alongside `/profile` and the usage guardrails; the frontend covers connectivity,
+  generate, styled preview + selection (all three levels, including sections), chat-scoped
+  revision for both resumes and cover letters, cover letter mode, and download for both
+  document types. `frontend-2c` reported: section-level selection re-enabled (tested a
+  2-entry/9-bullet section revise, all 9 updated correctly), cover letter revision wired
+  up (single-paragraph revise confirmed), and cover letter download added (docx + pdf both
+  200, real downloads) — no contract mismatches on either side. No open backend or
+  frontend gaps remain from this plan.
+- The only remaining work is the Cloudflare Tunnel + Vercel deployment infrastructure
+  pass — not a feature gap, just deployment plumbing.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

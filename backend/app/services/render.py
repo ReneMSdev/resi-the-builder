@@ -122,6 +122,65 @@ def render_resume_docx(resume: dict, output_path: str) -> str:
     return output_path
 
 
+def render_cover_letter_docx(cover_letter: dict, output_path: str) -> str:
+    """Builds a business-letter-style .docx file at output_path from a CoverLetter dict.
+    Returns output_path."""
+    doc = Document()
+
+    style = doc.styles["Normal"]
+    style.font.name = "Calibri"
+    style.font.size = Pt(10.5)
+
+    for section in doc.sections:
+        section.top_margin = Inches(PAGE_MARGIN_INCHES)
+        section.bottom_margin = Inches(PAGE_MARGIN_INCHES)
+        section.left_margin = Inches(PAGE_MARGIN_INCHES)
+        section.right_margin = Inches(PAGE_MARGIN_INCHES)
+
+    meta = cover_letter.get("meta", {})
+
+    date = (meta.get("date") or "").strip()
+    if date:
+        date_p = doc.add_paragraph()
+        date_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        date_p.add_run(date)
+
+    role = meta.get("role", "")
+    company = meta.get("company", "")
+    subject = " at ".join(part for part in (role, company) if part)
+    if subject:
+        subject_p = doc.add_paragraph()
+        subject_p.paragraph_format.space_before = Pt(8)
+        subject_run = subject_p.add_run(f"Re: {subject}")
+        subject_run.bold = True
+
+    salutation_p = doc.add_paragraph("Dear Hiring Manager,")
+    salutation_p.paragraph_format.space_before = Pt(8)
+
+    for paragraph in cover_letter.get("paragraphs", []):
+        text = (paragraph.get("text") or "").strip()
+        if not text:
+            continue
+        p = doc.add_paragraph(text)
+        p.paragraph_format.space_before = Pt(8)
+
+    sign_off_p = doc.add_paragraph("Sincerely,")
+    sign_off_p.paragraph_format.space_before = Pt(8)
+
+    name_p = doc.add_paragraph()
+    name_run = name_p.add_run(meta.get("name", ""))
+    name_run.bold = True
+
+    contact_parts = [p for p in (meta.get("email"), meta.get("phone")) if p]
+    if contact_parts:
+        contact_p = doc.add_paragraph()
+        contact_run = contact_p.add_run(" | ".join(contact_parts))
+        contact_run.font.size = Pt(9.5)
+
+    doc.save(output_path)
+    return output_path
+
+
 def convert_docx_to_pdf(docx_path: str, output_dir: str) -> str:
     """Converts a .docx file to .pdf using headless LibreOffice.
     Returns the path to the resulting .pdf file."""

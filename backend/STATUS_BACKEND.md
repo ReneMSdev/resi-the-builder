@@ -209,7 +209,7 @@ build this out have been removed from the repo (identical copies remain at
 
 ## Frontend Phase 1 — Connectivity check (2026-09-12)
 
-Following `frontend/STATUS.md`'s phased build guide, Phase 1 is done and verified:
+Following `frontend/STATUS_FRONTEND.md`'s phased build guide, Phase 1 is done and verified:
 - `frontend/.env.local` (gitignored — `.env*` was already covered in `frontend/.gitignore`)
   holds `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000`.
 - `app/page.tsx` (client component, `"use client"`) replaces the default `create-next-app`
@@ -332,7 +332,7 @@ Following `frontend/STATUS.md`'s phased build guide, Phase 1 is done and verifie
   selectable-but-nonfunctional control in place. This is a real backend gap, not a
   frontend workaround-needed item: fixing it means teaching `REVISE_SYSTEM_PROMPT` to
   expand a section id to all of that section's bullets, mirroring the existing entry-id
-  expansion — tracked in `frontend/STATUS.md`'s "Known gaps" list.
+  expansion — tracked in `frontend/STATUS_FRONTEND.md`'s "Known gaps" list.
 - **Error handling**: confirmed via direct backend testing that an oversized instruction
   (>`MAX_INPUT_CHARS`) returns **502**, exercising the same `!res.ok` → inline error
   message path already proven working for `/generate` in Phase 2 (`handleRevise` mirrors
@@ -529,7 +529,7 @@ for cover letters.
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled
    preview + selection, chat-scoped revision, cover letter mode, download). See above and
-   `frontend/STATUS.md` for details.
+   `frontend/STATUS_FRONTEND.md` for details.
 2. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
    Vercel-hosted frontend. Not started.
 

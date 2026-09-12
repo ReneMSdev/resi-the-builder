@@ -3,7 +3,7 @@
 Give Claude Code **one phase at a time**, in order. Each phase is self-contained and
 independently testable. Don't start a phase until the previous one is verified working.
 Update the "Progress" checklist at the bottom after each phase, and have Claude Code
-append a short note to `STATUS.md` (the existing backend status doc) describing what was
+append a short note to `STATUS_FRONTEND.md` (the existing backend status doc) describing what was
 built and verified, same format as prior backend passes.
 
 ## Reference: what already exists (backend, fully built)
@@ -42,7 +42,7 @@ any real UI.
 **Test:** load `localhost:3000` with the backend running — see "Backend: ok". Stop the
 backend, reload — see a clear error state, not a silent failure or unhandled exception.
 
-**STATUS.md update:** note the connectivity check works, the env var name, and confirm
+**STATUS_FRONTEND.md update:** note the connectivity check works, the env var name, and confirm
 CORS didn't need adjustment (it's still `*` from the backend side).
 
 ---
@@ -68,7 +68,7 @@ styling polish, no selection yet — just prove the data flow works end to end.
 (even unstyled) with sensible tailored content matching what was already verified
 working via `/docs` earlier.
 
-**STATUS.md update:** note the generate flow works end to end from the UI, and flag
+**STATUS_FRONTEND.md update:** note the generate flow works end to end from the UI, and flag
 that styling is deliberately deferred to Phase 3.
 
 ---
@@ -109,7 +109,7 @@ highlight, click to select multiple items at different levels simultaneously and
 they all show persistent highlight, click one again and confirm it deselects while
 others remain selected.
 
-**STATUS.md update:** describe the `ResumePreview` component structure, confirm all
+**STATUS_FRONTEND.md update:** describe the `ResumePreview` component structure, confirm all
 three selection levels work independently and can combine, and note any visual
 deviations from the docx template that were simplified for the browser (e.g. font
 availability differences) — these are fine and expected, just document them.
@@ -148,7 +148,7 @@ resume}` (the current full resume state).
   unexpected results (e.g. is silently skipped, since it's not a bullet/entry it may not
   match anything the backend's prompt expects). **If section-level revision doesn't work
   correctly against the current backend, do not attempt to fix this in the frontend** —
-  note it clearly in STATUS.md as a backend gap needing its own follow-up pass (the
+  note it clearly in STATUS_FRONTEND.md as a backend gap needing its own follow-up pass (the
   `/revise` system prompt needs to learn how to expand a section id, similar to how it
   already expands an entry id to its bullets), and disable/hide section-level selection
   in the UI for now if it produces broken results, re-enabling once the backend supports
@@ -161,7 +161,7 @@ bullet changes. Select an entire job entry, submit "emphasize leadership," confi
 its bullets update via the entry-expansion behavior. Try selecting a whole section and
 document what actually happens per the note above.
 
-**STATUS.md update:** confirm bullet-level and entry-level revision work from the UI,
+**STATUS_FRONTEND.md update:** confirm bullet-level and entry-level revision work from the UI,
 and clearly document the section-level revision finding (works / doesn't work / partially
 works) as a flagged item for the next backend pass if needed.
 
@@ -191,7 +191,7 @@ renders readably and looks distinct from the resume view. Confirm attempting to 
 
 - revise is either disabled or clearly communicates it's not yet supported.
 
-**STATUS.md update:** confirm cover letter generation + display works from the UI, and
+**STATUS_FRONTEND.md update:** confirm cover letter generation + display works from the UI, and
 restate clearly that cover letter revision is blocked on a backend gap (already known,
 not new).
 
@@ -208,13 +208,13 @@ not new).
   `<a>` element with `download` attribute, or the equivalent modern approach).
 - Disable/hide the download control for cover letters for now, since `/render` doesn't
   support the cover letter shape yet (same category of gap as Phase 5's revision
-  limitation) — note this in STATUS.md rather than attempting a workaround.
+  limitation) — note this in STATUS_FRONTEND.md rather than attempting a workaround.
 
 **Test:** generate + optionally revise a resume, click download for both docx and pdf,
 confirm real files download and open correctly, matching what was already verified via
 `/docs` earlier in the project.
 
-**STATUS.md update:** confirm both formats download correctly from the UI, and restate
+**STATUS_FRONTEND.md update:** confirm both formats download correctly from the UI, and restate
 the cover-letter-render gap as a known follow-up.
 
 ---
@@ -251,7 +251,7 @@ was clean at the handoff point.
 ## Backend gap-closure flips (2026-09-12)
 
 The backend session closed all three tracked gaps (section-id expansion in `/revise`,
-cover letter revision, cover letter render — see `backend/STATUS.md`'s "Backend
+cover letter revision, cover letter render — see `backend/STATUS_BACKEND.md`'s "Backend
 gap-closure" section for full verification detail) and confirmed each directly against
 the running backend before handing back. This session then flipped the three
 corresponding frontend restrictions and verified each end-to-end in a real browser:

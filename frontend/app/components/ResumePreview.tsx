@@ -18,10 +18,10 @@ export function ResumePreview({
   }
 
   return (
-    <div className="flex flex-col gap-1 rounded border border-zinc-200 bg-white p-8 text-black shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50">
+    <div className="flex flex-col gap-1 rounded border border-[var(--border)] bg-[var(--surface)] p-8 text-[var(--foreground)] shadow-sm">
       <h2 className="text-center text-xl font-bold">{resume.meta.name}</h2>
       {contactParts.length > 0 && (
-        <p className="text-center text-xs text-zinc-600 dark:text-zinc-400">
+        <p className="text-center text-xs text-[var(--muted)]">
           {contactParts.join(" | ")}
         </p>
       )}
@@ -91,7 +91,7 @@ export function ResumePreview({
                     )}
                   </div>
                   {entry.location && (
-                    <p className="text-xs italic text-zinc-600 dark:text-zinc-400">
+                    <p className="text-xs italic text-[var(--muted)]">
                       {entry.location}
                     </p>
                   )}

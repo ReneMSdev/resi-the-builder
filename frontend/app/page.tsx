@@ -162,24 +162,22 @@ export default function Home() {
   const isGenerating = generateState.state === "loading";
 
   return (
-    <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col gap-8 py-16 px-16 bg-white dark:bg-black">
+    <div className="flex flex-col flex-1 items-center bg-[var(--background)] font-sans">
+      <main className="flex flex-1 w-full max-w-3xl flex-col gap-8 py-16 px-16">
         <div className="flex flex-col items-center gap-2">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold text-[var(--foreground)]">
             Resume Builder
           </h1>
           {status.state === "loading" && (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Checking backend...
-            </p>
+            <p className="text-sm text-[var(--muted)]">Checking backend...</p>
           )}
           {status.state === "ok" && (
-            <p className="text-sm font-medium text-green-600 dark:text-green-400">
+            <p className="text-sm font-medium text-[var(--success)]">
               Backend: ok
             </p>
           )}
           {status.state === "error" && (
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+            <p className="text-sm font-medium text-[var(--danger)]">
               Backend unreachable: {status.message}
             </p>
           )}
@@ -187,22 +185,22 @@ export default function Home() {
 
         <form onSubmit={handleGenerate} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-black dark:text-zinc-50">
+            <span className="text-sm font-medium text-[var(--foreground)]">
               Job description
             </span>
             <textarea
-              className="min-h-[160px] rounded border border-zinc-300 p-2 text-sm text-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              className="min-h-[160px] rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)]"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               required
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-black dark:text-zinc-50">
+            <span className="text-sm font-medium text-[var(--foreground)]">
               Company context (optional)
             </span>
             <textarea
-              className="min-h-[80px] rounded border border-zinc-300 p-2 text-sm text-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              className="min-h-[80px] rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)]"
               value={companyContext}
               onChange={(e) => setCompanyContext(e.target.value)}
             />
@@ -210,21 +208,21 @@ export default function Home() {
           <button
             type="submit"
             disabled={isGenerating || !jobDescription.trim()}
-            className="self-start rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            className="self-start rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50"
           >
             {isGenerating ? "Generating..." : "Generate Resume"}
           </button>
         </form>
 
         {generateState.state === "error" && (
-          <p className="font-medium text-red-600 dark:text-red-400">
+          <p className="font-medium text-[var(--danger)]">
             Error generating resume: {generateState.message}
           </p>
         )}
 
         {generateState.state === "success" && (
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+            <p className="text-xs text-[var(--muted)]">
               {selectedIds.size === 0
                 ? "Click a bullet or entry to select it."
                 : `Selected: ${selectedIds.size} item${
@@ -236,7 +234,7 @@ export default function Home() {
               selectedIds={selectedIds}
               onToggle={toggleSelected}
             />
-            <details className="text-xs text-zinc-600 dark:text-zinc-400">
+            <details className="text-xs text-[var(--muted)]">
               <summary className="cursor-pointer select-none">
                 Raw JSON
               </summary>

@@ -23,9 +23,9 @@ export function Selectable({
         e.stopPropagation();
         onToggle(id);
       }}
-      className={`cursor-pointer rounded transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+      className={`cursor-pointer rounded transition-colors hover:bg-[var(--accent-soft)] ${
         isSelected
-          ? "bg-blue-100 ring-1 ring-inset ring-blue-400 hover:bg-blue-100 dark:bg-blue-950 dark:ring-blue-600 dark:hover:bg-blue-950"
+          ? "bg-[var(--accent-soft)] ring-1 ring-inset ring-[var(--accent)] hover:bg-[var(--accent-soft)]"
           : ""
       } ${className}`}
     >

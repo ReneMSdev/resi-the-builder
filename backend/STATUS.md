@@ -336,6 +336,33 @@ Following `frontend/STATUS.md`'s phased build guide, Phase 1 is done and verifie
   Chrome extension modifying the `<html>` tag before React hydrates, unrelated to any
   app code; not something to fix here.
 
+## Frontend theme — cream + salmon (2026-09-12)
+
+- User didn't like the dark theme, so the previous approach (Tailwind `dark:` variants
+  following `prefers-color-scheme`, black/white/zinc/blue palette) was replaced with a
+  single fixed light theme — no dark mode at all now, by request.
+- All colors are CSS custom properties in `app/globals.css` (`--background`, `--surface`,
+  `--foreground`, `--muted`, `--border`, `--accent`, `--accent-hover`, `--accent-soft`,
+  `--success`, `--danger`), referenced from components via Tailwind arbitrary-value
+  classes (e.g. `bg-[var(--accent)]`) rather than hardcoded hex/Tailwind color names, so
+  the palette can be retuned from one place. `--background` is a warm cream (`#f6ecdb`),
+  `--surface` a lighter off-white-cream for cards/inputs, text a dark brown
+  (`--foreground: #3a2a1e`), and `--accent`/`--accent-hover` a salmon/coral
+  (`#e8785a`/`#d9633f`) used for buttons and the bullet/entry selection ring
+  (`--accent-soft`, a pale salmon wash, for both the transient hover tint and the fill
+  behind a persistent selection).
+- Every `dark:`, `zinc-*`, `blue-*`, `bg-black`/`bg-white`/`text-black`/`text-white`
+  class across `app/` was swept out (confirmed via grep) — `page.tsx`,
+  `components/Selectable.tsx`, `components/ResumePreview.tsx`,
+  `components/RevisionChat.tsx` all now reference only the CSS variables above.
+- **Found and worth flagging**: this machine's Chrome has the **Dark Reader** extension
+  installed, which force-repaints pages dark regardless of the page's own CSS (confirmed
+  via `getComputedStyle` — `--background` correctly resolves to the cream hex, but the
+  painted body background was a dark brown until Dark Reader's injected
+  `data-darkreader-*` attributes/style tags were stripped for a verification screenshot).
+  If the cream/salmon theme still looks dark after this change, Dark Reader (or a similar
+  extension) repainting `localhost:3000` is the first thing to check — not the app.
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — Phases 1–4 done, see above. Phases 5–6 (cover letter mode,

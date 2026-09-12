@@ -5,6 +5,7 @@ import { CoverLetter, Resume } from './types'
 import { ResumePreview } from './components/ResumePreview'
 import { CoverLetterPreview } from './components/CoverLetterPreview'
 import { RevisionChat } from './components/RevisionChat'
+import { DownloadButtons } from './components/DownloadButtons'
 import { applyRevisionUpdates, describeSelection } from './lib/resume'
 
 type BackendStatus = { state: 'loading' } | { state: 'ok' } | { state: 'error'; message: string }
@@ -260,11 +261,14 @@ export default function Home() {
 
         {generateState.state === 'success' && generateState.kind === 'resume' && (
           <div className='flex flex-col gap-2'>
-            <p className='text-xs text-[var(--muted)]'>
-              {selectedIds.size === 0
-                ? 'Click a bullet or entry to select it.'
-                : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
-            </p>
+            <div className='flex items-center justify-between gap-2'>
+              <p className='text-xs text-[var(--muted)]'>
+                {selectedIds.size === 0
+                  ? 'Click a bullet or entry to select it.'
+                  : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+              </p>
+              <DownloadButtons resume={generateState.resume} />
+            </div>
             <ResumePreview
               resume={generateState.resume}
               selectedIds={selectedIds}

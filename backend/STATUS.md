@@ -408,23 +408,64 @@ Following `frontend/STATUS.md`'s phased build guide, Phase 1 is done and verifie
 - Cover letter revision remains blocked on the same backend gap already tracked (not
   new): `/revise` doesn't handle the `cover_letter` field on `ReviseRequest` yet.
 
+## Frontend Phase 6 — Download (2026-09-12)
+
+- New `app/components/DownloadButtons.tsx`: two buttons ("Download .docx" / "Download
+  .pdf"), each `POST`ing `{resume, format}` to `/render`, reading the response as a
+  `Blob`, and triggering a real browser download via a temporary `<a download>` element
+  (`URL.createObjectURL` + programmatic click, then `URL.revokeObjectURL` after).
+  Filename is read from the response's `Content-Disposition` header (which `/render`
+  already sets via FastAPI's `FileResponse(filename=...)`) with a generic fallback if
+  that header is ever missing. Each button independently tracks its own loading state
+  (`"Downloading..."` only on the one clicked) and shows an inline error message on
+  failure (non-2xx status or network error) without disturbing the resume/selection
+  state — mirrors the same fetch-error-handling shape used by generate/revise.
+- Rendered in `page.tsx` next to the selection-count indicator, **only** in the
+  `kind === "resume"` branch — the control does not exist at all in cover-letter mode
+  (not just disabled), matching the phase's "disable/hide" instruction plus the existing
+  Phase 5 precedent of hiding rather than half-supporting an unimplemented shape.
+- Verified end-to-end in the browser: generated a resume, clicked "Download .docx" —
+  network panel showed `POST /render` → 200, button returned to idle with no error;
+  clicked "Download .pdf" the same way (LibreOffice conversion, ~10s) — also 200, no
+  error. Could not directly inspect the saved files' bytes from this pass (no filesystem
+  access to the browser's actual Downloads folder in this environment), but the 200
+  responses, correct content flow, and lack of any console/network errors match the
+  behavior already verified directly against `/render` in earlier backend-only testing
+  (see the `/render` section above) — recommend the user do one manual spot-check
+  (open the downloaded `.docx`/`.pdf`) since that last step wasn't independently
+  re-verified here.
+- Confirmed download controls are completely absent in Cover Letter mode (switched
+  modes, generated a cover letter, no download buttons rendered) — restating the known
+  gap: `/render` only accepts a `Resume` body (`RenderRequest.resume: Resume`, required),
+  not a `CoverLetter`, so cover letter download/export has no backend support yet. Same
+  category of gap as cover letter revision — tracked, not fixed in this pass.
+
+**All 6 frontend phases are now complete.** Remaining work per the original plan: the two
+backend gaps above (cover letter revise, cover letter render — plus the newly-found
+section-id revise gap from Phase 4), then the Cloudflare Tunnel + Vercel deployment
+infrastructure pass.
+
 ## Not yet built (explicitly deferred so far)
 
-1. **Next.js frontend** — Phases 1–5 done, see above. Phase 6 (download) not yet started
-   — see `frontend/STATUS.md` for the full phased plan.
+1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled
+   preview + selection, chat-scoped revision, cover letter mode, download). See above and
+   `frontend/STATUS.md` for details.
 2. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
    Vercel-hosted frontend. Not started.
 
 ## Open questions worth strategizing on
 
-- **Backend trio is now complete**: `/generate`, `/revise`, and `/render` are all built
-  and verified, alongside `/profile` and the usage guardrails. Frontend Phases 1–5
-  (connectivity, generate view, styled preview + selection, chat-scoped revision, cover
-  letter mode) are done — next step is Phase 6 (download), per `frontend/STATUS.md`'s
-  phased plan. Two confirmed backend gaps remain, both already tracked: `REVISE_SYSTEM_
-  PROMPT` needs to learn how to expand a **section** id to all of that section's bullets
-  (the same way it already expands an entry id) before section-level selection can be
-  re-enabled in the frontend; and `/revise` doesn't yet branch on `ReviseRequest.cover_
-  letter` to support cover-letter paragraph revision.
+- **Both the backend trio and the frontend's 6 phases are now complete**: `/generate`,
+  `/revise`, and `/render` are all built and verified, alongside `/profile` and the usage
+  guardrails; the frontend covers connectivity, generate, styled preview + selection,
+  chat-scoped revision, cover letter mode, and download. Three confirmed backend gaps
+  remain, all already tracked: `REVISE_SYSTEM_PROMPT` needs to learn how to expand a
+  **section** id to all of that section's bullets (the same way it already expands an
+  entry id) before section-level selection can be re-enabled in the frontend; `/revise`
+  doesn't yet branch on `ReviseRequest.cover_letter` to support cover-letter paragraph
+  revision; and `/render` only accepts a `Resume` body, not a `CoverLetter`, so cover
+  letter download has no backend support yet. The natural next pass is a small backend
+  follow-up closing those three gaps, then the Cloudflare Tunnel + Vercel deployment
+  infrastructure work.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

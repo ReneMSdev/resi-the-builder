@@ -238,7 +238,7 @@ new features.
 - [x] Phase 4 — Chat-scoped revision (bullet/entry confirmed; section-level does NOT work
       against the current backend — disabled in the UI, see notes below)
 - [x] Phase 5 — Cover letter mode (generate + display only)
-- [ ] Phase 6 — Download (docx/pdf, resume only)
+- [x] Phase 6 — Download (docx/pdf, resume only)
 
 ## Known gaps to track for a future backend pass
 

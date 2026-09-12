@@ -199,19 +199,60 @@ build this out have been removed from the repo (identical copies remain at
   `.venv/pyvenv.cfg` and `.venv/bin/python*` symlinks for this same mismatch before
   assuming it's a code bug.
 
+## Frontend Phase 1 — Connectivity check (2026-09-12)
+
+Following `frontend/STATUS.md`'s phased build guide, Phase 1 is done and verified:
+- `frontend/.env.local` (gitignored — `.env*` was already covered in `frontend/.gitignore`)
+  holds `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000`.
+- `app/page.tsx` (client component, `"use client"`) replaces the default `create-next-app`
+  boilerplate with a `useEffect` fetch to `${NEXT_PUBLIC_API_URL}/health` on load, tracked
+  via a `loading | ok | error` state.
+- Verified both states in a real browser (Chrome, via `next dev` on `localhost:3000`):
+  with the backend up, renders "Backend: ok"; with `NEXT_PUBLIC_API_URL` pointed at an
+  unreachable port, renders "Backend unreachable: Failed to fetch" instead of a silent
+  failure or unhandled exception.
+- CORS did not need any adjustment — still wide open (`allow_origins=["*"]`) from the
+  backend side, as expected for local dev.
+- Read `node_modules/next/dist/docs/01-app/{01-getting-started/05-server-and-client-components,02-guides/environment-variables}.md`
+  first per the frontend's `AGENTS.md` (this Next.js version, 16.3.5, warns of breaking
+  changes from training data) — both `NEXT_PUBLIC_` env var handling and `"use client"`
+  matched standard conventions, no surprises for this phase.
+
+## Frontend Phase 2 — Generate view, resume only, unstyled (2026-09-12)
+
+- `app/page.tsx` now has a form (job description textarea, required; optional company
+  context textarea) that `POST`s to `/generate` with `{job_description, company_context,
+  type: "resume"}` on submit, using `GenerateState` (`idle | loading | success | error`)
+  to drive the UI — button disabled and reads "Generating..." while in flight, shows a
+  clear inline error message on failure (non-2xx status or network error), otherwise
+  renders the returned `resume`.
+- Render is a minimal but structured `ResumeRaw` component (not a bare `<pre>` dump):
+  name/contact, summary, each section with entries (title — org, dates, location,
+  bullets) or skill groups — plus a collapsed `<details>` with the full raw JSON for
+  debugging. Deliberately unstyled/basic per the phase goal; real visual polish and
+  the 3-level selection UI are Phase 3.
+- Verified end-to-end in a real browser: submitted a real backend/Python job description,
+  got back a correctly tailored resume (relevant bullets surfaced, skills reordered
+  toward the JD, no fabricated content) rendering with sensible structure. No console
+  errors during the run.
+- Types in the frontend (`Resume`, `Section`, `Entry`, `Bullet`, `SkillGroup`, `Meta`)
+  are hand-mirrored from `app/models.py` rather than shared/generated — fine for now
+  given the small surface area, but worth revisiting (e.g. OpenAPI codegen) if the
+  shapes start drifting.
+
 ## Not yet built (explicitly deferred so far)
 
-1. **Next.js frontend** — two-pane layout: selectable resume preview + chat input scoped
-   to the current selection. Deploys to Vercel. Not started.
+1. **Next.js frontend** — Phases 1–2 done, see above. Phases 3–6 (styled preview +
+   selection, chat-scoped revision, cover letter mode, download) not yet started — see
+   `frontend/STATUS.md` for the full phased plan.
 2. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
    Vercel-hosted frontend. Not started.
 
 ## Open questions worth strategizing on
 
 - **Backend trio is now complete**: `/generate`, `/revise`, and `/render` are all built
-  and verified, alongside `/profile` and the usage guardrails. The next step is starting
-  the **Next.js frontend skeleton** (two-pane layout, selection + chat-scoped revision,
-  wired up to these four endpoints) — flagging this as the natural next pass, not
-  starting it yet.
+  and verified, alongside `/profile` and the usage guardrails. Frontend Phases 1–2
+  (connectivity, generate view) are done — next step is Phase 3 (styled `ResumePreview`
+  + 3-level bullet/entry/section selection), per `frontend/STATUS.md`'s phased plan.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

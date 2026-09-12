@@ -4,7 +4,9 @@
     "email": "rene.salomone@gmail.com",
     "phone": "+1 (512) 884-3571",
     "links": [
-      { "label": "GitHub", "url": "github.com/ReneMSdev" }
+      { "label": "GitHub", "url": "github.com/ReneMSdev" },
+      { "label": "LinkedIn", "url": "linkedin.com/in/renemsdev" },
+      { "label": "Website", "url": "renemsdev.com" }
     ]
   },
   "summary_pool": [
@@ -48,6 +50,16 @@
               "id": "b_salo_5",
               "text": "Maintained 100+ passing pytest tests across 7 modules in a modular monolith architecture with GCS and Firebase fully mocked for testing; CI enforces minimum coverage threshold on every push.",
               "tags": ["testing", "pytest", "ci-cd"]
+            },
+            {
+              "id": "b_salo_6",
+              "text": "Designed and executed comprehensive test cases and scenarios for LinkLeaf's core API endpoints, ensuring full coverage prior to deployment.",
+              "tags": ["testing", "qa"]
+            },
+            {
+              "id": "b_salo_7",
+              "text": "Leveraged structured logging alongside CI/CD pipelines to monitor system behavior, catch regressions early, and maintain release quality.",
+              "tags": ["testing", "ci-cd", "observability"]
             }
           ]
         },
@@ -62,6 +74,16 @@
               "id": "b_sc_1",
               "text": "Contributed to Google Fiber's infrastructure deployment and quality assurance for network operations.",
               "tags": ["field-work", "networking"]
+            },
+            {
+              "id": "b_sc_2",
+              "text": "Supporting GFiber's deployment across residential and commercial environments throughout the Austin area.",
+              "tags": ["field-work", "fiber"]
+            },
+            {
+              "id": "b_sc_3",
+              "text": "Installing, testing, and troubleshooting fiber optic connections using diagnostic equipment while maintaining quality and safety standards.",
+              "tags": ["field-work", "fiber", "testing"]
             }
           ]
         },
@@ -86,6 +108,98 @@
               "id": "b_fl_3",
               "text": "Leveraged modern AI coding tools (Cursor, GPT) to accelerate prototyping and documentation, reducing development time by ~25%.",
               "tags": ["ai-tools", "productivity"]
+            },
+            {
+              "id": "b_fl_4",
+              "text": "Built a startup's (Ecobridge) landing page using Next.js, TypeScript, and Tailwind CSS.",
+              "tags": ["frontend", "nextjs", "typescript"]
+            },
+            {
+              "id": "b_fl_5",
+              "text": "Compressed images to WebP format and implemented lazy loading for off-screen assets, reducing page load time by ~30%.",
+              "tags": ["frontend", "performance"]
+            },
+            {
+              "id": "b_fl_6",
+              "text": "Built a website for a professional life coach using vanilla JavaScript, HTML, and CSS.",
+              "tags": ["frontend", "javascript"]
+            },
+            {
+              "id": "b_fl_7",
+              "text": "Increased Calendly bookings by ~20% by redesigning the scheduling flow and embedding an on-page scheduler.",
+              "tags": ["frontend", "ux"]
+            }
+          ]
+        },
+        {
+          "id": "entry_polaris",
+          "title": "Fiber Optic Technician",
+          "organization": "Polaris Communications (contracting for Google Fiber)",
+          "location": "Austin, TX",
+          "dates": "January 2022 - January 2023",
+          "bullets": [
+            {
+              "id": "b_polaris_1",
+              "text": "Contributed to Google Fiber's infrastructure deployment and quality assurance for network operations, supporting an estimated $2.3M in annual recurring revenue.",
+              "tags": ["field-work", "networking", "fiber"]
+            },
+            {
+              "id": "b_polaris_2",
+              "text": "Configured and tested high-speed fiber circuits using OTDR and power meters, meeting Google Fiber's performance standards and reducing installation-related service issues by ~15%.",
+              "tags": ["field-work", "fiber", "otdr", "testing"]
+            }
+          ]
+        },
+        {
+          "id": "entry_unmuted",
+          "title": "Fiber Optic Technician",
+          "organization": "Unmuted Communications",
+          "location": "Austin, TX",
+          "dates": "January 2021 - January 2022",
+          "bullets": [
+            {
+              "id": "b_unmuted_1",
+              "text": "Assisted in city-wide fiber infrastructure roll out for Granger, TX, enabling high-speed connectivity for 400+ homes and businesses.",
+              "tags": ["field-work", "fiber"]
+            },
+            {
+              "id": "b_unmuted_2",
+              "text": "Resolved 20+ service-impacting incidents, coordinating with engineering teams to restore connectivity and improve network reliability for clients such as Google Fiber, AT&T, Spectrum, and Suddenlink.",
+              "tags": ["field-work", "networking", "incident-response"]
+            },
+            {
+              "id": "b_unmuted_3",
+              "text": "Installed and maintained critical network infrastructure across data centers, hospitals, and government facilities.",
+              "tags": ["field-work", "networking"]
+            },
+            {
+              "id": "b_unmuted_4",
+              "text": "Assisted in training new technicians on fiber installation and splicing procedures.",
+              "tags": ["field-work", "training", "mentorship"]
+            }
+          ]
+        },
+        {
+          "id": "entry_dcomm",
+          "title": "Cable Technician",
+          "organization": "DCOMM (contracting for Spectrum)",
+          "location": "Austin, TX",
+          "dates": "January 2018 - January 2021",
+          "bullets": [
+            {
+              "id": "b_dcomm_1",
+              "text": "Installed commercial and residential telecom services including internet, VOIP phone, and television.",
+              "tags": ["field-work", "telecom"]
+            },
+            {
+              "id": "b_dcomm_2",
+              "text": "Mounted and configured modems, routers, and customer networking equipment; performed dedicated IP setup and wireless optimization.",
+              "tags": ["field-work", "networking"]
+            },
+            {
+              "id": "b_dcomm_3",
+              "text": "Terminated coaxial cable (RG-6/11/59) and copper (Cat5, Cat6) cabling, upgraded legacy infrastructure, and validated signal performance.",
+              "tags": ["field-work", "cabling"]
             }
           ]
         }
@@ -117,6 +231,59 @@
               "id": "b_wa_3",
               "text": "Provided REST API endpoints consumed by a cross-platform iOS/Android app built with React Native (Expo).",
               "tags": ["react-native", "mobile"]
+            }
+          ]
+        },
+        {
+          "id": "entry_weather_mobile",
+          "title": "React Native Weather App (Expo, TypeScript)",
+          "organization": "Personal Project",
+          "location": "github.com/ReneMSdev/WeatherAlertsRN",
+          "dates": "",
+          "bullets": [
+            {
+              "id": "b_wam_1",
+              "text": "Built a cross-platform iOS/Android mobile app using React Native and Expo.",
+              "tags": ["react-native", "mobile"]
+            },
+            {
+              "id": "b_wam_2",
+              "text": "Integrated the app with a custom Node/Express backend for real-time weather retrieval and severe weather warnings.",
+              "tags": ["react-native", "nodejs", "backend-integration"]
+            },
+            {
+              "id": "b_wam_3",
+              "text": "Implemented state management with React hooks and AsyncStorage for device and location persistence.",
+              "tags": ["react-native", "state-management"]
+            },
+            {
+              "id": "b_wam_4",
+              "text": "Improved data loading speed by ~55% by using multithreading to run API requests in parallel without blocking the UI.",
+              "tags": ["react-native", "performance"]
+            }
+          ]
+        },
+        {
+          "id": "entry_routeplanner",
+          "title": "Route Planning Web App (Next.js, JavaScript)",
+          "organization": "Personal Project",
+          "location": "route-planner-nextjs.vercel.app",
+          "dates": "",
+          "bullets": [
+            {
+              "id": "b_rp_1",
+              "text": "Built a web app that allows users to input multiple addresses and returns the optimal route on an interactive map.",
+              "tags": ["frontend", "nextjs", "maps"]
+            },
+            {
+              "id": "b_rp_2",
+              "text": "Supports Google Maps export for mobile navigation.",
+              "tags": ["frontend", "integration"]
+            },
+            {
+              "id": "b_rp_3",
+              "text": "Built with Next.js, JavaScript, Tailwind CSS, OpenCage API, and OpenRouteService API.",
+              "tags": ["frontend", "nextjs", "api-integration"]
             }
           ]
         }
@@ -173,6 +340,14 @@
           "location": "",
           "dates": "2023",
           "bullets": []
+        },
+        {
+          "id": "cert_electrician",
+          "title": "Apprentice Electrician License",
+          "organization": "Texas Department of Licensing & Regulation",
+          "location": "",
+          "dates": "2026",
+          "bullets": []
         }
       ]
     },
@@ -183,9 +358,14 @@
       "entries": [],
       "groups": [
         {
+          "id": "skill_cloud",
+          "label": "Cloud",
+          "items": ["GCP (Cloud Run, Cloud SQL, GCS)", "AWS", "Firebase"]
+        },
+        {
           "id": "skill_devops",
-          "label": "DevOps / Cloud",
-          "items": ["GCP (Cloud Run, Cloud SQL, GCS)", "AWS", "Docker", "GitHub Actions CI/CD", "Firebase", "Linux"]
+          "label": "DevOps",
+          "items": ["Docker", "GitHub Actions CI/CD", "Terraform", "Linux"]
         },
         {
           "id": "skill_backend",
@@ -193,14 +373,34 @@
           "items": ["FastAPI (Python)", "Node.js", "Express", "TypeScript", "JavaScript", "REST APIs"]
         },
         {
+          "id": "skill_frontend",
+          "label": "Frontend",
+          "items": ["React", "Next.js", "Tailwind CSS", "HTML", "CSS", "Vanilla JavaScript"]
+        },
+        {
+          "id": "skill_mobile",
+          "label": "Mobile",
+          "items": ["React Native (Expo)", "Mobile UI", "Responsive Design"]
+        },
+        {
           "id": "skill_databases",
           "label": "Databases",
-          "items": ["PostgreSQL", "Redis", "Drizzle ORM", "SQLAlchemy", "Schema Design"]
+          "items": ["PostgreSQL", "MySQL", "Redis", "Drizzle ORM", "SQLAlchemy", "Schema Design"]
         },
         {
           "id": "skill_testing",
           "label": "Testing",
           "items": ["Pytest", "unittest.mock", "API Testing"]
+        },
+        {
+          "id": "skill_field",
+          "label": "Field / Low-Voltage",
+          "items": ["Fiber Optic Installation", "Structured Cabling (Cat5/Cat6)", "Coax Termination (RG-6/11/59)", "OTDR Testing", "Power Meters", "Low-Voltage Systems", "VOIP Setup"]
+        },
+        {
+          "id": "skill_tools",
+          "label": "Tools",
+          "items": ["Git", "GitHub", "Figma", "Excel"]
         }
       ]
     }

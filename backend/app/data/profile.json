@@ -1,0 +1,208 @@
+{
+  "meta": {
+    "name": "Rene Maxey-Salomone",
+    "email": "rene.salomone@gmail.com",
+    "phone": "+1 (512) 884-3571",
+    "links": [
+      { "label": "GitHub", "url": "github.com/ReneMSdev" }
+    ]
+  },
+  "summary_pool": [
+    "Software engineer with hands-on DevOps/cloud experience building and deploying production FastAPI services on GCP, backed by 8+ years of field telecom work.",
+    "Solo technical founder and backend engineer specializing in FastAPI, GCP Cloud Run, and CI/CD pipelines, transitioning from telecom field work into cloud/software engineering."
+  ],
+  "sections": [
+    {
+      "id": "sec_experience",
+      "title": "Experience",
+      "type": "experience",
+      "entries": [
+        {
+          "id": "entry_salolabs",
+          "title": "Software & DevOps Engineer",
+          "organization": "Salo Labs LLC",
+          "location": "Austin, TX",
+          "dates": "January 2026 - Present",
+          "bullets": [
+            {
+              "id": "b_salo_1",
+              "text": "Architected and built LinkLeaf, a QR code-based digital identity platform with a FastAPI backend, Flutter mobile frontend, and fully containerized GCP infrastructure.",
+              "tags": ["backend", "mobile", "architecture", "gcp", "fastapi"]
+            },
+            {
+              "id": "b_salo_2",
+              "text": "Designed and deployed a multi-service FastAPI backend to GCP Cloud Run, integrating Cloud SQL (PostgreSQL), dual GCS buckets with signed URL access controls, and Firebase Authentication across isolated dev/staging/production environments.",
+              "tags": ["gcp", "backend", "cloud-run", "postgresql", "firebase"]
+            },
+            {
+              "id": "b_salo_3",
+              "text": "Built a gated two-workflow GitHub Actions CI/CD pipeline: automated testing on push/PR with a live PostgreSQL service container, deployment to Cloud Run triggered only on passing merge to main.",
+              "tags": ["ci-cd", "github-actions", "testing"]
+            },
+            {
+              "id": "b_salo_4",
+              "text": "Containerized the application using a multi-stage Dockerfile with an entrypoint script handling database migrations before server startup.",
+              "tags": ["docker", "devops"]
+            },
+            {
+              "id": "b_salo_5",
+              "text": "Maintained 100+ passing pytest tests across 7 modules in a modular monolith architecture with GCS and Firebase fully mocked for testing; CI enforces minimum coverage threshold on every push.",
+              "tags": ["testing", "pytest", "ci-cd"]
+            }
+          ]
+        },
+        {
+          "id": "entry_sandcastle",
+          "title": "Fiber Optic Technician",
+          "organization": "SandCastle (contracting for Google Fiber)",
+          "location": "Austin, TX",
+          "dates": "March 2026 - Present",
+          "bullets": [
+            {
+              "id": "b_sc_1",
+              "text": "Contributed to Google Fiber's infrastructure deployment and quality assurance for network operations.",
+              "tags": ["field-work", "networking"]
+            }
+          ]
+        },
+        {
+          "id": "entry_freelance",
+          "title": "Freelance Full-Stack Engineer",
+          "organization": "Self Employed",
+          "location": "Remote",
+          "dates": "October 2024 - January 2026",
+          "bullets": [
+            {
+              "id": "b_fl_1",
+              "text": "Integrated an AWS RDS PostgreSQL database for a startup's (Ecobridge) Shopify plugin, modeling merchant accounts, configuration settings, and cache data, improving sync reliability and reducing Shopify API calls by ~30%.",
+              "tags": ["aws", "postgresql", "backend"]
+            },
+            {
+              "id": "b_fl_2",
+              "text": "Implemented a reliable Shopify OAuth flow in Node.js (Express) and TypeScript to securely handle app installation, token exchange, and merchant authentication, reducing auth-related errors by ~10%.",
+              "tags": ["nodejs", "typescript", "oauth"]
+            },
+            {
+              "id": "b_fl_3",
+              "text": "Leveraged modern AI coding tools (Cursor, GPT) to accelerate prototyping and documentation, reducing development time by ~25%.",
+              "tags": ["ai-tools", "productivity"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sec_projects",
+      "title": "Projects",
+      "type": "projects",
+      "entries": [
+        {
+          "id": "entry_weather",
+          "title": "Weather Alerts API Backend (Node.js, Express, TypeScript)",
+          "organization": "Personal Project",
+          "location": "github.com/ReneMSdev/weather-alerts-backend",
+          "dates": "",
+          "bullets": [
+            {
+              "id": "b_wa_1",
+              "text": "Built a production-ready REST API with PostgreSQL, Redis caching, and node cron background jobs for automated weather data sync, achieving ~40% faster response times.",
+              "tags": ["nodejs", "postgresql", "redis"]
+            },
+            {
+              "id": "b_wa_2",
+              "text": "Deployed to Render via GitHub Actions: TypeScript compile gate on push/PR, automated deploy hook triggered on merge to main.",
+              "tags": ["ci-cd", "deployment"]
+            },
+            {
+              "id": "b_wa_3",
+              "text": "Provided REST API endpoints consumed by a cross-platform iOS/Android app built with React Native (Expo).",
+              "tags": ["react-native", "mobile"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sec_education",
+      "title": "Education",
+      "type": "education",
+      "entries": [
+        {
+          "id": "entry_wgu",
+          "title": "Bachelor of Science in Computer Science",
+          "organization": "Western Governors University",
+          "location": "Salt Lake City, UT",
+          "dates": "2024",
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "id": "sec_certifications",
+      "title": "Certifications",
+      "type": "certifications",
+      "entries": [
+        {
+          "id": "cert_aws_ccp",
+          "title": "AWS Certified Cloud Practitioner",
+          "organization": "Amazon Web Services",
+          "location": "",
+          "dates": "2025",
+          "bullets": []
+        },
+        {
+          "id": "cert_linux",
+          "title": "Linux Essentials",
+          "organization": "Linux Professional Institute",
+          "location": "",
+          "dates": "2024",
+          "bullets": []
+        },
+        {
+          "id": "cert_itil",
+          "title": "ITIL 4 - Foundation Certificate in IT Service Management",
+          "organization": "PeopleCert (AXELOS)",
+          "location": "",
+          "dates": "2024",
+          "bullets": []
+        },
+        {
+          "id": "cert_psm",
+          "title": "Professional Scrum Master I (PSM I)",
+          "organization": "Scrum.org",
+          "location": "",
+          "dates": "2023",
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "id": "sec_skills",
+      "title": "Skills",
+      "type": "skills",
+      "entries": [],
+      "groups": [
+        {
+          "id": "skill_devops",
+          "label": "DevOps / Cloud",
+          "items": ["GCP (Cloud Run, Cloud SQL, GCS)", "AWS", "Docker", "GitHub Actions CI/CD", "Firebase", "Linux"]
+        },
+        {
+          "id": "skill_backend",
+          "label": "Backend",
+          "items": ["FastAPI (Python)", "Node.js", "Express", "TypeScript", "JavaScript", "REST APIs"]
+        },
+        {
+          "id": "skill_databases",
+          "label": "Databases",
+          "items": ["PostgreSQL", "Redis", "Drizzle ORM", "SQLAlchemy", "Schema Design"]
+        },
+        {
+          "id": "skill_testing",
+          "label": "Testing",
+          "items": ["Pytest", "unittest.mock", "API Testing"]
+        }
+      ]
+    }
+  ]
+}

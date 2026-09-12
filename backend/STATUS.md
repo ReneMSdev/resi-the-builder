@@ -467,5 +467,13 @@ infrastructure pass.
   letter download has no backend support yet. The natural next pass is a small backend
   follow-up closing those three gaps, then the Cloudflare Tunnel + Vercel deployment
   infrastructure work.
+- **2026-09-12**: work on the three gaps above has been handed to a separate,
+  backend-focused Claude Code session (this repo is being worked in two parallel
+  sessions — one frontend-only, one backend-only). That session's prompt already flags
+  the section-id-expansion pitfall found and reverted here: a section id with no
+  revisable bullets (e.g. `sec_skills`) can make the model return bare `{}` instead of
+  `{"updates": []}`, which fails `ReviseResponse` validation and 500s — needs a
+  defensive default in code, not just prompt wording. See `frontend/STATUS.md`'s
+  "Workflow note" for the frontend-side flags waiting on this work.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

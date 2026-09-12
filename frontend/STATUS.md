@@ -240,6 +240,26 @@ new features.
 - [x] Phase 5 — Cover letter mode (generate + display only)
 - [x] Phase 6 — Download (docx/pdf, resume only)
 
+## Workflow note (2026-09-12)
+
+All 6 frontend phases above are complete. Going forward, this frontend session is
+scoped to frontend-only work — a separate Claude Code session (backend-focused) has
+been handed a prompt to close the three backend gaps listed below (section-id
+expansion in `/revise`, cover letter revision, cover letter render), including
+re-enabling the corresponding frontend flags once each backend piece lands:
+- Section-level selection in `app/components/ResumePreview.tsx` (currently a plain
+  `<div>` per section instead of `Selectable`).
+- `handleRevise` in `app/page.tsx` branching to send `cover_letter` when in cover-letter
+  mode, plus removing `RevisionChat`'s hardcoded `disabledReason` for that mode.
+- `DownloadButtons` (or a cover-letter equivalent) wired up in the cover-letter branch
+  of `page.tsx` once `/render` accepts a `cover_letter` body.
+
+No frontend code changed in this pass — a backend attempt was started and then reverted
+in this session (an in-progress `/revise` fix surfaced a real bug: a section id with no
+revisable bullets, e.g. `sec_skills`, could make the model return bare `{}` instead of
+`{"updates": []}`, which the backend session should defend against) so the working tree
+is clean; this note exists purely to record the handoff.
+
 ## Known gaps to track for a future backend pass
 
 - [ ] `/revise` does not support cover letter paragraphs

@@ -288,6 +288,35 @@
               "tags": ["frontend", "nextjs", "api-integration"]
             }
           ]
+        },
+        {
+          "id": "entry_atxwrenching",
+          "title": "ATX Reliable Wrenching — Marketing & Booking Website (Next.js)",
+          "organization": "Freelance Client Project",
+          "location": "atxreliablewrenching.com",
+          "dates": "",
+          "bullets": [
+            {
+              "id": "b_atx_1",
+              "text": "Designed and built a responsive marketing website for a local mobile-mechanic business in Austin, TX, including a services showcase (check engine diagnostics, brake repair, coolant leak repair, suspension diagnostics, electrical, general maintenance, hybrid/diesel repair, minor body work), an about/credibility section, and embedded Google reviews.",
+              "tags": ["frontend", "nextjs", "freelance"]
+            },
+            {
+              "id": "b_atx_2",
+              "text": "Integrated a booking flow via a third-party HousecallPro plugin to handle scheduling directly within the site's conversion funnel.",
+              "tags": ["frontend", "integration", "booking"]
+            },
+            {
+              "id": "b_atx_3",
+              "text": "Implemented an image-optimized, mobile-first responsive layout suited for a local-service business, along with a contact form.",
+              "tags": ["frontend", "performance", "responsive-design"]
+            },
+            {
+              "id": "b_atx_4",
+              "text": "Deployed and hosted the production site on GoDaddy, managing a shared-hosting/DNS setup for a small-business client end-to-end from design through deployment.",
+              "tags": ["deployment", "freelance", "devops"]
+            }
+          ]
         }
       ]
     },

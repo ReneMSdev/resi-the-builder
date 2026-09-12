@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { SubmitEvent, useEffect, useState } from 'react'
 import { CoverLetter, Resume } from './types'
 import { ResumePreview } from './components/ResumePreview'
 import { CoverLetterPreview } from './components/CoverLetterPreview'
@@ -61,7 +61,7 @@ export default function Home() {
       })
   }, [])
 
-  async function handleGenerate(e: React.FormEvent) {
+  async function handleGenerate(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -191,23 +191,23 @@ export default function Home() {
   const tabClass = (tab: Mode) =>
     `rounded px-3 py-1.5 text-sm font-medium transition-colors hover:cursor-pointer ${
       mode === tab
-        ? 'bg-[var(--accent)] text-[var(--surface)]'
-        : 'border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent-soft)]'
+        ? 'bg-(--accent) text-(--surface)'
+        : 'border border-(--border) text-foreground hover:bg-(--accent-soft)'
     }`
 
   return (
-    <div className='flex flex-col flex-1 items-center bg-[var(--background)] font-sans'>
+    <div className='flex flex-col flex-1 items-center bg-background font-sans'>
       <main className='flex flex-1 w-full max-w-3xl flex-col gap-8 py-16 px-16'>
         <div className='flex flex-col items-center gap-2'>
-          <h1 className='text-2xl font-semibold text-[var(--foreground)]'>Resume Builder</h1>
+          <h1 className='text-2xl font-semibold text-foreground'>Resume Builder</h1>
           {status.state === 'loading' && (
-            <p className='text-sm text-[var(--muted)]'>Checking backend...</p>
+            <p className='text-sm text-(--muted)'>Checking backend...</p>
           )}
           {status.state === 'ok' && (
-            <p className='text-sm font-medium text-[var(--success)]'>Backend: ok</p>
+            <p className='text-sm font-medium text-(--success)'>Backend: ok</p>
           )}
           {status.state === 'error' && (
-            <p className='text-sm font-medium text-[var(--danger)]'>
+            <p className='text-sm font-medium text-(--danger)'>
               Backend unreachable: {status.message}
             </p>
           )}
@@ -235,20 +235,20 @@ export default function Home() {
           className='flex flex-col gap-4'
         >
           <label className='flex flex-col gap-1'>
-            <span className='text-sm font-medium text-[var(--foreground)]'>Job description</span>
+            <span className='text-sm font-medium text-foreground'>Job description</span>
             <textarea
-              className='min-h-[160px] rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)]'
+              className='min-h-40 rounded border border-(--border) bg-(--surface) p-2 text-sm text-foreground'
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               required
             />
           </label>
           <label className='flex flex-col gap-1'>
-            <span className='text-sm font-medium text-[var(--foreground)]'>
+            <span className='text-sm font-medium text-foreground'>
               Company context (optional)
             </span>
             <textarea
-              className='min-h-[80px] rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)]'
+              className='min-h-20 rounded border border-(--border) bg-(--surface) p-2 text-sm text-foreground'
               value={companyContext}
               onChange={(e) => setCompanyContext(e.target.value)}
             />
@@ -256,7 +256,7 @@ export default function Home() {
           <button
             type='submit'
             disabled={isGenerating || !jobDescription.trim()}
-            className='self-start rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--surface)] transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50 hover:cursor-pointer'
+            className='self-start rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:bg-(--accent-hover) disabled:opacity-50 hover:cursor-pointer'
           >
             {isGenerating
               ? 'Generating...'
@@ -267,7 +267,7 @@ export default function Home() {
         </form>
 
         {generateState.state === 'error' && (
-          <p className='font-medium text-[var(--danger)]'>
+          <p className='font-medium text-(--danger)'>
             Error generating {mode === 'resume' ? 'resume' : 'cover letter'}: {generateState.message}
           </p>
         )}
@@ -275,7 +275,7 @@ export default function Home() {
         {generateState.state === 'success' && generateState.kind === 'resume' && (
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between gap-2'>
-              <p className='text-xs text-[var(--muted)]'>
+              <p className='text-xs text-(--muted)'>
                 {selectedIds.size === 0
                   ? 'Click a bullet, entry, or section to select it.'
                   : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
@@ -287,7 +287,7 @@ export default function Home() {
               selectedIds={selectedIds}
               onToggle={toggleSelected}
             />
-            <details className='text-xs text-[var(--muted)]'>
+            <details className='text-xs text-(--muted)'>
               <summary className='cursor-pointer select-none'>Raw JSON</summary>
               <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
                 {JSON.stringify(generateState.resume, null, 2)}
@@ -306,7 +306,7 @@ export default function Home() {
         {generateState.state === 'success' && generateState.kind === 'cover_letter' && (
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between gap-2'>
-              <p className='text-xs text-[var(--muted)]'>
+              <p className='text-xs text-(--muted)'>
                 {selectedIds.size === 0
                   ? 'Click a paragraph to select it.'
                   : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
@@ -318,7 +318,7 @@ export default function Home() {
               selectedIds={selectedIds}
               onToggle={toggleSelected}
             />
-            <details className='text-xs text-[var(--muted)]'>
+            <details className='text-xs text-(--muted)'>
               <summary className='cursor-pointer select-none'>Raw JSON</summary>
               <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
                 {JSON.stringify(generateState.coverLetter, null, 2)}

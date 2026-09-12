@@ -88,3 +88,4 @@ class ReviseResponse(BaseModel):
 
 class RenderRequest(BaseModel):
     resume: Resume
+    format: str = "docx"  # "docx" or "pdf"

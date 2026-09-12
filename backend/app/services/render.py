@@ -1,9 +1,17 @@
+import os
+import shutil
+import subprocess
+
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 
 PAGE_MARGIN_INCHES = 0.75
 USABLE_WIDTH_INCHES = 8.5 - (PAGE_MARGIN_INCHES * 2)  # US Letter width minus margins
+
+# Hardcoded to the default macOS Homebrew cask install location. If this ever runs on a
+# different machine or OS, this path needs to change.
+SOFFICE_PATH = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
 
 
 def _add_entry_header(doc, entry: dict):
@@ -112,3 +120,38 @@ def render_resume_docx(resume: dict, output_path: str) -> str:
 
     doc.save(output_path)
     return output_path
+
+
+def convert_docx_to_pdf(docx_path: str, output_dir: str) -> str:
+    """Converts a .docx file to .pdf using headless LibreOffice.
+    Returns the path to the resulting .pdf file."""
+    if not shutil.which(SOFFICE_PATH) and not os.path.exists(SOFFICE_PATH):
+        raise RuntimeError(
+            "LibreOffice not found at expected path. Install with "
+            "'brew install --cask libreoffice' or update SOFFICE_PATH."
+        )
+
+    result = subprocess.run(
+        [
+            SOFFICE_PATH,
+            "--headless",
+            "--convert-to", "pdf",
+            "--outdir", output_dir,
+            docx_path,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(f"LibreOffice conversion failed: {result.stderr}")
+
+    pdf_path = os.path.join(
+        output_dir,
+        os.path.splitext(os.path.basename(docx_path))[0] + ".pdf"
+    )
+    if not os.path.exists(pdf_path):
+        raise RuntimeError("LibreOffice reported success but no PDF file was produced.")
+
+    return pdf_path

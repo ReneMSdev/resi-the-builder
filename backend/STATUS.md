@@ -36,29 +36,46 @@ spec/architecture doc this was built from.
     since `ReviseUpdate` is just `{id, text}` and only bullet/summary ids map to an actual
     string field). Entries with no bullets (education/certifications) are skipped rather
     than having bullets invented for them.
-- `POST /render` (new) → takes `{resume: Resume}`, returns a downloadable `.docx` file
-  (not a JSON body). Pure templating via `python-docx` — **makes no LLM call**, so it does
-  not go through `usage_guard` and never counts against the daily call cap (explicitly
-  commented in `app/routes/render.py` so the omission reads as intentional, not missed).
-  - **Format decision: `.docx`, not PDF** — `python-docx` produces clean, well-formatted
-    output directly; `.docx` is a normal, expected format for job applications, and
-    avoids pulling in a separate PDF-rendering pipeline for no real benefit here.
-  - Output layout: centered bold name + contact line, summary paragraph, then each
-    section as an uppercase bold heading; experience/project entries get a bold
+- `POST /render` (new) → takes `{resume: Resume, format: "docx" | "pdf"}` (`format`
+  defaults to `"docx"`), returns a downloadable file (not a JSON body). Pure templating
+  via `python-docx` — **makes no LLM call**, so it does not go through `usage_guard` and
+  never counts against the daily call cap (explicitly commented in `app/routes/render.py`
+  so the omission reads as intentional, not missed).
+  - **`.docx` generation**: centered bold name + contact line, summary paragraph, then
+    each section as an uppercase bold heading; experience/project entries get a bold
     `Title — Organization` line with the dates right-tab-aligned on the same line, an
     italic location line, and bullets rendered with Word's built-in "List Bullet" style;
     education/certification entries render as a single plain line; skills groups render
     as `**Label:** item, item, ...`. No tables, columns, headers/footers, or graphics —
     plain and ATS-friendly by construction.
-  - File is written to a fresh `tempfile.mkdtemp()` directory per request and deleted via
-    a `BackgroundTask` after the response is sent — nothing persists on disk afterward.
-  - Verified: ran a resume through `/generate` → `/revise` → `/render` in sequence, then
-    inspected the resulting `.docx` programmatically with `python-docx` (paragraph text,
-    styles, bold/italic/size on every run) to confirm structure and formatting are all
-    correct — name/contact/summary at top, section headings present, experience/project
-    bullets are actual "List Bullet"-styled paragraphs, education/certs are single lines,
-    skills groups render with a bold label. Also confirmed `GET /usage` was unaffected by
-    the `/render` calls.
+  - **`.pdf` generation**: the `.docx` is always built first with the exact same
+    `render_resume_docx` logic, then converted to PDF by shelling out to **headless
+    LibreOffice** (`app/services/render.py`'s `convert_docx_to_pdf`) — no separate PDF
+    layout code to maintain. Requires LibreOffice installed locally
+    (`brew install --cask libreoffice`); this is now a **system dependency of the
+    project**, not a pip package. `SOFFICE_PATH` is hardcoded to the default macOS
+    Homebrew cask location (`/Applications/LibreOffice.app/Contents/MacOS/soffice`) — if
+    this ever runs on a different machine or OS, that path needs to change.
+    Conversion uses a 30-second subprocess timeout. During testing, the **first**
+    conversion after a fresh server start took ~22s (LibreOffice cold-starting its
+    background process/profile) — close to the timeout but under it — while subsequent
+    conversions in the same server run took ~8s. If conversions ever time out in
+    practice, this cold-start cost is the first thing to suspect; a longer timeout or a
+    documented "warm up LibreOffice once after starting the server" step would be the fix.
+  - Invalid `format` values (anything other than `"docx"`/`"pdf"`) return a clean
+    **400**, not a stack trace.
+  - Both the `.docx` and (when requested) the `.pdf` are written into the same
+    `tempfile.mkdtemp()` directory per request and the whole directory is deleted via a
+    `BackgroundTask` after the response is sent — nothing persists on disk afterward,
+    regardless of format.
+  - Verified: ran a resume through `/generate` → `/revise` → `/render`, confirmed
+    `format: "docx"` behavior is unchanged from before this pass; confirmed
+    `format: "pdf"` returns a real 2-page PDF with correct `content-type`/
+    `Content-Disposition`; confirmed an invalid format (`"txt"`) returns 400; confirmed
+    `GET /usage` is unaffected by any `/render` call regardless of format. Did not do a
+    byte-level text diff between the `.docx` and `.pdf` output (no PDF text-extraction
+    tool was available locally) — relying on LibreOffice's well-established fidelity for
+    docx→pdf conversion plus the already-verified correctness of the source `.docx`.
 
 **`app/services/llm.py`**: `generate_resume` and `revise_resume` share a single
 `_extract_json` helper for stripping markdown fences and parsing/validating the model's
@@ -100,8 +117,8 @@ frontend, testing, technician, electrical). Current contents:
   (fiber tech, current), Freelance Full-Stack (Oct 2024–Jan 2026, backend + frontend
   bullets), Polaris Communications, Unmuted Communications, DCOMM/Spectrum (fiber/cable
   tech roles, 2018–2023)
-- **Projects** (3 entries): Weather Alerts API Backend, React Native Weather App,
-  Route Planning Web App
+- **Projects** (4 entries): Weather Alerts API Backend, React Native Weather App,
+  Route Planning Web App, ATX Reliable Wrenching (freelance client site)
 - **Education**: WGU BS Computer Science
 - **Certifications** (6): AWS Cloud Practitioner, Linux Essentials, ITIL 4, PSM I,
   Apprentice Electrician License, AWS Solutions Architect (in progress)
@@ -121,10 +138,14 @@ build this out have been removed from the repo (identical copies remain at
 ## Environment / infra notes (non-obvious, worth knowing before touching setup)
 
 - **Python 3.13**, not 3.14 (system default) or 3.12 (originally requested). 3.14 has no
-  prebuilt `pydantic-core` wheel yet and compiling from source fails locally because Xcode's
-  license isn't accepted (`sudo xcodebuild -license accept` — needs an interactive password
-  Claude can't supply). 3.12 isn't installed and installing it via Homebrew is blocked by the
-  same license issue. User confirmed keeping 3.13.
+  prebuilt `pydantic-core` wheel yet and compiling from source originally failed locally
+  because Xcode's license wasn't accepted. The Xcode license has since been accepted
+  (`sudo xcodebuild -license accept`, run by the user) and Homebrew now works normally —
+  but the decision to stay on 3.13 stands (user confirmed "3.13 is fine, keep it"); don't
+  reopen this unprompted just because 3.12 could now be installed.
+- **LibreOffice** (new system dependency, installed via `brew install --cask libreoffice`)
+  — required for PDF export via `/render`. Not a pip package; see the `/render` section
+  above for details on the headless conversion and its hardcoded install path.
 - **`anthropic==1.5.0`** in `requirements.txt`, not the spec's `0.39.0` — 0.39.0 crashes on
   import against modern `httpx` (`proxies` kwarg removed). Don't revert this.
 - Server currently expected to be run manually in its own terminal:

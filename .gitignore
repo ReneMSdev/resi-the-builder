@@ -9,6 +9,7 @@ backend/.pytest_cache/
 frontend/node_modules/
 frontend/.next/
 frontend/.vercel/
+frontend/.env.local
 
 # Env files
 .env

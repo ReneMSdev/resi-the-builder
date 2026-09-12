@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from app.models import Profile
+from app.services.usage_guard import current_count, DAILY_CALL_LIMIT
 
 router = APIRouter()
 
@@ -23,3 +24,8 @@ def update_profile(profile: Profile):
     with open(DATA_PATH, "w") as f:
         json.dump(profile.model_dump(), f, indent=2)
     return profile
+
+
+@router.get("/usage")
+def get_usage():
+    return {"calls_today": current_count(), "limit": DAILY_CALL_LIMIT}

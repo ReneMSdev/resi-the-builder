@@ -14,5 +14,7 @@ def revise(req: ReviseRequest):
         )
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=429, detail=str(e))
 
     return result

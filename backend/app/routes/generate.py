@@ -22,5 +22,7 @@ def generate(req: GenerateRequest):
         resume_data = generate_resume(profile, req.job_description, req.company_context)
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=429, detail=str(e))
 
     return {"resume": resume_data}

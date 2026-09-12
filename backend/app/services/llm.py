@@ -2,9 +2,12 @@ import os
 import json
 from anthropic import Anthropic
 
+from app.services.usage_guard import check_and_increment
+
 client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 MODEL = "claude-sonnet-4-6"
+MAX_INPUT_CHARS = 20000
 
 GENERATE_SYSTEM_PROMPT = """You are a resume-tailoring assistant. You will be given:
 1. A candidate's full profile data (all their jobs, projects, education, certifications, skills)
@@ -100,6 +103,13 @@ def _extract_json(text: str) -> dict:
 
 
 def generate_resume(profile: dict, job_description: str, company_context: str | None = None) -> dict:
+    if len(job_description) > MAX_INPUT_CHARS:
+        raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
+    if company_context and len(company_context) > MAX_INPUT_CHARS:
+        raise ValueError(f"company_context exceeds the {MAX_INPUT_CHARS}-character limit.")
+
+    check_and_increment()
+
     user_content = f"""PROFILE DATA:
 {json.dumps(profile, indent=2)}
 
@@ -121,6 +131,11 @@ JOB DESCRIPTION:
 
 
 def revise_resume(resume: dict, selected_ids: list[str], instruction: str) -> dict:
+    if len(instruction) > MAX_INPUT_CHARS:
+        raise ValueError(f"instruction exceeds the {MAX_INPUT_CHARS}-character limit.")
+
+    check_and_increment()
+
     user_content = f"""CURRENT RESUME JSON:
 {json.dumps(resume, indent=2)}
 

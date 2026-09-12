@@ -12,47 +12,60 @@ spec/architecture doc this was built from.
 ## Repo state
 
 - Monorepo: `/backend` (this folder, built) and `/frontend` (not started).
-- Private GitHub repo, `main` branch.
+- Private GitHub repo, `main` branch, pushed and up to date with `origin/main`.
 - Backend runs **locally only**, no database — `app/data/profile.json` is the persistence layer.
-- **Pending, not yet committed**: the `backend/current resumes/` folder (6 source PDFs) was
-  deleted from disk — identical copies already live at `~/Desktop/current resumes/`, so
-  nothing was lost — but `git add`/commit of that deletion is still outstanding. Claude Code's
-  auto-mode safety classifier blocked staging it directly (flagged as sensitive-source
-  provenance, likely due to touching personal-document files); run `git add "backend/current
-  resumes" && git commit` yourself to finalize the removal from version control.
 
 ## What's built and verified working
 
 **Endpoints** (FastAPI, `app/main.py`):
 - `GET /health` → `{"status": "ok"}`
 - `GET /profile` / `PUT /profile` → reads/writes `app/data/profile.json`
+- `GET /usage` (new) → `{"calls_today": <n>, "limit": <DAILY_CALL_LIMIT>}` — see Usage
+  Guardrails below.
 - `POST /generate` → takes `{job_description, company_context?}`, calls Claude
   (`claude-sonnet-4-6`), returns a tailored Resume JSON. Verified end-to-end — correctly
   tailored bullets, valid schema, new bullet IDs generated, irrelevant experience dropped,
   no fabricated content.
-- `POST /revise` (new) — takes `{selected_ids, instruction, resume}`, returns
+- `POST /revise` → takes `{selected_ids, instruction, resume}`, returns
   `{updates: [{id, text}]}` for only the requested IDs. Does not read `profile.json` at all
   — operates solely on the resume JSON in the request body, since revision needs no master
   data. Verified with both:
-  - **Bullet-level IDs** (e.g. `b_salo_1_r2`, `b_salo_2_r2`) — returned revised text for
-    exactly those two bullets, nothing else touched.
-  - **Entry-level IDs** (e.g. `entry_freelance`, a whole job block) — see design decision
-    below.
+  - **Bullet-level IDs** — returns revised text for exactly those bullets, nothing else touched.
+  - **Entry-level IDs** (a whole job block) — expands to one update per bullet under that
+    entry, using each bullet's own id (the entry id itself never appears in the response,
+    since `ReviseUpdate` is just `{id, text}` and only bullet/summary ids map to an actual
+    string field). Entries with no bullets (education/certifications) are skipped rather
+    than having bullets invented for them.
 
-  **Design decision — entry-level selection**: an entry ID has no single revisable text
-  field (it's title/org/location/dates + a bullet list), so selecting an entry means
-  "revise every bullet under it." The model returns one update per *bullet's own id*
-  under that entry — the entry id itself never appears in the response, since
-  `ReviseUpdate` is just `{id, text}` and only bullet/summary ids map to an actual string
-  field the frontend can splice back in. If a selected entry has no bullets (education/
-  certification entries), it's skipped — nothing to revise, and the prompt explicitly
-  tells the model not to invent bullets to fill that gap. Verified: selecting
-  `entry_freelance` with "emphasize ownership and business impact" returned 3 updates,
-  one per existing bullet ID under that entry, correctly rewritten and nothing fabricated.
+**`app/services/llm.py`**: `generate_resume` and `revise_resume` share a single
+`_extract_json` helper for stripping markdown fences and parsing/validating the model's
+JSON output.
 
-**`app/services/llm.py`** refactored: both `generate_resume` and `revise_resume` now share
-a single `_extract_json` helper for stripping markdown fences and parsing/validating the
-model's JSON output, instead of duplicating that logic.
+**Usage guardrails** (new — `app/services/usage_guard.py`):
+- **Daily call cap**: an in-memory counter (`DAILY_CALL_LIMIT = 50`) shared by both
+  `generate_resume` and `revise_resume`, checked and incremented right before each
+  Anthropic API call. Resets automatically at midnight (date-based) or whenever the
+  server process restarts — no persistence, no cross-process coordination, by design
+  (single-user, single-process, locally-run tool). Once the cap is hit, further calls
+  return **HTTP 429** with a message naming the limit and pointing at the constant to
+  raise it. A call counts once it's attempted, even if the model's response then fails
+  to parse as JSON (a separate 502) — this was actually triggered during testing (a
+  throwaway job description like "test call two" made the model reply in prose asking
+  for a real JD instead of returning JSON) and confirmed both paths compose correctly:
+  the attempt still consumed a quota slot, and the cap was never exceeded.
+- **Input length guard**: `MAX_INPUT_CHARS = 20000` in `llm.py`. `job_description` and
+  `company_context` are checked in `generate_resume`; `instruction` in `revise_resume`.
+  Oversized input raises `ValueError` before any API call is made (surfaces as the
+  existing 502 path, consistent with other input-shape problems). Verified: a
+  20,001-character `job_description` was rejected immediately with the counter
+  untouched.
+- Both routes (`generate.py`, `revise.py`) now catch `RuntimeError` from the usage guard
+  and return 429, alongside the existing `ValueError` → 502 handling.
+- **This is supplementary, not the real backstop** — the actual safety net against
+  runaway spend is a manually-configured spend limit in the Anthropic console
+  (Settings → Billing). Set that yourself if you haven't already; the in-app cap just
+  makes a bug or accidental loop fail fast with a clear local error instead of quietly
+  burning through calls before the console limit would ever kick in.
 
 **Data model** (`app/models.py`): `Profile`, `Resume`, `Section`, `Entry`, `Bullet`,
 `SkillGroup`, `GenerateRequest`/`Response`, `ReviseRequest`/`Response` — all used as
@@ -71,15 +84,16 @@ frontend, testing, technician, electrical). Current contents:
   Apprentice Electrician License, AWS Solutions Architect (in progress)
 - **Skills** (9 groups): Cloud, DevOps, Backend, Frontend, Mobile, Databases, Testing,
   Field/Low-Voltage, Tools
-- **`summary_pool`** (4 variants, up from 2): 2 software-engineering-oriented, plus 2 new
-  field/technician-track summaries covering the fiber/cable/telecom experience and the
-  Apprentice Electrician License, so `/generate` has something appropriate to draw from
-  if a job description is clearly technician-track rather than software.
+- **`summary_pool`** (4 variants): 2 software-engineering-oriented, plus 2 field/technician
+  summaries covering the fiber/cable/telecom experience and the Apprentice Electrician
+  License, so `/generate` has appropriate material for a technician-track job description.
 - **Meta links**: GitHub, LinkedIn, personal website (renemsdev.com)
 
 Every bullet/entry/section has a stable ID; profile spans both the software-engineering
 track and the field-technician/telecom track (all real experience, kept in one master file
-since tags let `/generate` filter per job description).
+since tags let `/generate` filter per job description). The 6 source resume PDFs used to
+build this out have been removed from the repo (identical copies remain at
+`~/Desktop/current resumes/`, outside the project).
 
 ## Environment / infra notes (non-obvious, worth knowing before touching setup)
 
@@ -95,6 +109,10 @@ since tags let `/generate` filter per job description).
 - `.env` holds the real `ANTHROPIC_API_KEY`, gitignored, already set.
 - CORS in `main.py` is still wide open (`allow_origins=["*"]`) — intentionally left as-is
   until a real frontend origin exists to lock it down to.
+- The daily call counter is in-memory only — it resets every time `--reload` restarts the
+  process (e.g. on any tracked file save), so don't rely on `/usage` reflecting cumulative
+  usage across a dev session with frequent code edits. This is expected and fine for the
+  guardrail's actual purpose (catching a runaway loop within one running process).
 
 ## Not yet built (explicitly deferred so far)
 
@@ -110,5 +128,5 @@ since tags let `/generate` filter per job description).
   usable resume file end-to-end) vs. starting the Next.js frontend skeleton (see the UX
   shape, exercise `/generate` + `/revise` from a real client). Not picking one
   unilaterally — flagging for the same strategizing pass as last time.
-- Finalize the `current resumes/` folder removal from git (see "Pending" note above —
-  needs a manual `git add`/commit since Claude's auto-mode blocked it).
+- Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
+  known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

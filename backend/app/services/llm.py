@@ -88,6 +88,42 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
 """
 
 
+COVER_LETTER_SYSTEM_PROMPT = """You are a cover-letter-writing assistant. You will be given:
+1. A candidate's full profile data (all their jobs, projects, education, certifications, skills)
+2. A job description they are applying to
+3. Optional extra context about the company/role
+
+Your job: write a tailored, professional cover letter for this specific job, grounded
+only in real experience present in the profile data — do not fabricate skills, numbers,
+achievements, or experience not present in the profile. Extract the company name and
+role title from the job description if present (leave blank in meta if genuinely
+unclear rather than guessing). The letter should be 3-4 paragraphs: an opening stating
+the role and genuine interest, one or two body paragraphs connecting specific profile
+experience to the job's stated requirements, and a closing paragraph. Keep it concise
+professional business-letter tone, not generic filler — reference specific, real
+accomplishments from the profile data rather than vague claims.
+
+Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
+
+{
+  "type": "cover_letter",
+  "meta": {
+    "name": "...", "email": "...", "phone": "...",
+    "date": "", "company": "...", "role": "..."
+  },
+  "paragraphs": [
+    { "id": "p1", "text": "..." },
+    { "id": "p2", "text": "..." }
+  ]
+}
+
+Leave "date" as an empty string — the frontend will fill in the actual date. Generate
+sequential paragraph ids (p1, p2, p3, ...). Do not include a paragraph for the
+salutation ("Dear Hiring Manager,") or sign-off ("Sincerely, ...") — only the body
+paragraphs. The frontend will handle salutation/sign-off separately.
+"""
+
+
 def _extract_json(text: str) -> dict:
     text = text.strip()
     if text.startswith("```"):
@@ -123,6 +159,34 @@ JOB DESCRIPTION:
         model=MODEL,
         max_tokens=4096,
         system=GENERATE_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_content}],
+    )
+
+    text = "".join(block.text for block in response.content if block.type == "text")
+    return _extract_json(text)
+
+
+def generate_cover_letter(profile: dict, job_description: str, company_context: str | None = None) -> dict:
+    if len(job_description) > MAX_INPUT_CHARS:
+        raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
+    if company_context and len(company_context) > MAX_INPUT_CHARS:
+        raise ValueError(f"company_context exceeds the {MAX_INPUT_CHARS}-character limit.")
+
+    check_and_increment()
+
+    user_content = f"""PROFILE DATA:
+{json.dumps(profile, indent=2)}
+
+JOB DESCRIPTION:
+{job_description}
+"""
+    if company_context:
+        user_content += f"\nADDITIONAL COMPANY/ROLE CONTEXT:\n{company_context}\n"
+
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=2048,
+        system=COVER_LETTER_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )
 

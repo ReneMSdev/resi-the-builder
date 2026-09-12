@@ -22,10 +22,37 @@ spec/architecture doc this was built from.
 - `GET /profile` / `PUT /profile` → reads/writes `app/data/profile.json`
 - `GET /usage` (new) → `{"calls_today": <n>, "limit": <DAILY_CALL_LIMIT>}` — see Usage
   Guardrails below.
-- `POST /generate` → takes `{job_description, company_context?}`, calls Claude
-  (`claude-sonnet-4-6`), returns a tailored Resume JSON. Verified end-to-end — correctly
-  tailored bullets, valid schema, new bullet IDs generated, irrelevant experience dropped,
-  no fabricated content.
+- `POST /generate` → takes `{job_description, company_context?, type?}`, calls Claude
+  (`claude-sonnet-4-6`), returns either a tailored Resume JSON or a Cover Letter JSON
+  depending on `type` (new). Verified end-to-end for resumes — correctly tailored
+  bullets, valid schema, new bullet IDs generated, irrelevant experience dropped, no
+  fabricated content.
+  - **`type: "resume" | "cover_letter"`** (new, defaults to `"resume"` for backward
+    compatibility) — the route branches on `req.type` and calls either `generate_resume`
+    or the new `generate_cover_letter` (`app/services/llm.py`), returning
+    `{"resume": ...}` or `{"cover_letter": ...}` respectively (`GenerateResponse` now
+    has both fields as `Optional`, with the unused one `null`). An unrecognized `type`
+    (e.g. `"resignation_letter"`) is checked and rejected with a clean **400** before
+    the try/except around the LLM call even begins — not just re-raised from inside a
+    broad except — so it can never be accidentally caught by the `ValueError`/
+    `RuntimeError` handlers. Verified: `type: "resume"` behavior is unchanged from
+    before this pass; `type: "cover_letter"` with a real job description produced 3
+    grounded body paragraphs with sequential `p1`/`p2`/`p3` ids, `meta.company`/
+    `meta.role` correctly extracted from the JD, `meta.date` empty as instructed, and
+    `resume: null` in the response; an invalid `type` returned 400 (not 500); an
+    oversized `job_description` was rejected the same way (502, counter untouched) for
+    cover letter generation as for resume generation; `GET /usage` incremented
+    identically for a cover-letter call, confirming it shares the same daily cap.
+  - **New models** (`app/models.py`): `CoverLetterMeta` (`name`, `email`, `phone`,
+    `date`/`company`/`role` all defaulting to `""`), `Paragraph` (`id`, `text`), and
+    `CoverLetter` (`type: "cover_letter"`, `meta: CoverLetterMeta`,
+    `paragraphs: list[Paragraph]`) — same selection model as resume bullets, each
+    paragraph independently addressable by `id` for future revision.
+  - **Known gap, intentional**: `ReviseRequest` now accepts an optional `cover_letter`
+    field alongside `resume`, but `revise_resume`/the `/revise` route have **not** been
+    updated to branch on it — `/revise` does not yet support revising cover letter
+    paragraphs. This is deferred to the frontend-adjacent backend pass that builds out
+    cover letter selection/revision in the UI, not an oversight in this pass.
 - `POST /revise` → takes `{selected_ids, instruction, resume}`, returns
   `{updates: [{id, text}]}` for only the requested IDs. Does not read `profile.json` at all
   — operates solely on the resume JSON in the request body, since revision needs no master
@@ -108,8 +135,11 @@ JSON output.
   burning through calls before the console limit would ever kick in.
 
 **Data model** (`app/models.py`): `Profile`, `Resume`, `Section`, `Entry`, `Bullet`,
-`SkillGroup`, `GenerateRequest`/`Response`, `ReviseRequest`/`Response` — all used as
-originally specified, no shape changes needed.
+`SkillGroup` — used as originally specified, no shape changes needed. `CoverLetterMeta`,
+`Paragraph`, `CoverLetter` are new (see `/generate` section above). `GenerateRequest`
+gained a `type` field; `GenerateResponse` and `ReviseRequest` were loosened to hold
+either a `resume` or a `cover_letter` (both `Optional`) rather than a single required
+`Resume`.
 
 **`app/data/profile.json`** — master profile, expanded from 6 resume PDFs (devops, backend,
 frontend, testing, technician, electrical). Current contents:

@@ -62,19 +62,42 @@ class Profile(BaseModel):
     sections: list[Section]
 
 
+class CoverLetterMeta(BaseModel):
+    name: str
+    email: str
+    phone: str
+    date: str = ""
+    company: str = ""
+    role: str = ""
+
+
+class Paragraph(BaseModel):
+    id: str
+    text: str
+
+
+class CoverLetter(BaseModel):
+    type: str = "cover_letter"
+    meta: CoverLetterMeta
+    paragraphs: list[Paragraph]
+
+
 class GenerateRequest(BaseModel):
     job_description: str
     company_context: Optional[str] = None
+    type: str = "resume"  # "resume" | "cover_letter"
 
 
 class GenerateResponse(BaseModel):
-    resume: Resume
+    resume: Optional[Resume] = None
+    cover_letter: Optional[CoverLetter] = None
 
 
 class ReviseRequest(BaseModel):
     selected_ids: list[str]
     instruction: str
-    resume: Resume
+    resume: Optional[Resume] = None
+    cover_letter: Optional[CoverLetter] = None
 
 
 class ReviseUpdate(BaseModel):

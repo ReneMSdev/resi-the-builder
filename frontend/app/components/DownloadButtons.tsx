@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Resume } from "../types";
+import { CoverLetter, Resume } from "../types";
 
 type DownloadState =
   | { state: "idle" }
   | { state: "loading"; format: "docx" | "pdf" }
   | { state: "error"; message: string };
 
-export function DownloadButtons({ resume }: { resume: Resume }) {
+export function DownloadButtons({
+  document: doc,
+}: {
+  document: { resume: Resume } | { coverLetter: CoverLetter };
+}) {
   const [downloadState, setDownloadState] = useState<DownloadState>({
     state: "idle",
   });
@@ -29,7 +33,11 @@ export function DownloadButtons({ resume }: { resume: Resume }) {
       const res = await fetch(`${apiUrl}/render`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume, format }),
+        body: JSON.stringify(
+          "resume" in doc
+            ? { resume: doc.resume, format }
+            : { cover_letter: doc.coverLetter, format }
+        ),
       });
 
       if (!res.ok) {
@@ -40,7 +48,7 @@ export function DownloadButtons({ resume }: { resume: Resume }) {
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") ?? "";
       const match = disposition.match(/filename="?([^";]+)"?/);
-      const filename = match ? match[1] : `resume.${format}`;
+      const filename = match ? match[1] : `document.${format}`;
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

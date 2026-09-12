@@ -8,17 +8,15 @@ export function RevisionChat({
   loading,
   errorMessage,
   onSubmit,
-  disabledReason,
 }: {
   selectionSummary: string;
   selectionCount: number;
   loading: boolean;
   errorMessage: string | null;
   onSubmit: (instruction: string) => void;
-  disabledReason?: string;
 }) {
   const [instruction, setInstruction] = useState("");
-  const disabled = disabledReason !== undefined || selectionCount === 0;
+  const disabled = selectionCount === 0;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,10 +28,9 @@ export function RevisionChat({
   return (
     <div className="sticky bottom-0 z-10 -mx-16 mt-4 border-t border-[var(--border)] bg-[var(--background)] px-16 py-3">
       <p className="mb-1 text-xs text-[var(--muted)]">
-        {disabledReason ??
-          (disabled
-            ? "Select a bullet or entry above to start editing."
-            : `Editing: ${selectionSummary}`)}
+        {disabled
+          ? "Select an item above to start editing."
+          : `Editing: ${selectionSummary}`}
       </p>
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
@@ -42,10 +39,9 @@ export function RevisionChat({
           onChange={(e) => setInstruction(e.target.value)}
           disabled={disabled}
           placeholder={
-            disabledReason ??
-            (disabled
+            disabled
               ? "Nothing selected"
-              : "e.g. make this more concise, emphasize leadership...")
+              : "e.g. make this more concise, emphasize leadership..."
           }
           className="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)] disabled:opacity-50"
         />

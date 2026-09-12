@@ -235,39 +235,66 @@ new features.
 - [x] Phase 1 — Connectivity check
 - [x] Phase 2 — Generate view (resume, unstyled)
 - [x] Phase 3 — Resume-styled preview + 3-level selection
-- [x] Phase 4 — Chat-scoped revision (bullet/entry confirmed; section-level does NOT work
-      against the current backend — disabled in the UI, see notes below)
-- [x] Phase 5 — Cover letter mode (generate + display only)
-- [x] Phase 6 — Download (docx/pdf, resume only)
+- [x] Phase 4 — Chat-scoped revision (bullet/entry/section all confirmed working, see
+      "Backend gap-closure flips" below)
+- [x] Phase 5 — Cover letter mode (generate, display, **and now revision + download**,
+      see below)
+- [x] Phase 6 — Download (docx/pdf, resume **and now cover letter**, see below)
 
 ## Workflow note (2026-09-12)
 
-All 6 frontend phases above are complete. Going forward, this frontend session is
-scoped to frontend-only work — a separate Claude Code session (backend-focused) has
-been handed a prompt to close the three backend gaps listed below (section-id
-expansion in `/revise`, cover letter revision, cover letter render), including
-re-enabling the corresponding frontend flags once each backend piece lands:
-- Section-level selection in `app/components/ResumePreview.tsx` (currently a plain
-  `<div>` per section instead of `Selectable`).
-- `handleRevise` in `app/page.tsx` branching to send `cover_letter` when in cover-letter
-  mode, plus removing `RevisionChat`'s hardcoded `disabledReason` for that mode.
-- `DownloadButtons` (or a cover-letter equivalent) wired up in the cover-letter branch
-  of `page.tsx` once `/render` accepts a `cover_letter` body.
+This frontend session is scoped to frontend-only work; a separate, backend-focused
+Claude Code session handles `backend/`. A backend attempt was started and reverted in
+this session before the split (see the git history around this date) — the working tree
+was clean at the handoff point.
 
-No frontend code changed in this pass — a backend attempt was started and then reverted
-in this session (an in-progress `/revise` fix surfaced a real bug: a section id with no
-revisable bullets, e.g. `sec_skills`, could make the model return bare `{}` instead of
-`{"updates": []}`, which the backend session should defend against) so the working tree
-is clean; this note exists purely to record the handoff.
+## Backend gap-closure flips (2026-09-12)
 
-## Known gaps to track for a future backend pass
+The backend session closed all three tracked gaps (section-id expansion in `/revise`,
+cover letter revision, cover letter render — see `backend/STATUS.md`'s "Backend
+gap-closure" section for full verification detail) and confirmed each directly against
+the running backend before handing back. This session then flipped the three
+corresponding frontend restrictions and verified each end-to-end in a real browser:
 
-- [ ] `/revise` does not support cover letter paragraphs
-- [ ] `/render` does not support cover letter shape
-- [x] `/revise` does NOT correctly handle whole-section-level selection — confirmed in
-      Phase 4: selecting a section id (e.g. `sec_skills`) and submitting an instruction
-      returns `{"updates": []}` (silently no-ops), because `REVISE_SYSTEM_PROMPT` in
-      `backend/app/services/llm.py` only documents bullet/summary/entry ids, not section
-      ids. Section-level selection has been **disabled in the frontend UI** (see
-      `app/components/ResumePreview.tsx`) until the backend's system prompt is taught to
-      expand a section id to all its bullets, the same way it already does for entry ids.
+- **Section-level selection re-enabled**: `app/components/ResumePreview.tsx` wraps each
+  section in `Selectable` again (previously a plain non-selectable `<div>`, per Phase 4's
+  original finding). Verified: selected the whole "Experience" section (2 entries, 9
+  bullets) and submitted "add strong action verbs to every bullet in this section" —
+  all 9 bullets updated with action-verb openers, nothing outside the section touched,
+  selection preserved after the revise.
+- **Cover letter revision wired up**: `handleRevise` in `app/page.tsx` now branches on
+  `generateState.kind` — sends `{selected_ids, instruction, resume}` in resume mode or
+  `{selected_ids, instruction, cover_letter}` in cover-letter mode, and patches the
+  response into the right shape (`applyRevisionUpdates` for bullets/summary,
+  new `applyCoverLetterUpdates` in `app/lib/resume.ts` for paragraphs). `RevisionChat`'s
+  `disabledReason` prop (and the hardcoded cover-letter warning message) has been
+  removed entirely — the component is now mode-agnostic and its "nothing selected"
+  copy was genericized from "bullet or entry" to "an item" since it now also serves
+  paragraph selection. New `describeCoverLetterSelection` mirrors `describeSelection`
+  for the "Editing: N paragraphs" label. Verified: selected one paragraph in a real
+  generated cover letter, submitted "make this more concise, 2 sentences max," and only
+  that paragraph's text changed.
+- **Cover letter download added**: `app/components/DownloadButtons.tsx` now takes a
+  `document: {resume: Resume} | {coverLetter: CoverLetter}` prop instead of a
+  resume-only one, and posts whichever shape is present to `/render`. Rendered in both
+  the resume and cover-letter branches of `page.tsx` now. Verified: downloaded a cover
+  letter as both `.docx` and `.pdf` from the UI — both requests returned 200, buttons
+  returned to idle with no errors.
+- No regressions: re-verified plain bullet-level and entry-level resume revision still
+  work exactly as before after these changes.
+- One thing to flag from testing, not a code bug: browser-automation clicks in this
+  session occasionally landed on the wrong element after a scroll/re-render (e.g. a
+  click aimed at the "Revise" button instead toggled a nearby entry's selection) —
+  environment flakiness in the automated clicking, not application behavior; confirmed
+  by retrying the same action with a fresh element lookup, which worked cleanly.
+
+## Known gaps (all closed 2026-09-12 — see "Backend gap-closure flips" above)
+
+- [x] `/revise` does not support cover letter paragraphs — closed; see above.
+- [x] `/render` does not support cover letter shape — closed; see above.
+- [x] `/revise` does NOT correctly handle whole-section-level selection — closed; see
+      above. (Originally confirmed in Phase 4: selecting a section id like `sec_skills`
+      returned `{"updates": []}` because `REVISE_SYSTEM_PROMPT` only documented
+      bullet/summary/entry ids.)
+
+No known backend gaps remain from the original 6-phase plan.

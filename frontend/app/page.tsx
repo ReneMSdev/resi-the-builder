@@ -6,7 +6,12 @@ import { ResumePreview } from './components/ResumePreview'
 import { CoverLetterPreview } from './components/CoverLetterPreview'
 import { RevisionChat } from './components/RevisionChat'
 import { DownloadButtons } from './components/DownloadButtons'
-import { applyRevisionUpdates, describeSelection } from './lib/resume'
+import {
+  applyRevisionUpdates,
+  applyCoverLetterUpdates,
+  describeSelection,
+  describeCoverLetterSelection,
+} from './lib/resume'
 
 type BackendStatus = { state: 'loading' } | { state: 'ok' } | { state: 'error'; message: string }
 
@@ -119,7 +124,7 @@ export default function Home() {
   }
 
   async function handleRevise(instruction: string) {
-    if (generateState.state !== 'success' || generateState.kind !== 'resume') return
+    if (generateState.state !== 'success') return
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
@@ -139,7 +144,9 @@ export default function Home() {
         body: JSON.stringify({
           selected_ids: Array.from(selectedIds),
           instruction,
-          resume: generateState.resume,
+          ...(generateState.kind === 'resume'
+            ? { resume: generateState.resume }
+            : { cover_letter: generateState.coverLetter }),
         }),
       })
 
@@ -150,15 +157,21 @@ export default function Home() {
 
       const data: { updates: { id: string; text: string }[] } = await res.json()
 
-      setGenerateState((prev) =>
-        prev.state === 'success' && prev.kind === 'resume'
-          ? {
-              state: 'success',
-              kind: 'resume',
-              resume: applyRevisionUpdates(prev.resume, data.updates),
-            }
-          : prev,
-      )
+      setGenerateState((prev) => {
+        if (prev.state !== 'success') return prev
+        if (prev.kind === 'resume') {
+          return {
+            state: 'success',
+            kind: 'resume',
+            resume: applyRevisionUpdates(prev.resume, data.updates),
+          }
+        }
+        return {
+          state: 'success',
+          kind: 'cover_letter',
+          coverLetter: applyCoverLetterUpdates(prev.coverLetter, data.updates),
+        }
+      })
       setReviseState({ state: 'idle' })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
@@ -264,10 +277,10 @@ export default function Home() {
             <div className='flex items-center justify-between gap-2'>
               <p className='text-xs text-[var(--muted)]'>
                 {selectedIds.size === 0
-                  ? 'Click a bullet or entry to select it.'
+                  ? 'Click a bullet, entry, or section to select it.'
                   : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
               </p>
-              <DownloadButtons resume={generateState.resume} />
+              <DownloadButtons document={{ resume: generateState.resume }} />
             </div>
             <ResumePreview
               resume={generateState.resume}
@@ -292,11 +305,14 @@ export default function Home() {
 
         {generateState.state === 'success' && generateState.kind === 'cover_letter' && (
           <div className='flex flex-col gap-2'>
-            <p className='text-xs text-[var(--muted)]'>
-              {selectedIds.size === 0
-                ? 'Click a paragraph to select it.'
-                : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
-            </p>
+            <div className='flex items-center justify-between gap-2'>
+              <p className='text-xs text-[var(--muted)]'>
+                {selectedIds.size === 0
+                  ? 'Click a paragraph to select it.'
+                  : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+              </p>
+              <DownloadButtons document={{ coverLetter: generateState.coverLetter }} />
+            </div>
             <CoverLetterPreview
               coverLetter={generateState.coverLetter}
               selectedIds={selectedIds}
@@ -309,12 +325,14 @@ export default function Home() {
               </pre>
             </details>
             <RevisionChat
-              selectionSummary=''
-              selectionCount={0}
-              loading={false}
-              errorMessage={null}
-              onSubmit={() => {}}
-              disabledReason="Cover letter editing isn't available yet — download and edit directly for now."
+              selectionSummary={describeCoverLetterSelection(
+                generateState.coverLetter,
+                selectedIds,
+              )}
+              selectionCount={selectedIds.size}
+              loading={reviseState.state === 'loading'}
+              errorMessage={reviseState.state === 'error' ? reviseState.message : null}
+              onSubmit={handleRevise}
             />
           </div>
         )}

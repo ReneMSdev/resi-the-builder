@@ -1,4 +1,4 @@
-import { Resume } from "../types";
+import { CoverLetter, Resume } from "../types";
 
 export function applyRevisionUpdates(
   resume: Resume,
@@ -34,8 +34,10 @@ export function describeSelection(
 ): string {
   let bulletCount = 0;
   let entryCount = 0;
+  let sectionCount = 0;
 
   for (const section of resume.sections) {
+    if (selectedIds.has(section.id)) sectionCount++;
     for (const entry of section.entries ?? []) {
       if (selectedIds.has(entry.id)) entryCount++;
       for (const bullet of entry.bullets ?? []) {
@@ -51,5 +53,35 @@ export function describeSelection(
   if (entryCount > 0) {
     parts.push(`${entryCount} entr${entryCount === 1 ? "y" : "ies"}`);
   }
+  if (sectionCount > 0) {
+    parts.push(`${sectionCount} section${sectionCount === 1 ? "" : "s"}`);
+  }
   return parts.join(", ");
+}
+
+export function applyCoverLetterUpdates(
+  coverLetter: CoverLetter,
+  updates: { id: string; text: string }[]
+): CoverLetter {
+  const updateMap = new Map(updates.map((u) => [u.id, u.text]));
+  if (updateMap.size === 0) return coverLetter;
+
+  const newParagraphs = coverLetter.paragraphs.map((paragraph) =>
+    updateMap.has(paragraph.id)
+      ? { ...paragraph, text: updateMap.get(paragraph.id)! }
+      : paragraph
+  );
+
+  return { ...coverLetter, paragraphs: newParagraphs };
+}
+
+export function describeCoverLetterSelection(
+  coverLetter: CoverLetter,
+  selectedIds: Set<string>
+): string {
+  const count = coverLetter.paragraphs.filter((p) =>
+    selectedIds.has(p.id)
+  ).length;
+  if (count === 0) return "";
+  return `${count} paragraph${count === 1 ? "" : "s"}`;
 }

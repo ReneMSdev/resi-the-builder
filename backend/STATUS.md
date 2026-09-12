@@ -283,22 +283,74 @@ Following `frontend/STATUS.md`'s phased build guide, Phase 1 is done and verifie
   `useState`'s lazy initializer instead, so the effect body only ever calls `setState`
   from inside the `fetch().then()/.catch()` callbacks.
 
+## Frontend Phase 4 — Chat-scoped revision (2026-09-12)
+
+- New `app/lib/resume.ts`: `applyRevisionUpdates(resume, updates)` immutably patches
+  bullet text (and summary text, if `resume.summary.id` is ever among the returned ids)
+  in place given `/revise`'s `{id, text}` updates, matching by id anywhere in the tree
+  rather than assuming a shape — needed since entry-id selections come back as several
+  bullet-id updates. `describeSelection(resume, selectedIds)` turns the current
+  `selectedIds` into the "Editing: N bullets, M entries" label.
+- New `app/components/RevisionChat.tsx`: a sticky-to-viewport-bottom bar (pinned at the
+  bottom of the preview pane per the phase's suggested placement) with a text input +
+  "Revise" button. Disabled/inert whenever nothing is selected, with an explanatory
+  placeholder message; shows the live "Editing: ..." summary otherwise.
+- `page.tsx` wires it up: `handleRevise` posts `{selected_ids: Array.from(selectedIds),
+  instruction, resume}` to `/revise`, and on success runs `applyRevisionUpdates` over the
+  current `generateState.resume` and replaces it — **`selectedIds` and the instruction
+  input's typed text are the only two things cleared/reset differently**: the instruction
+  text field clears after a successful submit (normal chat-input UX), but `selectedIds`
+  is deliberately left untouched so a follow-up instruction can be submitted against the
+  same selection, exactly as the phase spec required. A separate `reviseState` (`idle |
+  loading | error`) drives the button's "Revising..." label and an inline error message,
+  independent of `generateState` — a failed revise never clears the currently-generated
+  resume or the selection.
+- **Verified bullet-level revision end-to-end through the UI**: selected a single bullet,
+  submitted "make this more concise", got back exactly one update, patched in place with
+  nothing else in the resume shifting, selection preserved afterward.
+- **Verified entry-level revision end-to-end through the UI**: selected a whole
+  project/job entry (no individual bullets), submitted an instruction, and all bullets
+  under that entry updated together (confirmed via the backend's existing entry→bullet
+  expansion) while the entry itself stayed selected and nothing outside it changed.
+- **Confirmed whole-section-level selection does NOT work against the current backend**:
+  tested directly against a running `/revise` (`curl`, a hand-built resume payload,
+  `selected_ids: ["sec_skills"]`) — the response was `{"updates": []}`, i.e. a silent
+  no-op, because `REVISE_SYSTEM_PROMPT` (`backend/app/services/llm.py`) only tells the
+  model how to expand bullet/summary/entry ids, not section ids, so an unrecognized
+  section id is just dropped. Per the phase's explicit instruction not to fix backend
+  gaps from the frontend, **section-level selection has been removed from the UI**
+  (`ResumePreview.tsx` now renders each section's heading/content in a plain `<div>`
+  instead of a `Selectable`, with a comment explaining why) rather than leaving a
+  selectable-but-nonfunctional control in place. This is a real backend gap, not a
+  frontend workaround-needed item: fixing it means teaching `REVISE_SYSTEM_PROMPT` to
+  expand a section id to all of that section's bullets, mirroring the existing entry-id
+  expansion — tracked in `frontend/STATUS.md`'s "Known gaps" list.
+- **Error handling**: confirmed via direct backend testing that an oversized instruction
+  (>`MAX_INPUT_CHARS`) returns **502**, exercising the same `!res.ok` → inline error
+  message path already proven working for `/generate` in Phase 2 (`handleRevise` mirrors
+  `handleGenerate`'s error handling exactly). A 429 (daily call cap) would surface the
+  same way; not separately re-tested since it shares the identical code path and would
+  require exhausting the 50-call daily cap to trigger for real.
+- One hydration console warning was observed during testing
+  (`data-darkreader-proxy-injected="true"` mismatch) — confirmed to be the Dark Reader
+  Chrome extension modifying the `<html>` tag before React hydrates, unrelated to any
+  app code; not something to fix here.
+
 ## Not yet built (explicitly deferred so far)
 
-1. **Next.js frontend** — Phases 1–3 done, see above. Phases 4–6 (chat-scoped revision,
-   cover letter mode, download) not yet started — see `frontend/STATUS.md` for the full
-   phased plan.
+1. **Next.js frontend** — Phases 1–4 done, see above. Phases 5–6 (cover letter mode,
+   download) not yet started — see `frontend/STATUS.md` for the full phased plan.
 2. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
    Vercel-hosted frontend. Not started.
 
 ## Open questions worth strategizing on
 
 - **Backend trio is now complete**: `/generate`, `/revise`, and `/render` are all built
-  and verified, alongside `/profile` and the usage guardrails. Frontend Phases 1–3
-  (connectivity, generate view, styled preview + selection) are done — next step is
-  Phase 4 (wiring the current selection to `/revise`), per `frontend/STATUS.md`'s phased
-  plan. That phase needs to specifically test whole-section-id selection against
-  `/revise`, since the system prompt currently only knows how to expand entry ids to
-  their bullets, not section ids — flagged in `frontend/STATUS.md`'s "Known gaps" list.
+  and verified, alongside `/profile` and the usage guardrails. Frontend Phases 1–4
+  (connectivity, generate view, styled preview + selection, chat-scoped revision) are
+  done — next step is Phase 5 (cover letter mode), per `frontend/STATUS.md`'s phased
+  plan. A confirmed backend gap from Phase 4: `REVISE_SYSTEM_PROMPT` needs to learn how
+  to expand a **section** id to all of that section's bullets (the same way it already
+  expands an entry id) before section-level selection can be re-enabled in the frontend.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

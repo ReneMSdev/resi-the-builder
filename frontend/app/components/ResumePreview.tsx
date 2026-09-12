@@ -37,13 +37,10 @@ export function ResumePreview({
             (section.groups && section.groups.length > 0)
         )
         .map((section) => (
-          <Selectable
-            key={section.id}
-            id={section.id}
-            selectedIds={selectedIds}
-            onToggle={onToggle}
-            className="mt-2 p-1"
-          >
+          // Section-level selection is disabled: /revise's system prompt only expands
+          // bullet/summary/entry ids, so a selected section id currently comes back
+          // with no updates at all (verified against the running backend).
+          <div key={section.id} className="mt-2 p-1">
             <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">
               {section.title}
             </h3>
@@ -116,7 +113,7 @@ export function ResumePreview({
                   )}
                 </Selectable>
               ))}
-          </Selectable>
+          </div>
         ))}
     </div>
   );

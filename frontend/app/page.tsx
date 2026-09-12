@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Resume } from "./types";
 import { ResumePreview } from "./components/ResumePreview";
+import { RevisionChat } from "./components/RevisionChat";
+import { applyRevisionUpdates, describeSelection } from "./lib/resume";
 
 type BackendStatus =
   | { state: "loading" }
@@ -13,6 +15,11 @@ type GenerateState =
   | { state: "idle" }
   | { state: "loading" }
   | { state: "success"; resume: Resume }
+  | { state: "error"; message: string };
+
+type ReviseState =
+  | { state: "idle" }
+  | { state: "loading" }
   | { state: "error"; message: string };
 
 export default function Home() {
@@ -27,6 +34,9 @@ export default function Home() {
     state: "idle",
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [reviseState, setReviseState] = useState<ReviseState>({
+    state: "idle",
+  });
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -101,6 +111,54 @@ export default function Home() {
     });
   }
 
+  async function handleRevise(instruction: string) {
+    if (generateState.state !== "success") return;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) {
+      setReviseState({
+        state: "error",
+        message: "NEXT_PUBLIC_API_URL is not set.",
+      });
+      return;
+    }
+
+    setReviseState({ state: "loading" });
+
+    try {
+      const res = await fetch(`${apiUrl}/revise`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selected_ids: Array.from(selectedIds),
+          instruction,
+          resume: generateState.resume,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`${res.status}: ${body}`);
+      }
+
+      const data: { updates: { id: string; text: string }[] } =
+        await res.json();
+
+      setGenerateState((prev) =>
+        prev.state === "success"
+          ? {
+              state: "success",
+              resume: applyRevisionUpdates(prev.resume, data.updates),
+            }
+          : prev
+      );
+      setReviseState({ state: "idle" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setReviseState({ state: "error", message });
+    }
+  }
+
   const isGenerating = generateState.state === "loading";
 
   return (
@@ -168,7 +226,7 @@ export default function Home() {
           <div className="flex flex-col gap-2">
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
               {selectedIds.size === 0
-                ? "Click a bullet, entry, or section to select it."
+                ? "Click a bullet or entry to select it."
                 : `Selected: ${selectedIds.size} item${
                     selectedIds.size === 1 ? "" : "s"
                   }`}
@@ -186,6 +244,18 @@ export default function Home() {
                 {JSON.stringify(generateState.resume, null, 2)}
               </pre>
             </details>
+            <RevisionChat
+              selectionSummary={describeSelection(
+                generateState.resume,
+                selectedIds
+              )}
+              selectionCount={selectedIds.size}
+              loading={reviseState.state === "loading"}
+              errorMessage={
+                reviseState.state === "error" ? reviseState.message : null
+              }
+              onSubmit={handleRevise}
+            />
           </div>
         )}
       </main>

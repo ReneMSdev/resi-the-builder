@@ -235,7 +235,8 @@ new features.
 - [x] Phase 1 — Connectivity check
 - [x] Phase 2 — Generate view (resume, unstyled)
 - [x] Phase 3 — Resume-styled preview + 3-level selection
-- [ ] Phase 4 — Chat-scoped revision (bullet/entry confirmed; section-level status TBD)
+- [x] Phase 4 — Chat-scoped revision (bullet/entry confirmed; section-level does NOT work
+      against the current backend — disabled in the UI, see notes below)
 - [ ] Phase 5 — Cover letter mode (generate + display only)
 - [ ] Phase 6 — Download (docx/pdf, resume only)
 
@@ -243,5 +244,10 @@ new features.
 
 - [ ] `/revise` does not support cover letter paragraphs
 - [ ] `/render` does not support cover letter shape
-- [ ] `/revise` may not correctly handle whole-section-level selection (confirm in
-      Phase 4 and update this line with the actual finding)
+- [x] `/revise` does NOT correctly handle whole-section-level selection — confirmed in
+      Phase 4: selecting a section id (e.g. `sec_skills`) and submitting an instruction
+      returns `{"updates": []}` (silently no-ops), because `REVISE_SYSTEM_PROMPT` in
+      `backend/app/services/llm.py` only documents bullet/summary/entry ids, not section
+      ids. Section-level selection has been **disabled in the frontend UI** (see
+      `app/components/ResumePreview.tsx`) until the backend's system prompt is taught to
+      expand a section id to all its bullets, the same way it already does for entry ids.

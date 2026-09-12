@@ -240,19 +240,65 @@ Following `frontend/STATUS.md`'s phased build guide, Phase 1 is done and verifie
   given the small surface area, but worth revisiting (e.g. OpenAPI codegen) if the
   shapes start drifting.
 
+## Frontend Phase 3 — Resume-styled preview + 3-level selection (2026-09-12)
+
+- New `app/types.ts` centralizes the hand-mirrored `Resume`/`Section`/`Entry`/`Bullet`/
+  `SkillGroup`/`Meta` types shared between `page.tsx` and the new components (previously
+  duplicated inline in `page.tsx` from Phase 2).
+- New `app/components/Selectable.tsx`: a small polymorphic (`as="div" | "li"`) wrapper
+  that gives any node hover + click-to-toggle-persistent-selection behavior, reading
+  from/writing to a `selectedIds: Set<string>` passed down from `page.tsx`. Hover
+  highlight is pure CSS (Tailwind `hover:bg-*`), so it's automatically transient with no
+  state involved; click handlers call `e.stopPropagation()` so clicking a bullet doesn't
+  also toggle its parent entry/section (click bubbles natively in React, unlike
+  hover/enter events, so this was required for correctness).
+- New `app/components/ResumePreview.tsx`: renders the resume to visually match
+  `render.py`'s docx template — centered bold name + contact line, summary paragraph,
+  uppercase bold section headings, experience/project entries with bold `Title —
+  Organization` and same-line dates (flexbox instead of docx's right tab-stop, close
+  enough visually), italic location, bulleted lists; education/certification entries as
+  single plain lines; skills as bold label + comma-separated items. Font is the browser
+  default sans-serif rather than Calibri (not embedded/loaded) — cosmetic-only deviation.
+- Selection wraps each **bullet** (`<li>`), each **entry** (job/project block, and each
+  education/certification line), and each whole **section** (e.g. all of Skills) — the
+  three levels named in the phase goal. The resume's `summary` is deliberately **not**
+  independently selectable in this phase — the phase spec named only bullet/entry/section
+  as the three selectable levels, so summary selection wasn't added; Phase 4 will need to
+  decide how a summary edit gets scoped, since `/revise` does accept a summary id.
+- `selectedIds` lives in `page.tsx` as `Set<string>`, separate from `resume` state, reset
+  to empty on every new `/generate` call. A small indicator above the preview shows
+  "Selected: N items" (or a hint to click something, when empty).
+- Verified live in the browser: hovering a bullet inside an already-selected entry shows
+  its own subtle transient tint distinct from the entry's persistent selection ring;
+  clicking a bullet, an entry, and a whole section in sequence brought the counter to
+  "Selected: 3 items" with all three highlighted simultaneously and independently
+  (nesting a selected bullet inside a selected entry rendered correctly, each with its
+  own visual state); clicking the already-selected bullet again deselected it (counter
+  dropped to 2) while the entry and section selections were untouched. No console errors.
+- Fixed one pre-existing lint error surfaced by this pass (not introduced by it):
+  `page.tsx`'s Phase 1 connectivity-check effect called `setState` synchronously in the
+  effect body for the "env var missing" branch, which `eslint-config-next`'s
+  `react-hooks/set-state-in-effect` rule (new in this Next.js version's stricter
+  React-Compiler-aware lint rules) flags as an error. Fixed by computing that case in
+  `useState`'s lazy initializer instead, so the effect body only ever calls `setState`
+  from inside the `fetch().then()/.catch()` callbacks.
+
 ## Not yet built (explicitly deferred so far)
 
-1. **Next.js frontend** — Phases 1–2 done, see above. Phases 3–6 (styled preview +
-   selection, chat-scoped revision, cover letter mode, download) not yet started — see
-   `frontend/STATUS.md` for the full phased plan.
+1. **Next.js frontend** — Phases 1–3 done, see above. Phases 4–6 (chat-scoped revision,
+   cover letter mode, download) not yet started — see `frontend/STATUS.md` for the full
+   phased plan.
 2. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
    Vercel-hosted frontend. Not started.
 
 ## Open questions worth strategizing on
 
 - **Backend trio is now complete**: `/generate`, `/revise`, and `/render` are all built
-  and verified, alongside `/profile` and the usage guardrails. Frontend Phases 1–2
-  (connectivity, generate view) are done — next step is Phase 3 (styled `ResumePreview`
-  + 3-level bullet/entry/section selection), per `frontend/STATUS.md`'s phased plan.
+  and verified, alongside `/profile` and the usage guardrails. Frontend Phases 1–3
+  (connectivity, generate view, styled preview + selection) are done — next step is
+  Phase 4 (wiring the current selection to `/revise`), per `frontend/STATUS.md`'s phased
+  plan. That phase needs to specifically test whole-section-id selection against
+  `/revise`, since the system prompt currently only knows how to expand entry ids to
+  their bullets, not section ids — flagged in `frontend/STATUS.md`'s "Known gaps" list.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

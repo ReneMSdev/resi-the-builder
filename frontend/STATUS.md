@@ -234,7 +234,7 @@ new features.
 
 - [x] Phase 1 — Connectivity check
 - [x] Phase 2 — Generate view (resume, unstyled)
-- [ ] Phase 3 — Resume-styled preview + 3-level selection
+- [x] Phase 3 — Resume-styled preview + 3-level selection
 - [ ] Phase 4 — Chat-scoped revision (bullet/entry confirmed; section-level status TBD)
 - [ ] Phase 5 — Cover letter mode (generate + display only)
 - [ ] Phase 6 — Download (docx/pdf, resume only)

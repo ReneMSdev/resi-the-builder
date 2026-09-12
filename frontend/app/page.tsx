@@ -1,41 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Resume } from "./types";
+import { ResumePreview } from "./components/ResumePreview";
 
 type BackendStatus =
   | { state: "loading" }
   | { state: "ok" }
   | { state: "error"; message: string };
-
-type Bullet = { id: string; text: string; tags?: string[] };
-type Entry = {
-  id: string;
-  title: string;
-  organization: string;
-  location?: string;
-  dates?: string;
-  bullets?: Bullet[];
-};
-type SkillGroup = { id: string; label: string; items: string[] };
-type Section = {
-  id: string;
-  title: string;
-  type: string;
-  entries?: Entry[];
-  groups?: SkillGroup[];
-};
-type Meta = {
-  name: string;
-  email: string;
-  phone: string;
-  links?: { label: string; url: string }[];
-};
-type Resume = {
-  type: string;
-  meta: Meta;
-  summary: { id: string; text: string };
-  sections: Section[];
-};
 
 type GenerateState =
   | { state: "idle" }
@@ -44,23 +16,21 @@ type GenerateState =
   | { state: "error"; message: string };
 
 export default function Home() {
-  const [status, setStatus] = useState<BackendStatus>({ state: "loading" });
+  const [status, setStatus] = useState<BackendStatus>(() =>
+    process.env.NEXT_PUBLIC_API_URL
+      ? { state: "loading" }
+      : { state: "error", message: "NEXT_PUBLIC_API_URL is not set." }
+  );
   const [jobDescription, setJobDescription] = useState("");
   const [companyContext, setCompanyContext] = useState("");
   const [generateState, setGenerateState] = useState<GenerateState>({
     state: "idle",
   });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-    if (!apiUrl) {
-      setStatus({
-        state: "error",
-        message: "NEXT_PUBLIC_API_URL is not set.",
-      });
-      return;
-    }
+    if (!apiUrl) return;
 
     fetch(`${apiUrl}/health`)
       .then((res) => {
@@ -89,6 +59,7 @@ export default function Home() {
     }
 
     setGenerateState({ state: "loading" });
+    setSelectedIds(new Set());
 
     try {
       const res = await fetch(`${apiUrl}/generate`, {
@@ -116,6 +87,18 @@ export default function Home() {
       const message = err instanceof Error ? err.message : String(err);
       setGenerateState({ state: "error", message });
     }
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   }
 
   const isGenerating = generateState.state === "loading";
@@ -182,71 +165,30 @@ export default function Home() {
         )}
 
         {generateState.state === "success" && (
-          <ResumeRaw resume={generateState.resume} />
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              {selectedIds.size === 0
+                ? "Click a bullet, entry, or section to select it."
+                : `Selected: ${selectedIds.size} item${
+                    selectedIds.size === 1 ? "" : "s"
+                  }`}
+            </p>
+            <ResumePreview
+              resume={generateState.resume}
+              selectedIds={selectedIds}
+              onToggle={toggleSelected}
+            />
+            <details className="text-xs text-zinc-600 dark:text-zinc-400">
+              <summary className="cursor-pointer select-none">
+                Raw JSON
+              </summary>
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap">
+                {JSON.stringify(generateState.resume, null, 2)}
+              </pre>
+            </details>
+          </div>
         )}
       </main>
-    </div>
-  );
-}
-
-function ResumeRaw({ resume }: { resume: Resume }) {
-  return (
-    <div className="flex flex-col gap-6 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-      <div>
-        <h2 className="text-xl font-bold text-black dark:text-zinc-50">
-          {resume.meta.name}
-        </h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {resume.meta.email} · {resume.meta.phone}
-        </p>
-      </div>
-
-      {resume.summary.text && (
-        <p className="text-sm text-black dark:text-zinc-50">
-          {resume.summary.text}
-        </p>
-      )}
-
-      {resume.sections.map((section) => (
-        <div key={section.id}>
-          <h3 className="font-semibold uppercase text-black dark:text-zinc-50">
-            {section.title}
-          </h3>
-          {section.entries?.map((entry) => (
-            <div key={entry.id} className="mt-2">
-              <p className="text-sm font-medium text-black dark:text-zinc-50">
-                {entry.title} — {entry.organization}{" "}
-                {entry.dates ? `(${entry.dates})` : ""}
-              </p>
-              {entry.location && (
-                <p className="text-xs italic text-zinc-600 dark:text-zinc-400">
-                  {entry.location}
-                </p>
-              )}
-              {entry.bullets && entry.bullets.length > 0 && (
-                <ul className="ml-5 list-disc text-sm text-black dark:text-zinc-50">
-                  {entry.bullets.map((bullet) => (
-                    <li key={bullet.id}>{bullet.text}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
-          {section.groups?.map((group) => (
-            <p key={group.id} className="mt-1 text-sm text-black dark:text-zinc-50">
-              <span className="font-medium">{group.label}:</span>{" "}
-              {group.items.join(", ")}
-            </p>
-          ))}
-        </div>
-      ))}
-
-      <details className="text-xs text-zinc-600 dark:text-zinc-400">
-        <summary className="cursor-pointer select-none">Raw JSON</summary>
-        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap">
-          {JSON.stringify(resume, null, 2)}
-        </pre>
-      </details>
     </div>
   );
 }

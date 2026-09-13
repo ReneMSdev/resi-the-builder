@@ -49,3 +49,14 @@ export type CoverLetter = {
   meta: CoverLetterMeta;
   paragraphs: Paragraph[];
 };
+
+export type SavedItemSummary = {
+  id: string;
+  name: string;
+  type: "resume" | "cover_letter";
+  created_at: string;
+};
+
+export type SavedItem = SavedItemSummary & {
+  data: Resume | CoverLetter;
+};

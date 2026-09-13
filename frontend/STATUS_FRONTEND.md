@@ -298,3 +298,97 @@ corresponding frontend restrictions and verified each end-to-end in a real brows
       bullet/summary/entry ids.)
 
 No known backend gaps remain from the original 6-phase plan.
+
+## Bug fix: tabs lost content when switching (2026-09-12)
+
+`app/page.tsx` previously held one shared `generateState`/`selectedIds`/`reviseState`
+trio for both modes, and `handleModeChange` reset all three on every tab switch —
+so switching Resume → Cover Letter → back to Resume lost whatever had been generated
+or revised on Resume.
+
+Fixed by splitting into independent per-mode state slots:
+
+- `resumeState: ResumeGenerateState` / `coverLetterState: CoverLetterGenerateState`
+  (two narrower types instead of one shared `GenerateState` with a `kind` discriminant).
+- `resumeSelectedIds` / `clSelectedIds` (two `Set<string>` slots).
+- `resumeReviseState` / `clReviseState` (two revise loading/error slots, so a revise
+  error on one tab doesn't leak into the other).
+- `selectedIds` / `setSelectedIds` / `reviseState` / `setReviseState` are now just
+  `mode`-selected aliases onto the pair above, so the render JSX and `toggleSelected`
+  didn't need to change shape.
+- `handleModeChange` is now purely `setMode(newMode)` — no resets.
+- `handleGenerate` writes into whichever slot matches `mode`.
+- `handleRevise` is mode-aware: it reads/writes `resumeState`/`coverLetterState`
+  directly based on `mode` rather than branching on a shared state's `kind` field.
+- Regenerating on a tab that already has content still overwrites that tab's own
+  slot — that's intentional, not a regression of this fix.
+
+Verified in a real browser end-to-end: generated a resume, selected a bullet, revised
+it ("Designed and deployed..." → "Deployed..."). Switched to Cover Letter, generated
+one, selected a paragraph. Switched back to Resume — resume, the revised bullet text,
+and the selection highlight were all exactly as left. Switched to Cover Letter again —
+same check, paragraph selection and content intact. `tsc --noEmit` and `eslint` both
+clean.
+
+## Feature: Save/retrieve saved items (2026-09-13)
+
+Backend added `POST /resumes`, `GET /resumes`, `GET /resumes/{id}`, `DELETE /resumes/{id}`
+(contract confirmed live and matching spec before building against it — list omits
+`data`, empty/blank `name` gets a sensible server-side default, delete returns 200 not
+204 but that's harmless since the frontend doesn't check the body).
+
+- **`app/types.ts`**: added `SavedItemSummary` (`id`, `name`, `type`, `created_at`) and
+  `SavedItem` (adds `data: Resume | CoverLetter`).
+- **`app/components/SaveButton.tsx`** (new): takes `type: 'resume' | 'cover_letter'` and
+  `document: Resume | CoverLetter`. Clicking "Save" swaps to an inline name input +
+  Confirm/Cancel (no modal library). Confirm always sends whatever's typed, including
+  empty string, and lets the backend default-name logic handle blanks. Shows a "Saved!"
+  indicator that fades after 2s, or an inline error on failure (same style as
+  `DownloadButtons`). Rendered next to `DownloadButtons` in both the resume and
+  cover-letter success blocks in `app/page.tsx`.
+- **`app/components/SavedTab.tsx`** (new): fetches `GET /resumes` on mount, renders each
+  item with name, a type badge (Resume/Cover Letter), and a readably-formatted date
+  (`toLocaleDateString`). Empty state shows "No saved items yet." instead of a blank
+  screen. Error state shows the message plus a Retry button. "Load" does
+  `GET /resumes/{id}` and calls an `onLoad(item)` prop; "Delete" does
+  `window.confirm` then `DELETE /resumes/{id}` and removes the row from local state
+  on success (no full refetch needed).
+  - One lint note: the initial fetch is structured so the effect body never calls
+    `setState` synchronously in its own call graph (the newer
+    `react-hooks/set-state-in-effect` rule in this repo's eslint config flags that) —
+    the "loading" state comes from the `useState` initializer instead of a synchronous
+    `setState` inside the effect, matching the pattern the existing backend-health-check
+    effect in `page.tsx` already used.
+- **`app/page.tsx`**: `Mode` extended to `'resume' | 'cover_letter' | 'saved'`. Added a
+  third "Saved" tab button. The generate form (job description / company context /
+  Generate button) is now hidden when `mode === 'saved'`; `SavedTab` renders instead.
+  New `handleLoadSavedItem(item)`: writes `item.data` into `resumeState` or
+  `coverLetterState` (whichever matches `item.type`), clears that mode's selection set,
+  and switches `mode` to `item.type` — reusing the per-mode state slots from the
+  tab-persistence fix above.
+
+Verified in a real browser end-to-end:
+1. Generated a resume, selected + revised a bullet, clicked Save, typed "Backend SWE
+   Resume v1", confirmed — item appeared via a direct `GET /resumes` check.
+2. Generated a cover letter, clicked Save with the name field left blank, confirmed —
+   backend assigned a default name.
+3. Opened the Saved tab — both items listed with correct type badges and formatted
+   dates ("Cover Letter" / "Resume").
+4. Loaded the resume from the Saved tab — populated correctly including the revised
+   bullet text, and switched to the Resume tab automatically.
+5. Deleted both items — each stayed gone after a full page reload, and the Saved tab
+   correctly fell back to "No saved items yet." once both were removed.
+
+Testing note: step 5's delete was verified via a direct `DELETE /resumes/{id}` call
+followed by a UI reload/refetch, rather than clicking the in-app Delete button — that
+button triggers a real `window.confirm()`, and blocking native dialogs are off-limits
+for this session's browser automation (they hang the automated browser). The Delete
+button's code path (`window.confirm` → `DELETE` → remove from local list) was reviewed
+directly and mirrors the already-verified Save/Load request handling; a human click
+through the confirm dialog is the one piece of this feature not exercised by browser
+automation.
+
+Cover letter download was already fully wired up before this pass (`DownloadButtons`
+already accepted `{resume} | {coverLetter}`, and both `page.tsx` branches already
+rendered it) — not new work, just confirmed still working alongside the new Save
+button. `tsc --noEmit` and `eslint` both clean.

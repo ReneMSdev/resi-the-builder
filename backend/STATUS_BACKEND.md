@@ -525,6 +525,62 @@ has been notified so it can re-enable section-level selection in `ResumePreview.
 wire cover-letter revision into `handleRevise`/`RevisionChat`, and add a download control
 for cover letters.
 
+## Backend Part 2 — Save/retrieve generated resumes & cover letters (2026-09-12)
+
+New `/resumes` endpoints (`app/routes/resumes.py`, registered in `app/main.py` alongside
+`profile`/`generate`/`revise`/`render`) let a generated `Resume` or `CoverLetter` be saved
+and retrieved later, independent of the frontend's Part 1 (tab persistence) work — built
+in parallel against a shared contract, no coordination needed beyond keeping the API shape
+exact.
+
+- **Storage**: flat files, same pattern as `app/data/profile.json` — one JSON file per save
+  at `app/data/saved_items/{uuid}.json`, containing `{id, name, type, created_at, data}`.
+  The directory is created on first `POST` (`mkdir(parents=True, exist_ok=True)`) rather
+  than needing to exist upfront; `GET /resumes` also tolerates the directory not existing
+  yet (returns `[]` rather than erroring) for a totally fresh checkout.
+- **Endpoints**:
+  - `POST /resumes` — body `SaveRequest {name?, type, data}` → writes a new file with a
+    fresh `uuid.uuid4()` id and `datetime.utcnow().isoformat()` `created_at`, returns the
+    full `SavedItem`.
+  - `GET /resumes` — returns all saved items but **only** `{id, name, type, created_at}`
+    each (no `data`), sorted newest-first, so the list stays small regardless of how big
+    the saved resumes/cover letters are.
+  - `GET /resumes/{id}` — returns the full `SavedItem` including `data`.
+  - `DELETE /resumes/{id}` — deletes the file, returns `{"deleted": id}`.
+  - Missing/invalid `id` on `GET`/`DELETE /resumes/{id}` → clean **404**
+    (`"Saved item not found"`) via `HTTPException`, not an unhandled exception.
+- **Default name generation** (when `name` is omitted or an empty/whitespace string):
+  - Cover letter: `"{company} — {role}"` if `meta.company` and `meta.role` are both
+    non-empty; falls back to whichever one is present alone if only one is; falls back
+    further to the universal fallback below if neither is present. (Resume has no
+    equivalent `meta.company`/`role` fields, so resumes always fall through to the
+    universal fallback — no fields were added to the `Resume` model for this.)
+  - Universal fallback (all resumes; cover letters with neither company nor role):
+    `"{Resume|Cover Letter} — {created_at as YYYY-MM-DD HH:mm}"`, e.g.
+    `"Resume — 2026-09-12 22:10"`.
+- **New models** (`app/models.py`): `SavedItem` (`id`, `name`, `type`, `created_at`,
+  `data: dict` — deliberately loose/untyped since the caller already validated the shape
+  once via `Resume`/`CoverLetter` before saving) and `SaveRequest` (`name: Optional[str]`,
+  `type`, `data: dict`).
+- Verified directly against the running server (`curl`, matching the plan's 6-step test
+  script exactly): explicit-name save → file created, response matches; no-name resume
+  save → `"Resume — 2026-09-12 22:10"`-style default; no-name cover letter save with both
+  `company`/`role` → `"Acme Corp — Backend Engineer"`; no-name cover letter with only
+  `company` (empty-string `name` in the request body, empty `role`) → `"Acme Corp"` alone,
+  confirming the graceful partial-fallback; `GET /resumes` returned both items with only
+  summary fields, newest-first; `GET /resumes/{id}` round-tripped the full `data` with an
+  exact spot-check match on `summary.text`; `DELETE` removed the file and it no longer
+  appeared in a subsequent `GET /resumes`; both `GET` and `DELETE` on a nonexistent id
+  returned a clean 404. All test saves were deleted after verification — no leftover
+  files in `app/data/saved_items/`.
+- **Note for whoever does deployment/gitignore next**: `app/data/saved_items/` is
+  currently untracked by git (no `.gitignore` entry either way — same as `profile.json`,
+  which *is* tracked intentionally as master data). Saved items are user-generated
+  output, not master data, so probably want `app/data/saved_items/` gitignored before
+  this sees real use — not done here since it wasn't part of the API contract for this
+  pass and touches repo-wide `.gitignore` conventions the frontend session's Part 1 work
+  might also care about.
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

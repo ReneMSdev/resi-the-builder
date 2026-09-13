@@ -5,6 +5,9 @@ backend/.venv/
 backend/*.egg-info/
 backend/.pytest_cache/
 
+# User-generated data (not master data — profile.json is tracked intentionally)
+backend/app/data/saved_items/
+
 # Node
 frontend/node_modules/
 frontend/.next/

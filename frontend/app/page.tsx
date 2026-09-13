@@ -1,11 +1,13 @@
 'use client'
 
 import { SubmitEvent, useEffect, useState } from 'react'
-import { CoverLetter, Resume } from './types'
+import { CoverLetter, Resume, SavedItem } from './types'
 import { ResumePreview } from './components/ResumePreview'
 import { CoverLetterPreview } from './components/CoverLetterPreview'
 import { RevisionChat } from './components/RevisionChat'
 import { DownloadButtons } from './components/DownloadButtons'
+import { SaveButton } from './components/SaveButton'
+import { SavedTab } from './components/SavedTab'
 import {
   applyRevisionUpdates,
   applyCoverLetterUpdates,
@@ -15,13 +17,18 @@ import {
 
 type BackendStatus = { state: 'loading' } | { state: 'ok' } | { state: 'error'; message: string }
 
-type Mode = 'resume' | 'cover_letter'
+type Mode = 'resume' | 'cover_letter' | 'saved'
 
-type GenerateState =
+type ResumeGenerateState =
   | { state: 'idle' }
   | { state: 'loading' }
-  | { state: 'success'; kind: 'resume'; resume: Resume }
-  | { state: 'success'; kind: 'cover_letter'; coverLetter: CoverLetter }
+  | { state: 'success'; resume: Resume }
+  | { state: 'error'; message: string }
+
+type CoverLetterGenerateState =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | { state: 'success'; coverLetter: CoverLetter }
   | { state: 'error'; message: string }
 
 type ReviseState = { state: 'idle' } | { state: 'loading' } | { state: 'error'; message: string }
@@ -35,13 +42,25 @@ export default function Home() {
   const [mode, setMode] = useState<Mode>('resume')
   const [jobDescription, setJobDescription] = useState('')
   const [companyContext, setCompanyContext] = useState('')
-  const [generateState, setGenerateState] = useState<GenerateState>({
+  const [resumeState, setResumeState] = useState<ResumeGenerateState>({
     state: 'idle',
   })
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [reviseState, setReviseState] = useState<ReviseState>({
+  const [coverLetterState, setCoverLetterState] = useState<CoverLetterGenerateState>({
     state: 'idle',
   })
+  const [resumeSelectedIds, setResumeSelectedIds] = useState<Set<string>>(new Set())
+  const [clSelectedIds, setClSelectedIds] = useState<Set<string>>(new Set())
+  const [resumeReviseState, setResumeReviseState] = useState<ReviseState>({
+    state: 'idle',
+  })
+  const [clReviseState, setClReviseState] = useState<ReviseState>({
+    state: 'idle',
+  })
+
+  const selectedIds = mode === 'resume' ? resumeSelectedIds : clSelectedIds
+  const setSelectedIds = mode === 'resume' ? setResumeSelectedIds : setClSelectedIds
+  const reviseState = mode === 'resume' ? resumeReviseState : clReviseState
+  const setReviseState = mode === 'resume' ? setResumeReviseState : setClReviseState
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -63,17 +82,23 @@ export default function Home() {
 
   async function handleGenerate(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (mode === 'saved') return
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
-      setGenerateState({
-        state: 'error',
-        message: 'NEXT_PUBLIC_API_URL is not set.',
-      })
+      if (mode === 'resume') {
+        setResumeState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
+      } else {
+        setCoverLetterState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
+      }
       return
     }
 
-    setGenerateState({ state: 'loading' })
+    if (mode === 'resume') {
+      setResumeState({ state: 'loading' })
+    } else {
+      setCoverLetterState({ state: 'loading' })
+    }
     setSelectedIds(new Set())
 
     try {
@@ -98,16 +123,20 @@ export default function Home() {
         if (!data.resume) {
           throw new Error('Response did not include a resume.')
         }
-        setGenerateState({ state: 'success', kind: 'resume', resume: data.resume })
+        setResumeState({ state: 'success', resume: data.resume })
       } else {
         if (!data.cover_letter) {
           throw new Error('Response did not include a cover letter.')
         }
-        setGenerateState({ state: 'success', kind: 'cover_letter', coverLetter: data.cover_letter })
+        setCoverLetterState({ state: 'success', coverLetter: data.cover_letter })
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
-      setGenerateState({ state: 'error', message })
+      if (mode === 'resume') {
+        setResumeState({ state: 'error', message })
+      } else {
+        setCoverLetterState({ state: 'error', message })
+      }
     }
   }
 
@@ -124,7 +153,9 @@ export default function Home() {
   }
 
   async function handleRevise(instruction: string) {
-    if (generateState.state !== 'success') return
+    if (mode === 'resume' ? resumeState.state !== 'success' : coverLetterState.state !== 'success') {
+      return
+    }
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
@@ -144,9 +175,11 @@ export default function Home() {
         body: JSON.stringify({
           selected_ids: Array.from(selectedIds),
           instruction,
-          ...(generateState.kind === 'resume'
-            ? { resume: generateState.resume }
-            : { cover_letter: generateState.coverLetter }),
+          ...(mode === 'resume' && resumeState.state === 'success'
+            ? { resume: resumeState.resume }
+            : coverLetterState.state === 'success'
+              ? { cover_letter: coverLetterState.coverLetter }
+              : {}),
         }),
       })
 
@@ -157,21 +190,20 @@ export default function Home() {
 
       const data: { updates: { id: string; text: string }[] } = await res.json()
 
-      setGenerateState((prev) => {
-        if (prev.state !== 'success') return prev
-        if (prev.kind === 'resume') {
+      if (mode === 'resume') {
+        setResumeState((prev) => {
+          if (prev.state !== 'success') return prev
+          return { state: 'success', resume: applyRevisionUpdates(prev.resume, data.updates) }
+        })
+      } else {
+        setCoverLetterState((prev) => {
+          if (prev.state !== 'success') return prev
           return {
             state: 'success',
-            kind: 'resume',
-            resume: applyRevisionUpdates(prev.resume, data.updates),
+            coverLetter: applyCoverLetterUpdates(prev.coverLetter, data.updates),
           }
-        }
-        return {
-          state: 'success',
-          kind: 'cover_letter',
-          coverLetter: applyCoverLetterUpdates(prev.coverLetter, data.updates),
-        }
-      })
+        })
+      }
       setReviseState({ state: 'idle' })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
@@ -180,13 +212,26 @@ export default function Home() {
   }
 
   function handleModeChange(newMode: Mode) {
-    if (newMode === mode) return
     setMode(newMode)
-    setGenerateState({ state: 'idle' })
-    setSelectedIds(new Set())
   }
 
-  const isGenerating = generateState.state === 'loading'
+  function handleLoadSavedItem(item: SavedItem) {
+    if (item.type === 'resume') {
+      setResumeState({ state: 'success', resume: item.data as Resume })
+      setResumeSelectedIds(new Set())
+    } else {
+      setCoverLetterState({ state: 'success', coverLetter: item.data as CoverLetter })
+      setClSelectedIds(new Set())
+    }
+    setMode(item.type)
+  }
+
+  const isGenerating =
+    mode === 'resume'
+      ? resumeState.state === 'loading'
+      : mode === 'cover_letter'
+        ? coverLetterState.state === 'loading'
+        : false
 
   const tabClass = (tab: Mode) =>
     `rounded px-3 py-1.5 text-sm font-medium transition-colors hover:cursor-pointer ${
@@ -228,8 +273,18 @@ export default function Home() {
           >
             Cover Letter
           </button>
+          <button
+            type='button'
+            onClick={() => handleModeChange('saved')}
+            className={tabClass('saved')}
+          >
+            Saved
+          </button>
         </div>
 
+        {mode === 'saved' && <SavedTab onLoad={handleLoadSavedItem} />}
+
+        {mode !== 'saved' && (
         <form
           onSubmit={handleGenerate}
           className='flex flex-col gap-4'
@@ -265,14 +320,21 @@ export default function Home() {
                 : 'Generate Cover Letter'}
           </button>
         </form>
+        )}
 
-        {generateState.state === 'error' && (
+        {mode === 'resume' && resumeState.state === 'error' && (
           <p className='font-medium text-(--danger)'>
-            Error generating {mode === 'resume' ? 'resume' : 'cover letter'}: {generateState.message}
+            Error generating resume: {resumeState.message}
           </p>
         )}
 
-        {generateState.state === 'success' && generateState.kind === 'resume' && (
+        {mode === 'cover_letter' && coverLetterState.state === 'error' && (
+          <p className='font-medium text-(--danger)'>
+            Error generating cover letter: {coverLetterState.message}
+          </p>
+        )}
+
+        {mode === 'resume' && resumeState.state === 'success' && (
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between gap-2'>
               <p className='text-xs text-(--muted)'>
@@ -280,21 +342,24 @@ export default function Home() {
                   ? 'Click a bullet, entry, or section to select it.'
                   : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
               </p>
-              <DownloadButtons document={{ resume: generateState.resume }} />
+              <div className='flex items-center gap-2'>
+                <SaveButton type='resume' document={resumeState.resume} />
+                <DownloadButtons document={{ resume: resumeState.resume }} />
+              </div>
             </div>
             <ResumePreview
-              resume={generateState.resume}
+              resume={resumeState.resume}
               selectedIds={selectedIds}
               onToggle={toggleSelected}
             />
             <details className='text-xs text-(--muted)'>
               <summary className='cursor-pointer select-none'>Raw JSON</summary>
               <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
-                {JSON.stringify(generateState.resume, null, 2)}
+                {JSON.stringify(resumeState.resume, null, 2)}
               </pre>
             </details>
             <RevisionChat
-              selectionSummary={describeSelection(generateState.resume, selectedIds)}
+              selectionSummary={describeSelection(resumeState.resume, selectedIds)}
               selectionCount={selectedIds.size}
               loading={reviseState.state === 'loading'}
               errorMessage={reviseState.state === 'error' ? reviseState.message : null}
@@ -303,7 +368,7 @@ export default function Home() {
           </div>
         )}
 
-        {generateState.state === 'success' && generateState.kind === 'cover_letter' && (
+        {mode === 'cover_letter' && coverLetterState.state === 'success' && (
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between gap-2'>
               <p className='text-xs text-(--muted)'>
@@ -311,22 +376,25 @@ export default function Home() {
                   ? 'Click a paragraph to select it.'
                   : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
               </p>
-              <DownloadButtons document={{ coverLetter: generateState.coverLetter }} />
+              <div className='flex items-center gap-2'>
+                <SaveButton type='cover_letter' document={coverLetterState.coverLetter} />
+                <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
+              </div>
             </div>
             <CoverLetterPreview
-              coverLetter={generateState.coverLetter}
+              coverLetter={coverLetterState.coverLetter}
               selectedIds={selectedIds}
               onToggle={toggleSelected}
             />
             <details className='text-xs text-(--muted)'>
               <summary className='cursor-pointer select-none'>Raw JSON</summary>
               <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
-                {JSON.stringify(generateState.coverLetter, null, 2)}
+                {JSON.stringify(coverLetterState.coverLetter, null, 2)}
               </pre>
             </details>
             <RevisionChat
               selectionSummary={describeCoverLetterSelection(
-                generateState.coverLetter,
+                coverLetterState.coverLetter,
                 selectedIds,
               )}
               selectionCount={selectedIds.size}

@@ -113,3 +113,17 @@ class RenderRequest(BaseModel):
     resume: Optional[Resume] = None
     cover_letter: Optional[CoverLetter] = None
     format: str = "docx"  # "docx" or "pdf"
+
+
+class SavedItem(BaseModel):
+    id: str
+    name: str
+    type: str  # "resume" | "cover_letter"
+    created_at: str
+    data: dict  # already validated once by the caller before saving; keep loose here
+
+
+class SaveRequest(BaseModel):
+    name: Optional[str] = None
+    type: str
+    data: dict

@@ -334,8 +334,9 @@ clean.
 
 Backend added `POST /resumes`, `GET /resumes`, `GET /resumes/{id}`, `DELETE /resumes/{id}`
 (contract confirmed live and matching spec before building against it — list omits
-`data`, empty/blank `name` gets a sensible server-side default, delete returns 200 not
-204 but that's harmless since the frontend doesn't check the body).
+`data`, empty/blank `name` gets a sensible server-side default). `DELETE` was later
+tightened to return **204 No Content** (was 200 + a small body) — no frontend change
+needed since the body was never read.
 
 - **`app/types.ts`**: added `SavedItemSummary` (`id`, `name`, `type`, `created_at`) and
   `SavedItem` (adds `data: Resume | CoverLetter`).
@@ -350,9 +351,14 @@ Backend added `POST /resumes`, `GET /resumes`, `GET /resumes/{id}`, `DELETE /res
   item with name, a type badge (Resume/Cover Letter), and a readably-formatted date
   (`toLocaleDateString`). Empty state shows "No saved items yet." instead of a blank
   screen. Error state shows the message plus a Retry button. "Load" does
-  `GET /resumes/{id}` and calls an `onLoad(item)` prop; "Delete" does
-  `window.confirm` then `DELETE /resumes/{id}` and removes the row from local state
-  on success (no full refetch needed).
+  `GET /resumes/{id}` and calls an `onLoad(item)` prop; "Delete" swaps that row's
+  Load/Delete buttons for an inline "Delete this item?" + Confirm/Cancel step
+  (`confirmingId` state) instead of `window.confirm` — Confirm then does
+  `DELETE /resumes/{id}` and removes the row from local state on success (no full
+  refetch needed). Replaced the native dialog specifically because it's a blocking
+  call browser automation can't click through, so the whole flow can now be verified
+  end-to-end instead of only reviewed; it also matches `SaveButton`'s existing
+  inline-prompt pattern rather than introducing a different confirmation style.
   - One lint note: the initial fetch is structured so the effect body never calls
     `setState` synchronously in its own call graph (the newer
     `react-hooks/set-state-in-effect` rule in this repo's eslint config flags that) —
@@ -379,14 +385,13 @@ Verified in a real browser end-to-end:
 5. Deleted both items — each stayed gone after a full page reload, and the Saved tab
    correctly fell back to "No saved items yet." once both were removed.
 
-Testing note: step 5's delete was verified via a direct `DELETE /resumes/{id}` call
-followed by a UI reload/refetch, rather than clicking the in-app Delete button — that
-button triggers a real `window.confirm()`, and blocking native dialogs are off-limits
-for this session's browser automation (they hang the automated browser). The Delete
-button's code path (`window.confirm` → `DELETE` → remove from local list) was reviewed
-directly and mirrors the already-verified Save/Load request handling; a human click
-through the confirm dialog is the one piece of this feature not exercised by browser
-automation.
+**Resolved (2026-09-13, manager session)**: step 5's delete was originally only
+reviewed, not click-tested, because `window.confirm()` blocks automated browsers. Fixed
+by replacing it with the inline Confirm/Cancel step described above, then click-tested
+for real: seeded an item via the API, opened the Saved tab, clicked Delete (inline
+"Delete this item?" + Confirm/Cancel appeared, no native dialog), clicked Confirm, item
+removed from the list and confirmed gone via a subsequent `GET /resumes`. Full click-path
+now exercised, not just reviewed.
 
 Cover letter download was already fully wired up before this pass (`DownloadButtons`
 already accepted `{resume} | {coverLetter}`, and both `page.tsx` branches already

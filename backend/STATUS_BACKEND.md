@@ -546,7 +546,9 @@ exact.
     each (no `data`), sorted newest-first, so the list stays small regardless of how big
     the saved resumes/cover letters are.
   - `GET /resumes/{id}` — returns the full `SavedItem` including `data`.
-  - `DELETE /resumes/{id}` — deletes the file, returns `{"deleted": id}`.
+  - `DELETE /resumes/{id}` — deletes the file, returns **204 No Content** (empty body;
+    initially returned 200 + `{"deleted": id}`, tightened to match REST convention after
+    manager review — verified via `curl -i` that the response is now a bare 204).
   - Missing/invalid `id` on `GET`/`DELETE /resumes/{id}` → clean **404**
     (`"Saved item not found"`) via `HTTPException`, not an unhandled exception.
 - **Default name generation** (when `name` is omitted or an empty/whitespace string):
@@ -573,13 +575,9 @@ exact.
   appeared in a subsequent `GET /resumes`; both `GET` and `DELETE` on a nonexistent id
   returned a clean 404. All test saves were deleted after verification — no leftover
   files in `app/data/saved_items/`.
-- **Note for whoever does deployment/gitignore next**: `app/data/saved_items/` is
-  currently untracked by git (no `.gitignore` entry either way — same as `profile.json`,
-  which *is* tracked intentionally as master data). Saved items are user-generated
-  output, not master data, so probably want `app/data/saved_items/` gitignored before
-  this sees real use — not done here since it wasn't part of the API contract for this
-  pass and touches repo-wide `.gitignore` conventions the frontend session's Part 1 work
-  might also care about.
+- **Resolved**: `app/data/saved_items/` is now gitignored (root `.gitignore`) —
+  `profile.json` remains the only tracked file under `app/data/`, since saved items are
+  user-generated output rather than master data.
 
 ## Not yet built (explicitly deferred so far)
 

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from app.models import SavedItem, SaveRequest
 
@@ -89,10 +89,10 @@ def get_saved_item(item_id: str):
     return data
 
 
-@router.delete("/resumes/{item_id}")
+@router.delete("/resumes/{item_id}", status_code=204)
 def delete_saved_item(item_id: str):
     path = _path_for(item_id)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Saved item not found")
     path.unlink()
-    return {"deleted": item_id}
+    return Response(status_code=204)

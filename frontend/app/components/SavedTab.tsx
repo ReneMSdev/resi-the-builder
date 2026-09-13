@@ -27,6 +27,7 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
       : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' },
   )
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
   function runFetch(apiUrl: string) {
     fetch(`${apiUrl}/resumes`)
@@ -82,11 +83,10 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm('Delete this saved item?')) return
-
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) return
 
+    setConfirmingId(null)
     setPendingId(id)
     try {
       const res = await fetch(`${apiUrl}/resumes/${id}`, { method: 'DELETE' })
@@ -147,22 +147,46 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
             <span className='text-xs text-(--muted)'>{formatDate(item.created_at)}</span>
           </div>
           <div className='flex gap-2'>
-            <button
-              type='button'
-              onClick={() => handleLoad(item.id)}
-              disabled={pendingId === item.id}
-              className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
-            >
-              Load
-            </button>
-            <button
-              type='button'
-              onClick={() => handleDelete(item.id)}
-              disabled={pendingId === item.id}
-              className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
-            >
-              Delete
-            </button>
+            {confirmingId === item.id ? (
+              <>
+                <span className='self-center text-xs text-(--muted)'>Delete this item?</span>
+                <button
+                  type='button'
+                  onClick={() => handleDelete(item.id)}
+                  disabled={pendingId === item.id}
+                  className='rounded border border-(--danger) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                >
+                  Confirm
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setConfirmingId(null)}
+                  disabled={pendingId === item.id}
+                  className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type='button'
+                  onClick={() => handleLoad(item.id)}
+                  disabled={pendingId === item.id}
+                  className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                >
+                  Load
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setConfirmingId(item.id)}
+                  disabled={pendingId === item.id}
+                  className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         </div>
       ))}

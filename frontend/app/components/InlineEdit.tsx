@@ -126,7 +126,12 @@ export function JoinedFields({
   onSave,
   sep = " — ",
 }: {
-  fields: { id: string; text: string; placeholder: string }[];
+  fields: {
+    id: string;
+    text: string;
+    placeholder: string;
+    render?: (mode: Mode) => React.ReactNode;
+  }[];
   mode: Mode;
   onSave: (id: string, text: string) => void;
   sep?: string;
@@ -137,16 +142,136 @@ export function JoinedFields({
       {visible.map((f, i) => (
         <span key={f.id}>
           {i > 0 && sep}
-          <EditableText
-            id={f.id}
-            text={f.text}
-            onSave={onSave}
-            mode={mode}
-            placeholder={f.placeholder}
-          />
+          {f.render ? (
+            f.render(mode)
+          ) : (
+            <EditableText
+              id={f.id}
+              text={f.text}
+              onSave={onSave}
+              mode={mode}
+              placeholder={f.placeholder}
+            />
+          )}
         </span>
       ))}
     </>
+  );
+}
+
+function splitDateRange(text: string): { from: string; to: string } {
+  const idx = text.indexOf(" - ");
+  if (idx === -1) return { from: text, to: "" };
+  return { from: text.slice(0, idx), to: text.slice(idx + 3) };
+}
+
+function joinDateRange(from: string, to: string): string {
+  const f = from.trim();
+  const t = to.trim();
+  if (f && t) return `${f} - ${t}`;
+  return f || t;
+}
+
+export function DateRangeField({
+  id,
+  text,
+  onSave,
+  mode,
+  className = "",
+}: {
+  id: string;
+  text: string;
+  onSave: (id: string, text: string) => void;
+  mode: Mode;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const fromRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const settledRef = useRef(false);
+
+  useEffect(() => {
+    if (editing) {
+      fromRef.current?.focus();
+      fromRef.current?.select();
+    }
+  }, [editing]);
+
+  function startEditing() {
+    const parsed = splitDateRange(text);
+    setFrom(parsed.from);
+    setTo(parsed.to);
+    settledRef.current = false;
+    setEditing(true);
+  }
+
+  function commit() {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    setEditing(false);
+    const next = joinDateRange(from, to);
+    if (next !== text) onSave(id, next);
+  }
+
+  function cancel() {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    setEditing(false);
+  }
+
+  function handleContainerBlur(e: React.FocusEvent) {
+    const next = e.relatedTarget as Node | null;
+    if (next && containerRef.current?.contains(next)) return;
+    commit();
+  }
+
+  if (editing) {
+    const inputClassName =
+      "w-24 rounded border border-(--edit) bg-(--surface) px-1 outline-none";
+    return (
+      <span
+        ref={containerRef}
+        className="inline-flex gap-1"
+        onClick={(e) => e.stopPropagation()}
+        onBlur={handleContainerBlur}
+      >
+        <input
+          ref={fromRef}
+          type="text"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          onKeyDown={(e) => handleEditKeyDown(e, false, commit, cancel)}
+          placeholder="From (e.g. Jan 2026)"
+          className={`${inputClassName} ${className}`}
+        />
+        <input
+          type="text"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          onKeyDown={(e) => handleEditKeyDown(e, false, commit, cancel)}
+          placeholder="To (e.g. Present)"
+          className={`${inputClassName} ${className}`}
+        />
+      </span>
+    );
+  }
+
+  if (mode !== "edit") {
+    return <span className={className}>{text}</span>;
+  }
+
+  return (
+    <span
+      className={`cursor-text rounded px-0.5 hover:bg-(--edit-soft) ${className}`}
+      onClick={(e: React.MouseEvent) => {
+        e.stopPropagation();
+        startEditing();
+      }}
+    >
+      {text || <span className="italic text-(--muted)">click to edit</span>}
+    </span>
   );
 }
 
@@ -368,12 +493,16 @@ export function LinkPill({
   const [draftLabel, setDraftLabel] = useState(label);
   const [draftUrl, setDraftUrl] = useState(url);
   const ref = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const settledRef = useRef(false);
 
   useEffect(() => {
     if (editing) ref.current?.focus();
   }, [editing]);
 
   function commit() {
+    if (settledRef.current) return;
+    settledRef.current = true;
     setEditing(false);
     if (draftUrl.trim()) onEdit(id, draftLabel.trim(), draftUrl.trim());
     else {
@@ -383,16 +512,26 @@ export function LinkPill({
   }
 
   function cancel() {
+    if (settledRef.current) return;
+    settledRef.current = true;
     setDraftLabel(label);
     setDraftUrl(url);
     setEditing(false);
   }
 
+  function handleContainerBlur(e: React.FocusEvent) {
+    const next = e.relatedTarget as Node | null;
+    if (next && containerRef.current?.contains(next)) return;
+    commit();
+  }
+
   if (editing) {
     return (
       <span
+        ref={containerRef}
         className="inline-flex flex-col gap-0.5 rounded border border-(--edit) bg-(--surface) p-1"
         onClick={(e) => e.stopPropagation()}
+        onBlur={handleContainerBlur}
       >
         <input
           ref={ref}
@@ -408,7 +547,6 @@ export function LinkPill({
           value={draftUrl}
           onChange={(e) => setDraftUrl(e.target.value)}
           onKeyDown={(e) => linkKeyDown(e, commit, cancel)}
-          onBlur={commit}
           placeholder="URL"
           className="rounded border border-(--border) px-1 text-xs outline-none"
         />
@@ -424,6 +562,7 @@ export function LinkPill({
           e.stopPropagation();
           setDraftLabel(label);
           setDraftUrl(url);
+          settledRef.current = false;
           setEditing(true);
         }}
       >

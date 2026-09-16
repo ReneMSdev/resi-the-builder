@@ -7,6 +7,7 @@ import {
   AddGhostRow,
   AddLinkPill,
   AddPill,
+  DateRangeField,
   EditableText,
   JoinedFields,
   LinkPill,
@@ -219,6 +220,14 @@ export function ResumePreview({
                         id: entry.dates.id,
                         text: entry.dates.text,
                         placeholder: "Dates",
+                        render: (m) => (
+                          <DateRangeField
+                            id={entry.dates.id}
+                            text={entry.dates.text}
+                            onSave={onEditField}
+                            mode={m}
+                          />
+                        ),
                       },
                     ]}
                   />
@@ -260,12 +269,11 @@ export function ResumePreview({
                     </p>
                     {(entry.dates.text || mode === "edit") && (
                       <p className="shrink-0 text-xs">
-                        <EditableText
+                        <DateRangeField
                           id={entry.dates.id}
                           text={entry.dates.text}
                           onSave={onEditField}
                           mode={mode}
-                          placeholder="Dates"
                         />
                       </p>
                     )}

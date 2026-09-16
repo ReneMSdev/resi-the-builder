@@ -2,6 +2,13 @@ from pydantic import BaseModel
 from typing import Optional
 
 
+class IdText(BaseModel):
+    """Generic {id, text} unit for any single revisable/editable text field —
+    meta fields, entry fields, skill items, cover-letter salutation/sign-off, etc."""
+    id: str
+    text: str
+
+
 class Link(BaseModel):
     id: str
     label: str
@@ -9,9 +16,9 @@ class Link(BaseModel):
 
 
 class Meta(BaseModel):
-    name: str
-    email: str
-    phone: str
+    name: IdText
+    email: IdText
+    phone: IdText
     links: list[Link] = []
 
 
@@ -23,16 +30,15 @@ class Bullet(BaseModel):
 
 class Entry(BaseModel):
     id: str
-    title: str
-    organization: str
-    location: str = ""
-    dates: str = ""
+    title: IdText
+    organization: IdText
+    location: IdText
+    dates: IdText
     bullets: list[Bullet] = []
 
 
-class SkillItem(BaseModel):
-    id: str
-    text: str
+class SkillItem(IdText):
+    pass
 
 
 class SkillGroup(BaseModel):
@@ -69,12 +75,12 @@ class Profile(BaseModel):
 
 
 class CoverLetterMeta(BaseModel):
-    name: str
-    email: str
-    phone: str
-    date: str = ""
-    company: str = ""
-    role: str = ""
+    name: IdText
+    email: IdText
+    phone: IdText
+    date: IdText
+    company: IdText
+    role: IdText
 
 
 class Paragraph(BaseModel):
@@ -85,6 +91,8 @@ class Paragraph(BaseModel):
 class CoverLetter(BaseModel):
     type: str = "cover_letter"
     meta: CoverLetterMeta
+    salutation: IdText = IdText(id="cl_salutation", text="Dear Hiring Manager,")
+    sign_off: IdText = IdText(id="cl_sign_off", text="Sincerely,")
     paragraphs: list[Paragraph]
 
 

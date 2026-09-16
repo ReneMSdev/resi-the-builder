@@ -35,7 +35,8 @@ def render(req: RenderRequest):
         render_fn = render_resume_docx
         doc_label = "Resume"
 
-    name = data.get("meta", {}).get("name", doc_label).replace(" ", "_")
+    meta_name = data.get("meta", {}).get("name")
+    name = ((meta_name or {}).get("text") or doc_label).replace(" ", "_")
     docx_filename = f"{name}_{doc_label}.docx"
 
     tmp_dir = tempfile.mkdtemp()

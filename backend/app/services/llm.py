@@ -25,7 +25,9 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
 {
   "type": "resume",
   "meta": {
-    "name": "...", "email": "...", "phone": "...",
+    "name": { "id": "meta_name", "text": "..." },
+    "email": { "id": "meta_email", "text": "..." },
+    "phone": { "id": "meta_phone", "text": "..." },
     "links": [ { "id": "link_...", "label": "...", "url": "..." } ]
   },
   "summary": { "id": "summary", "text": "..." },
@@ -37,10 +39,10 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
       "entries": [
         {
           "id": "entry_...",
-          "title": "...",
-          "organization": "...",
-          "location": "...",
-          "dates": "...",
+          "title": { "id": "entry_..._title", "text": "..." },
+          "organization": { "id": "entry_..._org", "text": "..." },
+          "location": { "id": "entry_..._location", "text": "..." },
+          "dates": { "id": "entry_..._dates", "text": "..." },
           "bullets": [ { "id": "b_...", "text": "...", "tags": [...] } ]
         }
       ],
@@ -57,13 +59,18 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
 
 Generate new unique ids for the summary and any reworded bullets (prefix with a short
 random suffix to avoid collisions, e.g. "b_salo_1_r2"). Keep ids for entries/sections
-that map directly to profile entries so downstream tooling can trace them. Skill items
-and links are also objects with their own "id" field (not bare strings) — generate a
-short, readable, unique id for each (e.g. "item_cloud_gcp", "link_github"), reusing the
-profile's existing item/link ids where a skill item or link is carried over unchanged.
-Include a "groups" array only for sections of type "skills"; use an empty "entries" array
-for skills sections. Omit sections that have no relevant content for this job rather than
-including empty ones.
+that map directly to profile entries so downstream tooling can trace them. Every
+meta/entry field, skill item, and link is an object with its own "id" field (not a bare
+string) — generate a short, readable, unique id for each, reusing the profile's existing
+ids where a value is carried over unchanged. Naming convention: "meta_name"/"meta_email"/
+"meta_phone" for the top-level meta fields (always exactly these three ids — there is
+only one meta object per resume); "item_<group-slug>_<word>" for skill items and
+"link_<label-slug>" for links (as before); and for entry fields, suffix that entry's own
+id with "_title"/"_org"/"_location"/"_dates" (e.g. entry "entry_salolabs" →
+"entry_salolabs_title", "entry_salolabs_org", "entry_salolabs_location",
+"entry_salolabs_dates"). Include a "groups" array only for sections of type "skills"; use
+an empty "entries" array for skills sections. Omit sections that have no relevant content
+for this job rather than including empty ones.
 """
 
 
@@ -76,12 +83,21 @@ REVISE_SYSTEM_PROMPT = """You are a resume-editing assistant. You will be given:
 Each selected ID refers to something in the resume JSON:
 - A bullet ID (e.g. "b_salo_2") — revise that single bullet's text per the instruction.
 - The summary ID ("summary") — revise the summary text per the instruction.
+- A meta field ID ("meta_name", "meta_email", "meta_phone") or a link ID (e.g.
+  "link_github") — revise that single field's "text" per the instruction, same as a
+  bullet. These are plain single-line strings, not lists — no comma-joining involved.
+- An entry field ID (e.g. "entry_salolabs_title", "entry_salolabs_org",
+  "entry_salolabs_location", "entry_salolabs_dates") — revise that single field's "text"
+  per the instruction, same as a meta field.
 - An entry ID (e.g. "entry_salolabs") — this means "revise this whole job/project block."
   In this case, apply the instruction across ALL bullets currently under that entry, and
   return one update per bullet using each bullet's OWN id (not the entry's id) — the
   entry id itself is not a directly revisable field and must not appear in your output.
   If the entry has no bullets (e.g. an education or certification entry with an empty
   bullets list), there is nothing to revise — skip that id entirely, do not invent bullets.
+  (Note: this bullet-expansion behavior is unchanged — an entry ID never implicitly pulls
+  in that entry's title/organization/location/dates fields; those are only revised when
+  their own specific field ID is selected directly.)
 - A skill group ID (e.g. "skill_devops") — a group's current state is its "items" array;
   read each item's "text" field, join them with ", " (comma + space) in their existing
   order to form one string, then apply the instruction to that whole comma-separated
@@ -149,34 +165,53 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
 {
   "type": "cover_letter",
   "meta": {
-    "name": "...", "email": "...", "phone": "...",
-    "date": "", "company": "...", "role": "..."
+    "name": { "id": "cl_meta_name", "text": "..." },
+    "email": { "id": "cl_meta_email", "text": "..." },
+    "phone": { "id": "cl_meta_phone", "text": "..." },
+    "date": { "id": "cl_meta_date", "text": "" },
+    "company": { "id": "cl_meta_company", "text": "..." },
+    "role": { "id": "cl_meta_role", "text": "..." }
   },
+  "salutation": { "id": "cl_salutation", "text": "Dear Hiring Manager," },
+  "sign_off": { "id": "cl_sign_off", "text": "Sincerely," },
   "paragraphs": [
     { "id": "p1", "text": "..." },
     { "id": "p2", "text": "..." }
   ]
 }
 
-Leave "date" as an empty string — the frontend will fill in the actual date. Generate
-sequential paragraph ids (p1, p2, p3, ...). Do not include a paragraph for the
-salutation ("Dear Hiring Manager,") or sign-off ("Sincerely, ...") — only the body
-paragraphs. The frontend will handle salutation/sign-off separately.
+Every meta field is an object with its own "id" field (not a bare string) — always use
+exactly these six ids for meta ("cl_meta_name", "cl_meta_email", "cl_meta_phone",
+"cl_meta_date", "cl_meta_company", "cl_meta_role"), since there is only one meta object
+per cover letter. Leave "date"'s text as an empty string — the frontend will fill in the
+actual date. Generate sequential paragraph ids (p1, p2, p3, ...). Always include
+"salutation" and "sign_off" as shown, with ids "cl_salutation"/"cl_sign_off" — default
+their text to "Dear Hiring Manager," and "Sincerely," respectively unless a specific
+hiring manager's name is clearly given in the job description, in which case address them
+by name (e.g. "Dear Jane Smith,"). Do not fold the salutation or sign-off into the
+paragraphs array — they are separate fields, and paragraphs should contain only the body.
 """
 
 
 COVER_LETTER_REVISE_SYSTEM_PROMPT = """You are a cover-letter-editing assistant. You will be given:
 1. The full current cover letter JSON (for context and consistency of tone/voice)
-2. A list of selected paragraph IDs the user wants revised
+2. A list of selected IDs the user wants revised
 3. A free-text instruction describing how to revise them (e.g. "make this punchier",
    "shorten to two sentences", "emphasize leadership")
 
-Each selected ID refers to a paragraph in the cover letter JSON's "paragraphs" array
-(e.g. "p2") — revise that paragraph's text per the instruction.
+Each selected ID refers to something in the cover letter JSON:
+- A paragraph ID (e.g. "p2") from the "paragraphs" array — revise that paragraph's text
+  per the instruction.
+- A meta field ID ("cl_meta_name", "cl_meta_email", "cl_meta_phone", "cl_meta_date",
+  "cl_meta_company", "cl_meta_role") — revise that single field's "text" per the
+  instruction. These are plain single-line strings, e.g. rewording the role title.
+- The salutation ID ("cl_salutation") or sign-off ID ("cl_sign_off") — revise that
+  field's "text" per the instruction (e.g. "address it to Jane Smith by name" on
+  "cl_salutation" should produce something like "Dear Jane Smith,").
 
 Rules:
-- Only touch the text of the exact paragraph IDs selected. Never modify, rewrite, or
-  return anything for paragraph IDs that were not selected.
+- Only touch the text of the exact IDs selected. Never modify, rewrite, or return
+  anything for IDs that were not selected.
 - Do not fabricate new facts, numbers, skills, or experience not already present in the
   cover letter JSON's existing content. Only rephrase/restructure what's already there.
 - Preserve the existing tone/voice of the letter unless the instruction says otherwise.

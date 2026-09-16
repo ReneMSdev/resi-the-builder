@@ -19,8 +19,8 @@ def _type_display(item_type: str) -> str:
 def _default_name(item_type: str, data: dict, created_at: str) -> str:
     if item_type == "cover_letter":
         meta = data.get("meta", {}) or {}
-        company = (meta.get("company") or "").strip()
-        role = (meta.get("role") or "").strip()
+        company = ((meta.get("company") or {}).get("text") or "").strip()
+        role = ((meta.get("role") or {}).get("text") or "").strip()
         if company and role:
             return f"{company} — {role}"
         if company:

@@ -14,22 +14,28 @@ USABLE_WIDTH_INCHES = 8.5 - (PAGE_MARGIN_INCHES * 2)  # US Letter width minus ma
 SOFFICE_PATH = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
 
 
+def _t(id_text: dict | None) -> str:
+    """Reads the "text" field off an {id, text} unit (Meta/Entry/CoverLetterMeta fields,
+    skill items, cover-letter salutation/sign-off). Tolerates None/missing for safety."""
+    return (id_text or {}).get("text", "")
+
+
 def _add_entry_header(doc, entry: dict):
     p = doc.add_paragraph()
     p.paragraph_format.tab_stops.add_tab_stop(
         Inches(USABLE_WIDTH_INCHES), WD_TAB_ALIGNMENT.RIGHT
     )
-    title = entry.get("title", "")
-    organization = entry.get("organization", "")
+    title = _t(entry.get("title"))
+    organization = _t(entry.get("organization"))
     header_text = " — ".join(part for part in (title, organization) if part)
     run = p.add_run(header_text)
     run.bold = True
 
-    dates = entry.get("dates", "")
+    dates = _t(entry.get("dates"))
     if dates:
         p.add_run(f"\t{dates}")
 
-    location = entry.get("location", "")
+    location = _t(entry.get("location"))
     if location:
         loc_p = doc.add_paragraph()
         loc_run = loc_p.add_run(location)
@@ -64,11 +70,11 @@ def render_resume_docx(resume: dict, output_path: str) -> str:
 
     name_p = doc.add_paragraph()
     name_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    name_run = name_p.add_run(meta.get("name", ""))
+    name_run = name_p.add_run(_t(meta.get("name")))
     name_run.bold = True
     name_run.font.size = Pt(20)
 
-    contact_parts = [p for p in (meta.get("email"), meta.get("phone")) if p]
+    contact_parts = [p for p in (_t(meta.get("email")), _t(meta.get("phone"))) if p]
     for link in meta.get("links", []):
         label = link.get("label", "")
         url = link.get("url", "")
@@ -105,9 +111,9 @@ def render_resume_docx(resume: dict, output_path: str) -> str:
         elif sec_type in ("education", "certifications"):
             for entry in entries:
                 parts = [
-                    entry.get("title", ""),
-                    entry.get("organization", ""),
-                    entry.get("dates", ""),
+                    _t(entry.get("title")),
+                    _t(entry.get("organization")),
+                    _t(entry.get("dates")),
                 ]
                 doc.add_paragraph(" — ".join(part for part in parts if part))
 
@@ -139,14 +145,14 @@ def render_cover_letter_docx(cover_letter: dict, output_path: str) -> str:
 
     meta = cover_letter.get("meta", {})
 
-    date = (meta.get("date") or "").strip()
+    date = _t(meta.get("date")).strip()
     if date:
         date_p = doc.add_paragraph()
         date_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         date_p.add_run(date)
 
-    role = meta.get("role", "")
-    company = meta.get("company", "")
+    role = _t(meta.get("role"))
+    company = _t(meta.get("company"))
     subject = " at ".join(part for part in (role, company) if part)
     if subject:
         subject_p = doc.add_paragraph()
@@ -154,7 +160,7 @@ def render_cover_letter_docx(cover_letter: dict, output_path: str) -> str:
         subject_run = subject_p.add_run(f"Re: {subject}")
         subject_run.bold = True
 
-    salutation_p = doc.add_paragraph("Dear Hiring Manager,")
+    salutation_p = doc.add_paragraph(_t(cover_letter.get("salutation")) or "Dear Hiring Manager,")
     salutation_p.paragraph_format.space_before = Pt(8)
 
     for paragraph in cover_letter.get("paragraphs", []):
@@ -164,14 +170,14 @@ def render_cover_letter_docx(cover_letter: dict, output_path: str) -> str:
         p = doc.add_paragraph(text)
         p.paragraph_format.space_before = Pt(8)
 
-    sign_off_p = doc.add_paragraph("Sincerely,")
+    sign_off_p = doc.add_paragraph(_t(cover_letter.get("sign_off")) or "Sincerely,")
     sign_off_p.paragraph_format.space_before = Pt(8)
 
     name_p = doc.add_paragraph()
-    name_run = name_p.add_run(meta.get("name", ""))
+    name_run = name_p.add_run(_t(meta.get("name")))
     name_run.bold = True
 
-    contact_parts = [p for p in (meta.get("email"), meta.get("phone")) if p]
+    contact_parts = [p for p in (_t(meta.get("email")), _t(meta.get("phone"))) if p]
     if contact_parts:
         contact_p = doc.add_paragraph()
         contact_run = contact_p.add_run(" | ".join(contact_parts))

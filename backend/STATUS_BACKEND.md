@@ -1,6 +1,6 @@
 # Resume Builder — Status Report
 
-_Last updated: 2026-09-15_
+_Last updated: 2026-09-16_
 
 ## What this project is
 
@@ -697,7 +697,10 @@ with manual edits meant to survive/be protected from later broader chat-scoped
 revisions. No code for that exists yet. The `SkillItem`/`Link` id fields added in this
 pass are deliberate prep for it — giving every eventually-editable atom a stable
 identity now — rather than a scope-creep addition; nothing in this pass implements
-manual editing or edit-protection itself.
+manual editing or edit-protection itself. **Superseded 2026-09-16, see Backend Part 4
+below**: the rest of the id inventory (meta fields, entry fields, cover letter meta,
+salutation/sign-off) was completed in that pass — the only remaining gap is
+`Section.title`, explicitly deferred, not an oversight.
 
 **Frontend note**: `frontend-69` is waiting on the schema change (task 2) and the new
 skill-group/section revise support (task 3) landing before it can build the
@@ -739,6 +742,143 @@ standing soft spot at the type-system boundary, though: nothing stops a future f
 change (or a raw curl to `/resumes`) from writing malformed `data` again, since
 `SaveRequest`/`SavedItem` don't validate it — worth keeping in mind if `/resumes`'s save
 path is touched again, not something this fix closes off structurally.
+
+## Backend Part 4 — Full field-level id inventory: meta, entry fields, cover letter salutation/sign-off (2026-09-16)
+
+Groundwork pass ahead of a planned inline-manual-editing UI covering every rendered
+field, not just bullets/summary/skills (which Part 3 already covered). Every remaining
+editable unit gets a stable `{id, text}` id now, same pattern as `SkillItem`/`Link`, so
+the schema isn't boxed out later. Two decisions were made by the requesting session going
+in, not relitigated here: meta fields get synthetic ids (uniform id-based mechanism
+everywhere, no path-based addressing like `"meta.name"`), and cover letter
+salutation/sign-off become real schema fields now (previously hardcoded strings in the
+frontend template with zero backend representation). `Section.title` is explicitly out
+of scope/deferred, per instruction — not touched.
+
+**1. Schema (`app/models.py`)** — new generic `IdText {id, text}` model, used for:
+- `Meta.name` / `.email` / `.phone` (ids always exactly `meta_name`/`meta_email`/
+  `meta_phone` — there's only one `meta` per resume, no scoping needed).
+- `Entry.title` / `.organization` / `.location` / `.dates` (ids suffix that entry's own
+  id: `<entry_id>_title`, `_org`, `_location`, `_dates` — e.g. `entry_salolabs_title`).
+- `CoverLetterMeta.name` / `.email` / `.phone` / `.date` / `.company` / `.role` (ids
+  `cl_meta_name`/`cl_meta_email`/`cl_meta_phone`/`cl_meta_date`/`cl_meta_company`/
+  `cl_meta_role`).
+- New `CoverLetter.salutation: IdText` / `.sign_off: IdText` fields (didn't exist at all
+  before), with defaults `{id: "cl_salutation", text: "Dear Hiring Manager,"}` /
+  `{id: "cl_sign_off", text: "Sincerely,"}` matching prior hardcoded frontend behavior.
+  Verified pydantic v2 deep-copies `BaseModel`-instance field defaults per model
+  instance (not shared/mutated across instances) before relying on this pattern.
+- `SkillItem` redefined as `class SkillItem(IdText): pass` (was a separate duplicate
+  `{id, text}` definition) — pure dedup, no behavior change, not requested but free
+  given `IdText` already exists with the identical shape.
+- `Entry.location`/`.dates` are still allowed empty `text` (several profile entries have
+  blank location or dates, e.g. the personal-project entries) — only the field's
+  *presence* as an object is now required, not non-empty text.
+
+**2. `app/data/profile.json` migrated** — `meta.name/email/phone` and every entry's
+`title/organization/location/dates` across all 17 entries (6 experience, 4 projects, 1
+education, 6 certifications) converted to `{id, text}`, ids following the conventions
+above. Verified two ways: `GET /profile` returned 200 with correctly nested shapes, and
+(stronger check) loaded the file and constructed `Profile(**data)` directly in Python —
+validates cleanly end to end, not just "the route didn't 500."
+
+**3. `GENERATE_SYSTEM_PROMPT` and `COVER_LETTER_SYSTEM_PROMPT` (`app/services/llm.py`)**
+updated with the new nested `{id, text}` shapes and the id-naming convention spelled out
+explicitly (including reusing the profile's existing ids when a value carries over
+unchanged, same convention as the Part 3 skill-item/link ids). Verified with two real
+`/generate` calls:
+- **Resume** — a backend/cloud JD produced a resume whose `meta.name/email/phone` and
+  every entry's `title/organization/location/dates` came back as correctly-shaped
+  `{id, text}` objects with the exact conventioned ids (e.g.
+  `entry_salolabs_location` → `{"id": "entry_salolabs_location", "text": "Austin, TX"}`),
+  and the whole response validated against `GenerateResponse`'s `Resume` model (FastAPI
+  would 500 on a shape mismatch — it returned 200).
+- **Cover letter** — a JD that explicitly named a hiring manager ("address your
+  application to Jane Smith") produced a cover letter with all 6 `cl_meta_*` fields
+  correctly shaped, and — notably — `salutation: {"id": "cl_salutation", "text": "Dear
+  Jane Smith,"}`, confirming the model actually follows the new "address by name when
+  the JD gives one" instruction rather than always falling back to the generic default.
+  `sign_off` came back as the expected `{"id": "cl_sign_off", "text": "Sincerely,"}`
+  default. Full response validated against `CoverLetter`.
+
+**4. `app/services/render.py`** — new `_t(id_text)` helper (`(id_text or {}).get("text",
+"")`) used everywhere the renderer previously read these fields as bare strings: resume
+meta name/email/phone, every entry's title/organization/location/dates (both the
+experience/projects header path and the education/certifications single-line path), and
+cover letter meta date/role/company/name/email/phone. The cover letter's salutation/
+sign-off paragraphs now read `_t(cover_letter.get("salutation"))` /
+`_t(cover_letter.get("sign_off"))` instead of the old hardcoded `"Dear Hiring Manager,"`
+/ `"Sincerely,"` literals (kept as an `or` fallback in case either is ever blank).
+Verified by rendering both the resume and cover letter from step 3 to `.docx` and reading
+the actual paragraph text back out with `python-docx`: name/contact/entry lines all read
+as plain text (not dict reprs), and the cover letter's rendered salutation line was
+literally `"Dear Jane Smith,"` — sourced from the schema field, not a hardcoded literal.
+- **Two real bugs found and fixed while verifying, both because grep alone had missed
+  them the first time** (a plain `.get("name")` grep doesn't match `.get("name", "X")` —
+  worth remembering next time a similar migration touches this file structure):
+  - `app/routes/render.py`: `data.get("meta", {}).get("name", doc_label).replace(" ",
+    "_")` (used to build the download filename) crashed with `AttributeError: 'dict'
+    object has no attribute 'replace'` once `meta.name` became an object — both the
+    resume and cover-letter render calls 500'd on first attempt. Fixed to unwrap
+    `.get("text")` from the name object before calling `.replace`.
+  - `app/routes/resumes.py`'s `_default_name()`: `(meta.get("company") or "").strip()` /
+    same for `role` — would have crashed the same way the moment a caller saved a cover
+    letter without an explicit name. Fixed to read `.get("text")` off the company/role
+    objects first. Verified by POSTing a real generated cover letter to `/resumes` with
+    no `name` field: got back a correctly-derived default name ("Acme Corp — Backend
+    Engineer"), no crash — then deleted the probe row via `DELETE /resumes/{id}`.
+  - Re-grepped the whole backend afterward with a looser pattern (not requiring an exact
+    closing paren after the key) to check for any other misses — none found; the only
+    remaining bare-string read is `section.get("title", "")` in `render.py`, which is
+    correct as-is since `Section.title` is the one field intentionally left untouched
+    this pass.
+
+**5. `REVISE_SYSTEM_PROMPT` and `COVER_LETTER_REVISE_SYSTEM_PROMPT`** extended so the new
+ids are directly revisable as plain single-string fields (no comma-joining, unlike skill
+groups) — meta field ids, link ids, and entry field ids for resumes; `cl_meta_*`,
+`cl_salutation`, `cl_sign_off` for cover letters. Additive only; existing bullet/summary/
+entry/section/skill-group/paragraph rules untouched.
+
+**6. Verified with curl (real output, not assumed)**:
+- **Entry field revision** — selected `entry_salolabs_location`, instruction "Just say
+  Austin, Texas (spell out the state)": exactly one update, `{"id":
+  "entry_salolabs_location", "text": "Austin, Texas"}`.
+- **Cover letter salutation revision** — selected `cl_salutation` on the Jane-Smith
+  letter from step 3, instruction "I don't actually know the hiring manager's name,
+  revert to a generic greeting": exactly one update, `{"id": "cl_salutation", "text":
+  "Dear Hiring Manager,"}`.
+- **Combined multi-select** — selected an entry's `dates` id, a bullet id, a skill group
+  id, and `meta_email` together in one request, instruction "Tighten wording": exactly 4
+  updates, one per selected id, each independently and correctly revised (the email was
+  correctly left essentially unchanged — nothing to tighten in an email address, no
+  hallucinated edit).
+- **Full regression pass, all still correct**: bullet-level (1 update), entry-level (5
+  updates, matching that entry's actual bullet count), section-level `sec_experience` (7
+  updates, matching the section's total bullet count), summary-id (1 update, correctly
+  keyed to that resume's actual `summary_r1` id), skill-group-id (1 update, Kubernetes
+  appended), and cover-letter paragraph-id (1 update for `p1`, others untouched).
+
+**7. Saved-items follow-up** — while verifying, checked whether the two pre-existing
+files under `app/data/saved_items/` (the same ones fixed for the item/link shape in
+Part 3's follow-up) also had old-shape meta/entry fields. They did — same bug class that
+already caused a real user-facing 422 once. Migrated both proactively, same convention:
+`18bd446c-...json` (resume) got `meta.name/email/phone` and its one entry's
+`title/organization/location/dates` converted (note: this file's entry id is
+`ent_salolabs`, not `entry_salolabs` — its own prefix, correctly reused, e.g.
+`ent_salolabs_location`); `fe524a44-...json` (cover letter) got its 6 meta fields
+converted plus new `salutation`/`sign_off` fields added (it had neither before — the
+`CoverLetter` model's field didn't exist yet when that file was saved). Verified both via
+`GET /resumes/{id}` (200, correct shapes), then round-tripped each through `/render`
+(200, real docx) and `/revise` (the resume's `ent_salolabs_location` id: one correct
+update, `{"id": "ent_salolabs_location", "text": "Remote"}`) — confirms the id-naming
+logic isn't hardcoded to `profile.json`'s specific prefixes.
+
+**Frontend note**: `frontend-69` needs this id-naming convention and final schema shape
+to update its types and rendering — not new UI work for them yet either, just making
+sure nothing breaks when `meta`/entry fields become objects instead of strings, the same
+way Part 3's skill-item shape change required a types.ts update.
+
+## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled
    preview + selection, chat-scoped revision, cover letter mode, download). See above and

@@ -1,8 +1,17 @@
 {
   "meta": {
-    "name": "Rene Maxey-Salomone",
-    "email": "rene.salomone@gmail.com",
-    "phone": "+1 (512) 884-3571",
+    "name": {
+      "id": "meta_name",
+      "text": "Rene Maxey-Salomone"
+    },
+    "email": {
+      "id": "meta_email",
+      "text": "rene.salomone@gmail.com"
+    },
+    "phone": {
+      "id": "meta_phone",
+      "text": "+1 (512) 884-3571"
+    },
     "links": [
       {
         "label": "GitHub",
@@ -35,10 +44,22 @@
       "entries": [
         {
           "id": "entry_salolabs",
-          "title": "Software & DevOps Engineer",
-          "organization": "Salo Labs LLC",
-          "location": "Austin, TX",
-          "dates": "January 2026 - Present",
+          "title": {
+            "id": "entry_salolabs_title",
+            "text": "Software & DevOps Engineer"
+          },
+          "organization": {
+            "id": "entry_salolabs_org",
+            "text": "Salo Labs LLC"
+          },
+          "location": {
+            "id": "entry_salolabs_location",
+            "text": "Austin, TX"
+          },
+          "dates": {
+            "id": "entry_salolabs_dates",
+            "text": "January 2026 - Present"
+          },
           "bullets": [
             {
               "id": "b_salo_1",
@@ -109,10 +130,22 @@
         },
         {
           "id": "entry_sandcastle",
-          "title": "Fiber Optic Technician",
-          "organization": "SandCastle (contracting for Google Fiber)",
-          "location": "Austin, TX",
-          "dates": "March 2026 - Present",
+          "title": {
+            "id": "entry_sandcastle_title",
+            "text": "Fiber Optic Technician"
+          },
+          "organization": {
+            "id": "entry_sandcastle_org",
+            "text": "SandCastle (contracting for Google Fiber)"
+          },
+          "location": {
+            "id": "entry_sandcastle_location",
+            "text": "Austin, TX"
+          },
+          "dates": {
+            "id": "entry_sandcastle_dates",
+            "text": "March 2026 - Present"
+          },
           "bullets": [
             {
               "id": "b_sc_1",
@@ -143,10 +176,22 @@
         },
         {
           "id": "entry_freelance",
-          "title": "Freelance Full-Stack Engineer",
-          "organization": "Self Employed",
-          "location": "Remote",
-          "dates": "October 2024 - January 2026",
+          "title": {
+            "id": "entry_freelance_title",
+            "text": "Freelance Full-Stack Engineer"
+          },
+          "organization": {
+            "id": "entry_freelance_org",
+            "text": "Self Employed"
+          },
+          "location": {
+            "id": "entry_freelance_location",
+            "text": "Remote"
+          },
+          "dates": {
+            "id": "entry_freelance_dates",
+            "text": "October 2024 - January 2026"
+          },
           "bullets": [
             {
               "id": "b_fl_1",
@@ -211,10 +256,22 @@
         },
         {
           "id": "entry_polaris",
-          "title": "Fiber Optic Technician",
-          "organization": "Polaris Communications (contracting for Google Fiber)",
-          "location": "Austin, TX",
-          "dates": "January 2022 - January 2023",
+          "title": {
+            "id": "entry_polaris_title",
+            "text": "Fiber Optic Technician"
+          },
+          "organization": {
+            "id": "entry_polaris_org",
+            "text": "Polaris Communications (contracting for Google Fiber)"
+          },
+          "location": {
+            "id": "entry_polaris_location",
+            "text": "Austin, TX"
+          },
+          "dates": {
+            "id": "entry_polaris_dates",
+            "text": "January 2022 - January 2023"
+          },
           "bullets": [
             {
               "id": "b_polaris_1",
@@ -239,10 +296,22 @@
         },
         {
           "id": "entry_unmuted",
-          "title": "Fiber Optic Technician",
-          "organization": "Unmuted Communications",
-          "location": "Austin, TX",
-          "dates": "January 2021 - January 2022",
+          "title": {
+            "id": "entry_unmuted_title",
+            "text": "Fiber Optic Technician"
+          },
+          "organization": {
+            "id": "entry_unmuted_org",
+            "text": "Unmuted Communications"
+          },
+          "location": {
+            "id": "entry_unmuted_location",
+            "text": "Austin, TX"
+          },
+          "dates": {
+            "id": "entry_unmuted_dates",
+            "text": "January 2021 - January 2022"
+          },
           "bullets": [
             {
               "id": "b_unmuted_1",
@@ -282,10 +351,22 @@
         },
         {
           "id": "entry_dcomm",
-          "title": "Cable Technician",
-          "organization": "DCOMM (contracting for Spectrum)",
-          "location": "Austin, TX",
-          "dates": "January 2018 - January 2021",
+          "title": {
+            "id": "entry_dcomm_title",
+            "text": "Cable Technician"
+          },
+          "organization": {
+            "id": "entry_dcomm_org",
+            "text": "DCOMM (contracting for Spectrum)"
+          },
+          "location": {
+            "id": "entry_dcomm_location",
+            "text": "Austin, TX"
+          },
+          "dates": {
+            "id": "entry_dcomm_dates",
+            "text": "January 2018 - January 2021"
+          },
           "bullets": [
             {
               "id": "b_dcomm_1",
@@ -322,10 +403,22 @@
       "entries": [
         {
           "id": "entry_weather",
-          "title": "Weather Alerts API Backend (Node.js, Express, TypeScript)",
-          "organization": "Personal Project",
-          "location": "github.com/ReneMSdev/weather-alerts-backend",
-          "dates": "",
+          "title": {
+            "id": "entry_weather_title",
+            "text": "Weather Alerts API Backend (Node.js, Express, TypeScript)"
+          },
+          "organization": {
+            "id": "entry_weather_org",
+            "text": "Personal Project"
+          },
+          "location": {
+            "id": "entry_weather_location",
+            "text": "github.com/ReneMSdev/weather-alerts-backend"
+          },
+          "dates": {
+            "id": "entry_weather_dates",
+            "text": ""
+          },
           "bullets": [
             {
               "id": "b_wa_1",
@@ -356,10 +449,22 @@
         },
         {
           "id": "entry_weather_mobile",
-          "title": "React Native Weather App (Expo, TypeScript)",
-          "organization": "Personal Project",
-          "location": "github.com/ReneMSdev/WeatherAlertsRN",
-          "dates": "",
+          "title": {
+            "id": "entry_weather_mobile_title",
+            "text": "React Native Weather App (Expo, TypeScript)"
+          },
+          "organization": {
+            "id": "entry_weather_mobile_org",
+            "text": "Personal Project"
+          },
+          "location": {
+            "id": "entry_weather_mobile_location",
+            "text": "github.com/ReneMSdev/WeatherAlertsRN"
+          },
+          "dates": {
+            "id": "entry_weather_mobile_dates",
+            "text": ""
+          },
           "bullets": [
             {
               "id": "b_wam_1",
@@ -398,10 +503,22 @@
         },
         {
           "id": "entry_routeplanner",
-          "title": "Route Planning Web App (Next.js, JavaScript)",
-          "organization": "Personal Project",
-          "location": "route-planner-nextjs.vercel.app",
-          "dates": "",
+          "title": {
+            "id": "entry_routeplanner_title",
+            "text": "Route Planning Web App (Next.js, JavaScript)"
+          },
+          "organization": {
+            "id": "entry_routeplanner_org",
+            "text": "Personal Project"
+          },
+          "location": {
+            "id": "entry_routeplanner_location",
+            "text": "route-planner-nextjs.vercel.app"
+          },
+          "dates": {
+            "id": "entry_routeplanner_dates",
+            "text": ""
+          },
           "bullets": [
             {
               "id": "b_rp_1",
@@ -433,10 +550,22 @@
         },
         {
           "id": "entry_atxwrenching",
-          "title": "ATX Reliable Wrenching \u2014 Marketing & Booking Website (Next.js)",
-          "organization": "Freelance Client Project",
-          "location": "atxreliablewrenching.com",
-          "dates": "",
+          "title": {
+            "id": "entry_atxwrenching_title",
+            "text": "ATX Reliable Wrenching \u2014 Marketing & Booking Website (Next.js)"
+          },
+          "organization": {
+            "id": "entry_atxwrenching_org",
+            "text": "Freelance Client Project"
+          },
+          "location": {
+            "id": "entry_atxwrenching_location",
+            "text": "atxreliablewrenching.com"
+          },
+          "dates": {
+            "id": "entry_atxwrenching_dates",
+            "text": ""
+          },
           "bullets": [
             {
               "id": "b_atx_1",
@@ -485,10 +614,22 @@
       "entries": [
         {
           "id": "entry_wgu",
-          "title": "Bachelor of Science in Computer Science",
-          "organization": "Western Governors University",
-          "location": "Salt Lake City, UT",
-          "dates": "2024",
+          "title": {
+            "id": "entry_wgu_title",
+            "text": "Bachelor of Science in Computer Science"
+          },
+          "organization": {
+            "id": "entry_wgu_org",
+            "text": "Western Governors University"
+          },
+          "location": {
+            "id": "entry_wgu_location",
+            "text": "Salt Lake City, UT"
+          },
+          "dates": {
+            "id": "entry_wgu_dates",
+            "text": "2024"
+          },
           "bullets": []
         }
       ]
@@ -500,50 +641,122 @@
       "entries": [
         {
           "id": "cert_aws_ccp",
-          "title": "AWS Certified Cloud Practitioner",
-          "organization": "Amazon Web Services",
-          "location": "",
-          "dates": "2025",
+          "title": {
+            "id": "cert_aws_ccp_title",
+            "text": "AWS Certified Cloud Practitioner"
+          },
+          "organization": {
+            "id": "cert_aws_ccp_org",
+            "text": "Amazon Web Services"
+          },
+          "location": {
+            "id": "cert_aws_ccp_location",
+            "text": ""
+          },
+          "dates": {
+            "id": "cert_aws_ccp_dates",
+            "text": "2025"
+          },
           "bullets": []
         },
         {
           "id": "cert_linux",
-          "title": "Linux Essentials",
-          "organization": "Linux Professional Institute",
-          "location": "",
-          "dates": "2024",
+          "title": {
+            "id": "cert_linux_title",
+            "text": "Linux Essentials"
+          },
+          "organization": {
+            "id": "cert_linux_org",
+            "text": "Linux Professional Institute"
+          },
+          "location": {
+            "id": "cert_linux_location",
+            "text": ""
+          },
+          "dates": {
+            "id": "cert_linux_dates",
+            "text": "2024"
+          },
           "bullets": []
         },
         {
           "id": "cert_itil",
-          "title": "ITIL 4 - Foundation Certificate in IT Service Management",
-          "organization": "PeopleCert (AXELOS)",
-          "location": "",
-          "dates": "2024",
+          "title": {
+            "id": "cert_itil_title",
+            "text": "ITIL 4 - Foundation Certificate in IT Service Management"
+          },
+          "organization": {
+            "id": "cert_itil_org",
+            "text": "PeopleCert (AXELOS)"
+          },
+          "location": {
+            "id": "cert_itil_location",
+            "text": ""
+          },
+          "dates": {
+            "id": "cert_itil_dates",
+            "text": "2024"
+          },
           "bullets": []
         },
         {
           "id": "cert_psm",
-          "title": "Professional Scrum Master I (PSM I)",
-          "organization": "Scrum.org",
-          "location": "",
-          "dates": "2023",
+          "title": {
+            "id": "cert_psm_title",
+            "text": "Professional Scrum Master I (PSM I)"
+          },
+          "organization": {
+            "id": "cert_psm_org",
+            "text": "Scrum.org"
+          },
+          "location": {
+            "id": "cert_psm_location",
+            "text": ""
+          },
+          "dates": {
+            "id": "cert_psm_dates",
+            "text": "2023"
+          },
           "bullets": []
         },
         {
           "id": "cert_electrician",
-          "title": "Apprentice Electrician License",
-          "organization": "Texas Department of Licensing & Regulation",
-          "location": "",
-          "dates": "2026",
+          "title": {
+            "id": "cert_electrician_title",
+            "text": "Apprentice Electrician License"
+          },
+          "organization": {
+            "id": "cert_electrician_org",
+            "text": "Texas Department of Licensing & Regulation"
+          },
+          "location": {
+            "id": "cert_electrician_location",
+            "text": ""
+          },
+          "dates": {
+            "id": "cert_electrician_dates",
+            "text": "2026"
+          },
           "bullets": []
         },
         {
           "id": "cert_aws_sa",
-          "title": "AWS Certified Solutions Architect",
-          "organization": "Amazon Web Services",
-          "location": "",
-          "dates": "In Progress",
+          "title": {
+            "id": "cert_aws_sa_title",
+            "text": "AWS Certified Solutions Architect"
+          },
+          "organization": {
+            "id": "cert_aws_sa_org",
+            "text": "Amazon Web Services"
+          },
+          "location": {
+            "id": "cert_aws_sa_location",
+            "text": ""
+          },
+          "dates": {
+            "id": "cert_aws_sa_dates",
+            "text": "In Progress"
+          },
           "bullets": []
         }
       ]

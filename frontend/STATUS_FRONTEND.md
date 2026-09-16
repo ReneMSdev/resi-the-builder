@@ -397,3 +397,71 @@ Cover letter download was already fully wired up before this pass (`DownloadButt
 already accepted `{resume} | {coverLetter}`, and both `page.tsx` branches already
 rendered it) — not new work, just confirmed still working alongside the new Save
 button. `tsc --noEmit` and `eslint` both clean.
+
+## Feature: Summary selection & revision (2026-09-15)
+
+Phase 3 named only bullet/entry/section as selectable, leaving the resume summary out
+even though `/revise` already accepted its id. Closed that gap:
+
+- **`app/components/ResumePreview.tsx`**: the summary paragraph is now wrapped in
+  `Selectable` using `resume.summary.id` (whatever id `/generate` actually minted, e.g.
+  `summary_r1` — not assumed to be the literal string `"summary"`), same
+  hover/click/persistent-highlight pattern as everything else.
+- **`app/lib/resume.ts`**: `describeSelection` now reports a summary selection
+  distinctly (`"1 summary"`) instead of silently doing nothing for it.
+- `applyRevisionUpdates` already patched summary text when the summary's id showed up
+  in `updates` (pre-existing code) — confirmed still correct now that summary is
+  actually selectable, no fix needed.
+
+Verified in a real browser: generated a fresh resume, selected only the summary
+(nothing else), submitted "Make this more concise, one sentence," confirmed only the
+summary text changed (Experience/Projects/etc. untouched), and selection stayed
+highlighted afterward with "Editing: 1 summary" shown throughout.
+
+**Note while testing**: the backend's Aug/Sep skill-item and link `id` schema was
+already live on the backend (`SkillGroup.items` as `{id, text}` objects, `Link.id`
+required) before the frontend caught up. Until the Part B work below landed, this
+caused two visible symptoms: freshly generated resumes rendered `[object Object]` for
+every skill item (`group.items.join(", ")` on an array of objects), and `/revise`
+against the old pre-migration saved sample data 422'd on missing `link.id`s. Neither
+was a summary-selection bug — both are fixed by the Part B change below.
+
+## Feature: Skill group selection & revision (2026-09-15)
+
+Backend migrated `SkillGroup.items` to `{id, text}[]` and gave `Link` an `id` field,
+added group-level + whole-section revision support to `/revise`, and migrated the
+stored profile data — see backend's own status notes. Frontend side:
+
+- **`app/types.ts`**: `SkillGroup.items` is now `{ id: string; text: string }[]`
+  (was `string[]`); `Meta.links` entries gained `id: string`.
+- **`app/components/ResumePreview.tsx`**: each skill group is now individually
+  wrapped in `Selectable` (`group.id`), matching the pattern already used for entries
+  within experience/projects — previously only the whole section was selectable, and
+  even that visually did nothing useful for skills since none of its children were.
+  Items render as `.text` values joined with `", "` into one text node (no per-item
+  elements, so no per-item key is needed — `item.id` exists for `/revise` and the
+  future inline-editing phase, not for React reconciliation here).
+- **`app/lib/resume.ts`**:
+  - `applyRevisionUpdates`: an update whose `id` matches a skill group (rather than a
+    bullet or the summary) is treated specially — its `text` is a comma-joined string
+    that gets split back into a fresh `items` array (each piece trimmed), with a new
+    `crypto.randomUUID()` id per item. Per-item ids are not preserved across a group
+    rewrite by design (mirrors bullet ids regenerating server-side on `/generate`) —
+    backend's response is `{id: group_id, text: "a, b, c"}` with no per-item ids to
+    preserve anyway.
+  - `describeSelection`: now also counts skill-group selections separately
+    (`"N skill groups"`) alongside summary/bullet/entry/section counts.
+
+Verified in a real browser: generated a fresh resume, selected a single skill group
+and asked to add an item — the group's items re-rendered correctly with a new item
+appended, no stale `[object Object]` output. Selected the whole Skills section and
+revised — every group updated in one round trip. Re-ran the Part A summary check and a
+plain bullet/entry revision afterward as a regression check — both still work
+unchanged. `tsc --noEmit` and `eslint` both clean.
+
+**Future direction**: inline manual editing (click any rendered field — bullets,
+summary, skill items, links, cover-letter salutation, etc. — and type directly,
+with manual edits surviving later chat-scoped revisions) is a planned future phase,
+not built in this pass. The stable `id`s added here for skill items and links (and
+already present on bullets/entries/summary/paragraphs) are intentional prep for that
+phase, not currently used for anything beyond `/revise` targeting and React keys.

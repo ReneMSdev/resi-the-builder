@@ -9,7 +9,9 @@ export type Entry = {
   bullets?: Bullet[];
 };
 
-export type SkillGroup = { id: string; label: string; items: string[] };
+export type SkillItem = { id: string; text: string };
+
+export type SkillGroup = { id: string; label: string; items: SkillItem[] };
 
 export type Section = {
   id: string;
@@ -23,7 +25,7 @@ export type Meta = {
   name: string;
   email: string;
   phone: string;
-  links?: { label: string; url: string }[];
+  links?: { id: string; label: string; url: string }[];
 };
 
 export type Resume = {

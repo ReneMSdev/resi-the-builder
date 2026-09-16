@@ -27,7 +27,14 @@ export function ResumePreview({
       )}
 
       {resume.summary.text && (
-        <p className="mt-2 text-sm">{resume.summary.text}</p>
+        <Selectable
+          id={resume.summary.id}
+          selectedIds={selectedIds}
+          onToggle={onToggle}
+          className="mt-2 p-1 text-sm"
+        >
+          {resume.summary.text}
+        </Selectable>
       )}
 
       {resume.sections
@@ -50,10 +57,16 @@ export function ResumePreview({
 
             {section.type === "skills" &&
               section.groups?.map((group) => (
-                <p key={group.id} className="text-sm">
+                <Selectable
+                  key={group.id}
+                  id={group.id}
+                  selectedIds={selectedIds}
+                  onToggle={onToggle}
+                  className="p-1 text-sm"
+                >
                   <span className="font-bold">{group.label}: </span>
-                  {group.items.join(", ")}
-                </p>
+                  {group.items.map((item) => item.text).join(", ")}
+                </Selectable>
               ))}
 
             {(section.type === "education" ||

@@ -20,6 +20,17 @@ the job description's requirements. Rewrite bullet text to naturally incorporate
 from the job description where truthful and accurate — do not fabricate skills, numbers,
 or experience not present in the profile.
 
+Writing style for the summary and bullet text: write like a person, not like an AI. Never
+use em dashes or en dashes as punctuation (use a comma, period, or parentheses instead) —
+this is about prose punctuation, not the "dates" field, which already uses a plain
+hyphen-minus (e.g. "Jan 2026 - Present") and is unaffected. Avoid overused AI-tell words
+and phrasing ("leverage," "seamlessly," "robust," "delve into," "cutting-edge," "dynamic,"
+etc.), rhetorical triplet lists ("fast, reliable, and scalable"), starting every bullet
+with the same gerund pattern, and overly symmetric parallel sentence construction repeated
+bullet after bullet. Vary sentence rhythm and structure the way a person naturally would.
+This applies only to prose (the summary and bullet text) — not structural fields like
+titles, organizations, dates, or links.
+
 Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
 
 {
@@ -129,6 +140,15 @@ Rules:
   one exception is a skill group/section instruction that explicitly names a new skill to
   add (e.g. "add Kubernetes to this list"), since the user is directly supplying that fact.
 - Preserve the existing tone/voice of the resume unless the instruction says otherwise.
+- Writing style: never use em dashes or en dashes as punctuation in revised text (use a
+  comma, period, or parentheses instead) — this doesn't affect the "dates" field's
+  existing plain hyphen-minus convention (e.g. "Jan 2026 - Present"), which was never an
+  em dash to begin with. For prose fields specifically (bullets and the summary), also
+  avoid overused AI-tell words and phrasing ("leverage," "seamlessly," "robust," "delve
+  into," etc.), rhetorical triplet lists, and overly symmetric sentence construction
+  repeated bullet after bullet — write like a person, not like an AI. Structural fields
+  (names, dates, organizations, links, entry titles) don't need this prose treatment,
+  just the em/en dash avoidance.
 
 Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
 
@@ -159,6 +179,15 @@ the role and genuine interest, one or two body paragraphs connecting specific pr
 experience to the job's stated requirements, and a closing paragraph. Keep it concise
 professional business-letter tone, not generic filler — reference specific, real
 accomplishments from the profile data rather than vague claims.
+
+Writing style for the paragraphs: write like a person, not like an AI. Never use em
+dashes or en dashes as punctuation (use a comma, period, or parentheses instead). Avoid
+overused AI-tell words and phrasing ("leverage," "seamlessly," "robust," "delve into,"
+"cutting-edge," "dynamic," etc.), rhetorical triplet lists ("fast, reliable, and
+scalable"), and overly symmetric parallel sentence construction repeated paragraph after
+paragraph. Vary sentence rhythm and structure the way a person naturally would. This
+applies only to the paragraph prose, not structural fields like name, company, role, or
+date.
 
 Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
 
@@ -215,6 +244,12 @@ Rules:
 - Do not fabricate new facts, numbers, skills, or experience not already present in the
   cover letter JSON's existing content. Only rephrase/restructure what's already there.
 - Preserve the existing tone/voice of the letter unless the instruction says otherwise.
+- Writing style: never use em dashes or en dashes as punctuation (use a comma, period, or
+  parentheses instead). For paragraph text specifically, also avoid overused AI-tell words
+  and phrasing ("leverage," "seamlessly," "robust," "delve into," etc.), rhetorical triplet
+  lists, and overly symmetric sentence construction repeated paragraph after paragraph —
+  write like a person, not like an AI. Structural fields (name, company, role, date) don't
+  need this prose treatment, just the em/en dash avoidance.
 
 Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
 

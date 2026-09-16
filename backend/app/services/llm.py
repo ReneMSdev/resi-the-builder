@@ -24,7 +24,10 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
 
 {
   "type": "resume",
-  "meta": { "name": "...", "email": "...", "phone": "...", "links": [...] },
+  "meta": {
+    "name": "...", "email": "...", "phone": "...",
+    "links": [ { "id": "link_...", "label": "...", "url": "..." } ]
+  },
   "summary": { "id": "summary", "text": "..." },
   "sections": [
     {
@@ -41,16 +44,25 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
           "bullets": [ { "id": "b_...", "text": "...", "tags": [...] } ]
         }
       ],
-      "groups": [ { "id": "skill_...", "label": "...", "items": [...] } ]
+      "groups": [
+        {
+          "id": "skill_...",
+          "label": "...",
+          "items": [ { "id": "item_...", "text": "..." } ]
+        }
+      ]
     }
   ]
 }
 
 Generate new unique ids for the summary and any reworded bullets (prefix with a short
 random suffix to avoid collisions, e.g. "b_salo_1_r2"). Keep ids for entries/sections
-that map directly to profile entries so downstream tooling can trace them. Include a
-"groups" array only for sections of type "skills"; use an empty "entries" array for
-skills sections. Omit sections that have no relevant content for this job rather than
+that map directly to profile entries so downstream tooling can trace them. Skill items
+and links are also objects with their own "id" field (not bare strings) — generate a
+short, readable, unique id for each (e.g. "item_cloud_gcp", "link_github"), reusing the
+profile's existing item/link ids where a skill item or link is carried over unchanged.
+Include a "groups" array only for sections of type "skills"; use an empty "entries" array
+for skills sections. Omit sections that have no relevant content for this job rather than
 including empty ones.
 """
 
@@ -70,33 +82,50 @@ Each selected ID refers to something in the resume JSON:
   entry id itself is not a directly revisable field and must not appear in your output.
   If the entry has no bullets (e.g. an education or certification entry with an empty
   bullets list), there is nothing to revise — skip that id entirely, do not invent bullets.
+- A skill group ID (e.g. "skill_devops") — a group's current state is its "items" array;
+  read each item's "text" field, join them with ", " (comma + space) in their existing
+  order to form one string, then apply the instruction to that whole comma-separated
+  string as if it were a single line of text (e.g. adding a skill means appending it to
+  the list, removing one means dropping it from the list, rewording means rewording the
+  list as a whole). Return ONE update for the group, keyed by the group's OWN id, with
+  "text" set to the revised comma-separated string — do NOT return per-item ids or an
+  "items" array; the response shape is still the flat {id, text} pair used everywhere else.
 - A section ID (e.g. "sec_experience") — this means "revise every bullet in every entry
   under this section." Apply the instruction across ALL bullets in ALL entries belonging
   to that section, and return one update per bullet using each bullet's OWN id (not the
   section's id, and not any entry id either) — the section id itself must not appear in
-  your output. If the section has no bullet-bearing entries (e.g. a "skills" section,
-  which has "groups" not "entries", or an "education"/"certifications" section whose
-  entries have no bullets), there is nothing to revise — skip that id entirely, do not
-  invent bullets or touch groups.
+  your output. If the section has no bullet-bearing entries (e.g. an "education"/
+  "certifications" section whose entries have no bullets), there is nothing to revise —
+  skip that id entirely, do not invent bullets.
+- A "skills"-type section ID (e.g. "sec_skills", identified by that section's "type"
+  field being "skills") — this means "revise every skill group in this section." Apply
+  the instruction across ALL groups belonging to that section, and return one update per
+  group using each group's OWN id, following the same comma-separated-string convention
+  described above for a single skill group ID. The section id itself must not appear in
+  your output.
 
 Rules:
 - Only touch the text of the exact IDs implied above. Never modify, rewrite, or return
-  anything for IDs that were not selected (directly or via an entry expansion).
+  anything for IDs that were not selected (directly or via an entry/group/section
+  expansion).
 - Do not fabricate new facts, numbers, skills, or experience not already present in the
-  resume JSON's existing content. Only rephrase/restructure what's already there.
+  resume JSON's existing content. Only rephrase/restructure what's already there — the
+  one exception is a skill group/section instruction that explicitly names a new skill to
+  add (e.g. "add Kubernetes to this list"), since the user is directly supplying that fact.
 - Preserve the existing tone/voice of the resume unless the instruction says otherwise.
 
 Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
 
 {
   "updates": [
-    { "id": "b_salo_2", "text": "revised text here" }
+    { "id": "b_salo_2", "text": "revised text here" },
+    { "id": "skill_devops", "text": "Docker, GitHub Actions CI/CD, Terraform, Linux, Kubernetes" }
   ]
 }
 
-If none of the selected IDs have anything to revise (e.g. every selected id was a
-skills/education/certifications section or entry with no bullets), return
-{"updates": []} — always include the "updates" key, even when it's an empty list.
+If none of the selected IDs have anything to revise (e.g. every selected id was an
+education/certifications section or entry with no bullets), return {"updates": []} —
+always include the "updates" key, even when it's an empty list.
 """
 
 

@@ -3,6 +3,7 @@ from typing import Optional
 
 
 class Link(BaseModel):
+    id: str
     label: str
     url: str
 
@@ -29,10 +30,15 @@ class Entry(BaseModel):
     bullets: list[Bullet] = []
 
 
+class SkillItem(BaseModel):
+    id: str
+    text: str
+
+
 class SkillGroup(BaseModel):
     id: str
     label: str
-    items: list[str]
+    items: list[SkillItem]
 
 
 class Section(BaseModel):

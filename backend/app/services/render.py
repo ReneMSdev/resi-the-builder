@@ -100,7 +100,7 @@ def render_resume_docx(resume: dict, output_path: str) -> str:
                 p = doc.add_paragraph()
                 label_run = p.add_run(f"{group.get('label', '')}: ")
                 label_run.bold = True
-                p.add_run(", ".join(group.get("items", [])))
+                p.add_run(", ".join(item.get("text", "") for item in group.get("items", [])))
 
         elif sec_type in ("education", "certifications"):
             for entry in entries:

@@ -1,6 +1,6 @@
 # Resume Builder — Status Report
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-09-15_
 
 ## What this project is
 
@@ -579,7 +579,166 @@ exact.
   `profile.json` remains the only tracked file under `app/data/`, since saved items are
   user-generated output rather than master data.
 
-## Not yet built (explicitly deferred so far)
+## Backend Part 3 — Summary revision verification, skill/link ids, skills-section revision (2026-09-15)
+
+Picked up from a manager-session handoff: `/revise` never had summary-id revision
+actually verified end-to-end (the prompt was written with it in mind, but no one had
+curl'd it), and `sec_skills` selection was a documented no-op (`{"updates": []}`)
+because skill groups hold `items: list[str]`, not bullets, and nothing in
+`REVISE_SYSTEM_PROMPT` knew how to expand that. Also folded in prep for a longer-term
+planned feature (inline manual editing of every rendered field, protected from later
+broad chat revisions) by giving skill items and links stable per-item ids now, while
+this code was already being touched — no manual-editing code itself, just the schema
+groundwork so it isn't boxed out later.
+
+**1. Summary-id revision — verified working, no fix needed.** Contrary to the
+"never verified" starting assumption, curling `/revise` with a real saved resume
+(`selected_ids: ["summary"]`, instruction "Make this punchier and mention cloud
+infrastructure explicitly") returned exactly one update keyed by `"summary"` with
+revised text that incorporated the instruction — no code change required for this part.
+Re-verified again after all the schema/prompt changes below, using a freshly-`/generate`d
+resume whose summary id was `"summary_r1"` (not the literal string `"summary"` — `/generate`
+mints a fresh id per the existing "generate new unique ids for the summary" instruction in
+`GENERATE_SYSTEM_PROMPT`), with `selected_ids` set to that resume's actual
+`summary.id`: still exactly one update, correctly keyed by `"summary_r1"`, shortened to
+one sentence as instructed. (Passing the literal string `"summary"` against a resume
+whose real summary id was `"summary_r1"` also produced a correct single update keyed by
+the resume's real id — the model reads `resume.summary.id` from the JSON rather than
+echoing back whatever string was in `selected_ids` — but that's a lucky/smart model
+behavior, not a contract to rely on; callers should always pass the resume's actual
+current summary id, same as any other id.)
+
+**2. Schema change — `SkillGroup.items` and `Link` now carry stable per-item ids**
+(`app/models.py`):
+- New `SkillItem` model: `{id: str, text: str}`. `SkillGroup.items` is now
+  `list[SkillItem]` instead of `list[str]`.
+- `Link` gained an `id: str` field alongside its existing `label`/`url`.
+- `app/data/profile.json` migrated in place: all 42 skill items across the 9 groups got
+  readable, group-scoped, globally-unique ids (e.g. `item_cloud_gcp`, `item_devops_docker`,
+  `item_tools_github` — scoped by group prefix specifically so `item_github` couldn't
+  collide between the DevOps group's "GitHub Actions CI/CD" and the Tools group's plain
+  "GitHub", matching the existing convention of entry-scoped bullet ids like `b_salo_1`/
+  `b_sc_1` avoiding cross-entry collisions). The 3 `meta.links` entries got
+  `link_github`/`link_linkedin`/`link_website`. `GET /profile` was curled after the
+  migration and validated cleanly against the new `Profile` model (200, correct nested
+  `{id, text}`/`{id, label, url}` shapes) — confirms the hand-edited JSON round-trips
+  through Pydantic validation correctly, not just that the file parses as JSON.
+- `GENERATE_SYSTEM_PROMPT` (`app/services/llm.py`) updated: the schema example now shows
+  `items` as `[{id, text}]` and `links` as `[{id, label, url}]`, with an explicit
+  instruction to generate short readable unique ids for each and to reuse the profile's
+  existing item/link ids when a skill item or link is carried over unchanged. Verified
+  with a real `/generate` call (backend/cloud-focused JD): every emitted skill item and
+  link came back as a proper `{id, text}`/`{id, label, url}` object (e.g.
+  `{"id": "item_cloud_gcp", "text": "GCP (Cloud Run, Cloud SQL, GCS)"}`), and the whole
+  response validated against `GenerateResponse`'s `Resume` model (FastAPI's
+  `response_model` would have 500'd on a shape mismatch — it didn't).
+- `app/services/render.py`: the skills-group docx line (`", ".join(group.get("items",
+  []))`) was reading raw strings; changed to
+  `", ".join(item.get("text", "") for item in group.get("items", []))`. Verified by
+  rendering the `/generate`d resume above to `.docx` (200, real file) and opening it
+  with `python-docx` to confirm the skills lines read as plain text
+  (`"Backend: FastAPI (Python), Node.js, Express, TypeScript, REST APIs"`, etc.) — not
+  Python dict reprs, which is what would show up if this read had been missed. Grepped
+  the whole backend for other `.items`/`.links`/`"items"`/`"links"` usages
+  (`app/routes/*.py`, `app/services/*.py`) — the only other reads are `meta.get("links")`
+  in `render.py`'s contact line, which already reads `.get("label")`/`.get("url")` off
+  each link dict and needed no change since those keys are unchanged. Did not touch old
+  files under `app/data/saved_items/` (pre-existing test saves with the old bare-string
+  `items` shape) — `SavedItem.data` is stored/returned as a loose `dict`, never validated
+  against `Resume`, so those old files still round-trip through save/list/get/delete
+  fine; only new saves going forward will carry the new shape. Not in scope for this pass
+  (only `profile.json` was named for migration) and not worth cleaning up old throwaway
+  test data.
+
+**3. `REVISE_SYSTEM_PROMPT` — skill-group-level and whole-skills-section revision**
+(`app/services/llm.py`), additive alongside the existing bullet/summary/entry/section
+rules — no changes to `ReviseUpdate`/`ReviseResponse` (still the flat `{id, text}` pair):
+- A skill group id (e.g. `skill_devops`) is now directly revisable: its current state is
+  represented as its items' `.text` values joined with `", "`, the instruction is applied
+  to that comma-separated string, and the model returns one `{id: group_id, text:
+  "revised, comma, separated, items"}` update.
+- A whole `sec_skills`-type section selection expands to one such update per group in
+  that section (mirrors the existing entry→bullet and section→bullet expansion
+  conventions, just group-level instead of bullet-level).
+- Verified with curl against a `/generate`d resume:
+  - **Single group** — `selected_ids: ["skill_devops"]`, instruction "Add Kubernetes to
+    this list.": exactly one update, `{"id": "skill_devops", "text": "Docker, GitHub
+    Actions CI/CD, Terraform, Linux, Kubernetes"}` — new item appended, nothing else
+    touched.
+  - **Whole section** — `selected_ids: ["sec_skills"]` on a resume with 6 skill groups,
+    instruction "Make each list more concise, keep only the most job-relevant items.":
+    exactly 6 updates, one per group id present (`skill_backend`, `skill_cloud`,
+    `skill_devops`, `skill_databases`, `skill_testing`, `skill_tools`), each a trimmed
+    comma-separated list — no group skipped, no extra ids invented.
+  - **Combined multi-select regression** — `selected_ids` = [a no-bullet education entry
+    id, a bullet id, a skill group id] in one request, instruction "Tighten the wording.":
+    exactly 2 updates (bullet + skill group), the no-bullet education entry correctly
+    produced nothing — confirms the new group-expansion logic doesn't interfere with the
+    existing entry-with-no-bullets skip rule when both are selected together.
+- **Regression-checked, all still correct after the prompt rewrite**: bullet-level single
+  id (1 update), entry-level id (6 updates, matching that entry's actual bullet count),
+  section-level id for `sec_experience` (9 updates, matching the section's total bullet
+  count across both its entries), and cover-letter paragraph revision (`selected_ids:
+  ["p1"]` on a saved cover letter → exactly 1 update for `p1`, others untouched).
+
+**Design decision (already made by the requesting session, not reopened here)**: when a
+skill group is revised, item ids inside that group's new list are not preserved — the
+frontend regenerates fresh ids for whatever list comes back, the same way bullet ids
+already get regenerated wholesale on every fresh `/generate`. This backend pass only
+needed to produce the revised comma-separated text per group; it does not mint or return
+per-item ids in the revise response at all (the response is still just `{id: group_id,
+text: "..."}`), so there was nothing further to implement here for that decision — it's
+a frontend-side concern when it applies the update.
+
+**Future direction (not built yet, just noted so the schema choices above read as
+intentional)**: there's a longer-term plan to add inline manual editing to every
+rendered field (bullets, summary, skill items, links, cover-letter salutation, etc.),
+with manual edits meant to survive/be protected from later broader chat-scoped
+revisions. No code for that exists yet. The `SkillItem`/`Link` id fields added in this
+pass are deliberate prep for it — giving every eventually-editable atom a stable
+identity now — rather than a scope-creep addition; nothing in this pass implements
+manual editing or edit-protection itself.
+
+**Frontend note**: `frontend-69` is waiting on the schema change (task 2) and the new
+skill-group/section revise support (task 3) landing before it can build the
+skills-selection UI against the new `{id, text}` item shape. Both are now live in
+`main`/working tree on the backend side as of this pass.
+
+**Follow-up same day, 2026-09-15/16 — pre-existing saved items had the old shape, fixed:**
+A real user hit a 422 in the browser reviving/rendering a saved resume, caused by the one
+pre-existing resume save under `app/data/saved_items/` (`18bd446c-...json`, saved before
+this pass) still holding the old shape — bare-string skill items and links with no `id`.
+Migrated it in place with the same convention used for `profile.json` (group-scoped item
+ids reusing that file's own group-id prefix, e.g. `sg_backend` → `item_backend_python`,
+`item_backend_fastapi`, `item_backend_pydantic`; `link_github`/`link_linkedin` for its 2
+links). The other saved file (`fe524a44-...json`, a cover letter) has no `links` or
+`skills` field at all, so nothing to migrate there — checked directly, not assumed.
+Reproduced the exact failure first to confirm root cause before fixing: POSTing the old
+(pre-migration) shape straight to `/render` returned a 422 with the identical error shape
+the user hit (`missing` on `meta.links[0].id`, `model_attributes_type` on each bare-string
+skill item) — then confirmed the migrated file's data now returns 200 from both `/render`
+and `/revise` (curled a skill-group revise against its `sg_backend` group — `sg_` prefix,
+not `skill_`, confirming the group-expansion logic isn't hardcoded to profile.json's
+`skill_` id prefix).
+**Confirmed, not assumed, re: ongoing risk**: `POST /resumes` (`app/routes/resumes.py`)
+takes `SaveRequest.data: dict` — genuinely untyped, no Pydantic validation against
+`Resume`/`CoverLetter` at all, by design (the loose-dict comment on `SavedItem.data` is
+accurate). Proved this isn't just a theoretical gap by POSTing a synthetic old-shape
+payload (bare-string items, link with no id) directly to `/resumes`: it saved with a
+plain 200, no rejection, no coercion — then deleted that probe row via `DELETE
+/resumes/{id}` to leave no test data behind. So: correctness of what lands in
+`saved_items/` depends entirely on whatever the frontend sends in `data` being well-formed
+at write time — there is no backend-side gate that would catch a regression. Checked (not
+just taken on trust) whether today's frontend actually sends the new shape: read
+`frontend/app/components/SaveButton.tsx` — it POSTs `{ name, type, data: doc }` where
+`doc: Resume | CoverLetter` (typed, not `any`) — and `frontend/app/types.ts`, whose
+`SkillItem`/`SkillGroup.items`/`Meta.links` types already match the new `{id, text}`/
+`{id, label, url}` backend shapes exactly. So this is genuinely just cleanup of the one
+pre-existing file, not an active bug on the frontend's current save path. It's still a
+standing soft spot at the type-system boundary, though: nothing stops a future frontend
+change (or a raw curl to `/resumes`) from writing malformed `data` again, since
+`SaveRequest`/`SavedItem` don't validate it — worth keeping in mind if `/resumes`'s save
+path is touched again, not something this fix closes off structurally.
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled
    preview + selection, chat-scoped revision, cover letter mode, download). See above and
@@ -599,9 +758,17 @@ exact.
   document types. `frontend-2c` reported: section-level selection re-enabled (tested a
   2-entry/9-bullet section revise, all 9 updated correctly), cover letter revision wired
   up (single-paragraph revise confirmed), and cover letter download added (docx + pdf both
-  200, real downloads) — no contract mismatches on either side. No open backend or
-  frontend gaps remain from this plan.
-- The only remaining work is the Cloudflare Tunnel + Vercel deployment infrastructure
-  pass — not a feature gap, just deployment plumbing.
+  200, real downloads) — no contract mismatches on either side. **Superseded 2026-09-15**:
+  this turned out to be incomplete — summary-id revision had never actually been curled
+  end-to-end (it happened to work, verified in the Backend Part 3 section above, but
+  "complete" shouldn't have been claimed without checking), and `sec_skills` selection was
+  a silent no-op the whole time. Both are now fixed/verified; see Backend Part 3 above.
+  Lesson for future status updates: "no open gaps" claims should be backed by an explicit
+  check of every previously-listed capability, not just the ones touched in that pass.
+- Frontend (`frontend-69`) still needs to build the skills-group/skills-section selection
+  UI against the new `{id, text}` skill-item shape (Backend Part 3) — the backend side of
+  that is done, this is a frontend follow-up, not a backend gap.
+- The only backend-complete remaining work is the Cloudflare Tunnel + Vercel deployment
+  infrastructure pass — not a feature gap, just deployment plumbing.
 - Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
   known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

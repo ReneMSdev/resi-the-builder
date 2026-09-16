@@ -4,9 +4,21 @@
     "email": "rene.salomone@gmail.com",
     "phone": "+1 (512) 884-3571",
     "links": [
-      { "label": "GitHub", "url": "github.com/ReneMSdev" },
-      { "label": "LinkedIn", "url": "linkedin.com/in/renemsdev" },
-      { "label": "Website", "url": "renemsdev.com" }
+      {
+        "label": "GitHub",
+        "url": "github.com/ReneMSdev",
+        "id": "link_github"
+      },
+      {
+        "label": "LinkedIn",
+        "url": "linkedin.com/in/renemsdev",
+        "id": "link_linkedin"
+      },
+      {
+        "label": "Website",
+        "url": "renemsdev.com",
+        "id": "link_website"
+      }
     ]
   },
   "summary_pool": [
@@ -31,37 +43,67 @@
             {
               "id": "b_salo_1",
               "text": "Architected and built LinkLeaf, a QR code-based digital identity platform with a FastAPI backend, Flutter mobile frontend, and fully containerized GCP infrastructure.",
-              "tags": ["backend", "mobile", "architecture", "gcp", "fastapi"]
+              "tags": [
+                "backend",
+                "mobile",
+                "architecture",
+                "gcp",
+                "fastapi"
+              ]
             },
             {
               "id": "b_salo_2",
               "text": "Designed and deployed a multi-service FastAPI backend to GCP Cloud Run, integrating Cloud SQL (PostgreSQL), dual GCS buckets with signed URL access controls, and Firebase Authentication across isolated dev/staging/production environments.",
-              "tags": ["gcp", "backend", "cloud-run", "postgresql", "firebase"]
+              "tags": [
+                "gcp",
+                "backend",
+                "cloud-run",
+                "postgresql",
+                "firebase"
+              ]
             },
             {
               "id": "b_salo_3",
               "text": "Built a gated two-workflow GitHub Actions CI/CD pipeline: automated testing on push/PR with a live PostgreSQL service container, deployment to Cloud Run triggered only on passing merge to main.",
-              "tags": ["ci-cd", "github-actions", "testing"]
+              "tags": [
+                "ci-cd",
+                "github-actions",
+                "testing"
+              ]
             },
             {
               "id": "b_salo_4",
               "text": "Containerized the application using a multi-stage Dockerfile with an entrypoint script handling database migrations before server startup.",
-              "tags": ["docker", "devops"]
+              "tags": [
+                "docker",
+                "devops"
+              ]
             },
             {
               "id": "b_salo_5",
               "text": "Maintained 100+ passing pytest tests across 7 modules in a modular monolith architecture with GCS and Firebase fully mocked for testing; CI enforces minimum coverage threshold on every push.",
-              "tags": ["testing", "pytest", "ci-cd"]
+              "tags": [
+                "testing",
+                "pytest",
+                "ci-cd"
+              ]
             },
             {
               "id": "b_salo_6",
               "text": "Designed and executed comprehensive test cases and scenarios for LinkLeaf's core API endpoints, ensuring full coverage prior to deployment.",
-              "tags": ["testing", "qa"]
+              "tags": [
+                "testing",
+                "qa"
+              ]
             },
             {
               "id": "b_salo_7",
               "text": "Leveraged structured logging alongside CI/CD pipelines to monitor system behavior, catch regressions early, and maintain release quality.",
-              "tags": ["testing", "ci-cd", "observability"]
+              "tags": [
+                "testing",
+                "ci-cd",
+                "observability"
+              ]
             }
           ]
         },
@@ -75,17 +117,27 @@
             {
               "id": "b_sc_1",
               "text": "Contributed to Google Fiber's infrastructure deployment and quality assurance for network operations.",
-              "tags": ["field-work", "networking"]
+              "tags": [
+                "field-work",
+                "networking"
+              ]
             },
             {
               "id": "b_sc_2",
               "text": "Supporting GFiber's deployment across residential and commercial environments throughout the Austin area.",
-              "tags": ["field-work", "fiber"]
+              "tags": [
+                "field-work",
+                "fiber"
+              ]
             },
             {
               "id": "b_sc_3",
               "text": "Installing, testing, and troubleshooting fiber optic connections using diagnostic equipment while maintaining quality and safety standards.",
-              "tags": ["field-work", "fiber", "testing"]
+              "tags": [
+                "field-work",
+                "fiber",
+                "testing"
+              ]
             }
           ]
         },
@@ -99,37 +151,61 @@
             {
               "id": "b_fl_1",
               "text": "Integrated an AWS RDS PostgreSQL database for a startup's (Ecobridge) Shopify plugin, modeling merchant accounts, configuration settings, and cache data, improving sync reliability and reducing Shopify API calls by ~30%.",
-              "tags": ["aws", "postgresql", "backend"]
+              "tags": [
+                "aws",
+                "postgresql",
+                "backend"
+              ]
             },
             {
               "id": "b_fl_2",
               "text": "Implemented a reliable Shopify OAuth flow in Node.js (Express) and TypeScript to securely handle app installation, token exchange, and merchant authentication, reducing auth-related errors by ~10%.",
-              "tags": ["nodejs", "typescript", "oauth"]
+              "tags": [
+                "nodejs",
+                "typescript",
+                "oauth"
+              ]
             },
             {
               "id": "b_fl_3",
               "text": "Leveraged modern AI coding tools (Cursor, GPT) to accelerate prototyping and documentation, reducing development time by ~25%.",
-              "tags": ["ai-tools", "productivity"]
+              "tags": [
+                "ai-tools",
+                "productivity"
+              ]
             },
             {
               "id": "b_fl_4",
               "text": "Built a startup's (Ecobridge) landing page using Next.js, TypeScript, and Tailwind CSS.",
-              "tags": ["frontend", "nextjs", "typescript"]
+              "tags": [
+                "frontend",
+                "nextjs",
+                "typescript"
+              ]
             },
             {
               "id": "b_fl_5",
               "text": "Compressed images to WebP format and implemented lazy loading for off-screen assets, reducing page load time by ~30%.",
-              "tags": ["frontend", "performance"]
+              "tags": [
+                "frontend",
+                "performance"
+              ]
             },
             {
               "id": "b_fl_6",
               "text": "Built a website for a professional life coach using vanilla JavaScript, HTML, and CSS.",
-              "tags": ["frontend", "javascript"]
+              "tags": [
+                "frontend",
+                "javascript"
+              ]
             },
             {
               "id": "b_fl_7",
               "text": "Increased Calendly bookings by ~20% by redesigning the scheduling flow and embedding an on-page scheduler.",
-              "tags": ["frontend", "ux"]
+              "tags": [
+                "frontend",
+                "ux"
+              ]
             }
           ]
         },
@@ -143,12 +219,21 @@
             {
               "id": "b_polaris_1",
               "text": "Contributed to Google Fiber's infrastructure deployment and quality assurance for network operations, supporting an estimated $2.3M in annual recurring revenue.",
-              "tags": ["field-work", "networking", "fiber"]
+              "tags": [
+                "field-work",
+                "networking",
+                "fiber"
+              ]
             },
             {
               "id": "b_polaris_2",
               "text": "Configured and tested high-speed fiber circuits using OTDR and power meters, meeting Google Fiber's performance standards and reducing installation-related service issues by ~15%.",
-              "tags": ["field-work", "fiber", "otdr", "testing"]
+              "tags": [
+                "field-work",
+                "fiber",
+                "otdr",
+                "testing"
+              ]
             }
           ]
         },
@@ -162,22 +247,36 @@
             {
               "id": "b_unmuted_1",
               "text": "Assisted in city-wide fiber infrastructure roll out for Granger, TX, enabling high-speed connectivity for 400+ homes and businesses.",
-              "tags": ["field-work", "fiber"]
+              "tags": [
+                "field-work",
+                "fiber"
+              ]
             },
             {
               "id": "b_unmuted_2",
               "text": "Resolved 20+ service-impacting incidents, coordinating with engineering teams to restore connectivity and improve network reliability for clients such as Google Fiber, AT&T, Spectrum, and Suddenlink.",
-              "tags": ["field-work", "networking", "incident-response"]
+              "tags": [
+                "field-work",
+                "networking",
+                "incident-response"
+              ]
             },
             {
               "id": "b_unmuted_3",
               "text": "Installed and maintained critical network infrastructure across data centers, hospitals, and government facilities.",
-              "tags": ["field-work", "networking"]
+              "tags": [
+                "field-work",
+                "networking"
+              ]
             },
             {
               "id": "b_unmuted_4",
               "text": "Assisted in training new technicians on fiber installation and splicing procedures.",
-              "tags": ["field-work", "training", "mentorship"]
+              "tags": [
+                "field-work",
+                "training",
+                "mentorship"
+              ]
             }
           ]
         },
@@ -191,17 +290,26 @@
             {
               "id": "b_dcomm_1",
               "text": "Installed commercial and residential telecom services including internet, VOIP phone, and television.",
-              "tags": ["field-work", "telecom"]
+              "tags": [
+                "field-work",
+                "telecom"
+              ]
             },
             {
               "id": "b_dcomm_2",
               "text": "Mounted and configured modems, routers, and customer networking equipment; performed dedicated IP setup and wireless optimization.",
-              "tags": ["field-work", "networking"]
+              "tags": [
+                "field-work",
+                "networking"
+              ]
             },
             {
               "id": "b_dcomm_3",
               "text": "Terminated coaxial cable (RG-6/11/59) and copper (Cat5, Cat6) cabling, upgraded legacy infrastructure, and validated signal performance.",
-              "tags": ["field-work", "cabling"]
+              "tags": [
+                "field-work",
+                "cabling"
+              ]
             }
           ]
         }
@@ -222,17 +330,27 @@
             {
               "id": "b_wa_1",
               "text": "Built a production-ready REST API with PostgreSQL, Redis caching, and node cron background jobs for automated weather data sync, achieving ~40% faster response times.",
-              "tags": ["nodejs", "postgresql", "redis"]
+              "tags": [
+                "nodejs",
+                "postgresql",
+                "redis"
+              ]
             },
             {
               "id": "b_wa_2",
               "text": "Deployed to Render via GitHub Actions: TypeScript compile gate on push/PR, automated deploy hook triggered on merge to main.",
-              "tags": ["ci-cd", "deployment"]
+              "tags": [
+                "ci-cd",
+                "deployment"
+              ]
             },
             {
               "id": "b_wa_3",
               "text": "Provided REST API endpoints consumed by a cross-platform iOS/Android app built with React Native (Expo).",
-              "tags": ["react-native", "mobile"]
+              "tags": [
+                "react-native",
+                "mobile"
+              ]
             }
           ]
         },
@@ -246,22 +364,35 @@
             {
               "id": "b_wam_1",
               "text": "Built a cross-platform iOS/Android mobile app using React Native and Expo.",
-              "tags": ["react-native", "mobile"]
+              "tags": [
+                "react-native",
+                "mobile"
+              ]
             },
             {
               "id": "b_wam_2",
               "text": "Integrated the app with a custom Node/Express backend for real-time weather retrieval and severe weather warnings.",
-              "tags": ["react-native", "nodejs", "backend-integration"]
+              "tags": [
+                "react-native",
+                "nodejs",
+                "backend-integration"
+              ]
             },
             {
               "id": "b_wam_3",
               "text": "Implemented state management with React hooks and AsyncStorage for device and location persistence.",
-              "tags": ["react-native", "state-management"]
+              "tags": [
+                "react-native",
+                "state-management"
+              ]
             },
             {
               "id": "b_wam_4",
               "text": "Improved data loading speed by ~55% by using multithreading to run API requests in parallel without blocking the UI.",
-              "tags": ["react-native", "performance"]
+              "tags": [
+                "react-native",
+                "performance"
+              ]
             }
           ]
         },
@@ -275,23 +406,34 @@
             {
               "id": "b_rp_1",
               "text": "Built a web app that allows users to input multiple addresses and returns the optimal route on an interactive map.",
-              "tags": ["frontend", "nextjs", "maps"]
+              "tags": [
+                "frontend",
+                "nextjs",
+                "maps"
+              ]
             },
             {
               "id": "b_rp_2",
               "text": "Supports Google Maps export for mobile navigation.",
-              "tags": ["frontend", "integration"]
+              "tags": [
+                "frontend",
+                "integration"
+              ]
             },
             {
               "id": "b_rp_3",
               "text": "Built with Next.js, JavaScript, Tailwind CSS, OpenCage API, and OpenRouteService API.",
-              "tags": ["frontend", "nextjs", "api-integration"]
+              "tags": [
+                "frontend",
+                "nextjs",
+                "api-integration"
+              ]
             }
           ]
         },
         {
           "id": "entry_atxwrenching",
-          "title": "ATX Reliable Wrenching — Marketing & Booking Website (Next.js)",
+          "title": "ATX Reliable Wrenching \u2014 Marketing & Booking Website (Next.js)",
           "organization": "Freelance Client Project",
           "location": "atxreliablewrenching.com",
           "dates": "",
@@ -299,22 +441,38 @@
             {
               "id": "b_atx_1",
               "text": "Designed and built a responsive marketing website for a local mobile-mechanic business in Austin, TX, including a services showcase (check engine diagnostics, brake repair, coolant leak repair, suspension diagnostics, electrical, general maintenance, hybrid/diesel repair, minor body work), an about/credibility section, and embedded Google reviews.",
-              "tags": ["frontend", "nextjs", "freelance"]
+              "tags": [
+                "frontend",
+                "nextjs",
+                "freelance"
+              ]
             },
             {
               "id": "b_atx_2",
               "text": "Integrated a booking flow via a third-party HousecallPro plugin to handle scheduling directly within the site's conversion funnel.",
-              "tags": ["frontend", "integration", "booking"]
+              "tags": [
+                "frontend",
+                "integration",
+                "booking"
+              ]
             },
             {
               "id": "b_atx_3",
               "text": "Implemented an image-optimized, mobile-first responsive layout suited for a local-service business, along with a contact form.",
-              "tags": ["frontend", "performance", "responsive-design"]
+              "tags": [
+                "frontend",
+                "performance",
+                "responsive-design"
+              ]
             },
             {
               "id": "b_atx_4",
               "text": "Deployed and hosted the production site on GoDaddy, managing a shared-hosting/DNS setup for a small-business client end-to-end from design through deployment.",
-              "tags": ["deployment", "freelance", "devops"]
+              "tags": [
+                "deployment",
+                "freelance",
+                "devops"
+              ]
             }
           ]
         }
@@ -399,47 +557,224 @@
         {
           "id": "skill_cloud",
           "label": "Cloud",
-          "items": ["GCP (Cloud Run, Cloud SQL, GCS)", "AWS", "Firebase"]
+          "items": [
+            {
+              "id": "item_cloud_gcp",
+              "text": "GCP (Cloud Run, Cloud SQL, GCS)"
+            },
+            {
+              "id": "item_cloud_aws",
+              "text": "AWS"
+            },
+            {
+              "id": "item_cloud_firebase",
+              "text": "Firebase"
+            }
+          ]
         },
         {
           "id": "skill_devops",
           "label": "DevOps",
-          "items": ["Docker", "GitHub Actions CI/CD", "Terraform", "Linux"]
+          "items": [
+            {
+              "id": "item_devops_docker",
+              "text": "Docker"
+            },
+            {
+              "id": "item_devops_github",
+              "text": "GitHub Actions CI/CD"
+            },
+            {
+              "id": "item_devops_terraform",
+              "text": "Terraform"
+            },
+            {
+              "id": "item_devops_linux",
+              "text": "Linux"
+            }
+          ]
         },
         {
           "id": "skill_backend",
           "label": "Backend",
-          "items": ["FastAPI (Python)", "Node.js", "Express", "TypeScript", "JavaScript", "REST APIs"]
+          "items": [
+            {
+              "id": "item_backend_fastapi",
+              "text": "FastAPI (Python)"
+            },
+            {
+              "id": "item_backend_node_js",
+              "text": "Node.js"
+            },
+            {
+              "id": "item_backend_express",
+              "text": "Express"
+            },
+            {
+              "id": "item_backend_typescript",
+              "text": "TypeScript"
+            },
+            {
+              "id": "item_backend_javascript",
+              "text": "JavaScript"
+            },
+            {
+              "id": "item_backend_rest",
+              "text": "REST APIs"
+            }
+          ]
         },
         {
           "id": "skill_frontend",
           "label": "Frontend",
-          "items": ["React", "Next.js", "Tailwind CSS", "HTML", "CSS", "Vanilla JavaScript"]
+          "items": [
+            {
+              "id": "item_frontend_react",
+              "text": "React"
+            },
+            {
+              "id": "item_frontend_next_js",
+              "text": "Next.js"
+            },
+            {
+              "id": "item_frontend_tailwind",
+              "text": "Tailwind CSS"
+            },
+            {
+              "id": "item_frontend_html",
+              "text": "HTML"
+            },
+            {
+              "id": "item_frontend_css",
+              "text": "CSS"
+            },
+            {
+              "id": "item_frontend_vanilla",
+              "text": "Vanilla JavaScript"
+            }
+          ]
         },
         {
           "id": "skill_mobile",
           "label": "Mobile",
-          "items": ["React Native (Expo)", "Mobile UI", "Responsive Design"]
+          "items": [
+            {
+              "id": "item_mobile_react",
+              "text": "React Native (Expo)"
+            },
+            {
+              "id": "item_mobile_mobile",
+              "text": "Mobile UI"
+            },
+            {
+              "id": "item_mobile_responsive",
+              "text": "Responsive Design"
+            }
+          ]
         },
         {
           "id": "skill_databases",
           "label": "Databases",
-          "items": ["PostgreSQL", "MySQL", "Redis", "Drizzle ORM", "SQLAlchemy", "Schema Design"]
+          "items": [
+            {
+              "id": "item_databases_postgresql",
+              "text": "PostgreSQL"
+            },
+            {
+              "id": "item_databases_mysql",
+              "text": "MySQL"
+            },
+            {
+              "id": "item_databases_redis",
+              "text": "Redis"
+            },
+            {
+              "id": "item_databases_drizzle",
+              "text": "Drizzle ORM"
+            },
+            {
+              "id": "item_databases_sqlalchemy",
+              "text": "SQLAlchemy"
+            },
+            {
+              "id": "item_databases_schema",
+              "text": "Schema Design"
+            }
+          ]
         },
         {
           "id": "skill_testing",
           "label": "Testing",
-          "items": ["Pytest", "unittest.mock", "API Testing"]
+          "items": [
+            {
+              "id": "item_testing_pytest",
+              "text": "Pytest"
+            },
+            {
+              "id": "item_testing_unittest_mock",
+              "text": "unittest.mock"
+            },
+            {
+              "id": "item_testing_api",
+              "text": "API Testing"
+            }
+          ]
         },
         {
           "id": "skill_field",
           "label": "Field / Low-Voltage",
-          "items": ["Fiber Optic Installation", "Structured Cabling (Cat5/Cat6)", "Coax Termination (RG-6/11/59)", "OTDR Testing", "Power Meters", "Low-Voltage Systems", "VOIP Setup"]
+          "items": [
+            {
+              "id": "item_field_fiber",
+              "text": "Fiber Optic Installation"
+            },
+            {
+              "id": "item_field_structured",
+              "text": "Structured Cabling (Cat5/Cat6)"
+            },
+            {
+              "id": "item_field_coax",
+              "text": "Coax Termination (RG-6/11/59)"
+            },
+            {
+              "id": "item_field_otdr",
+              "text": "OTDR Testing"
+            },
+            {
+              "id": "item_field_power",
+              "text": "Power Meters"
+            },
+            {
+              "id": "item_field_low_voltage",
+              "text": "Low-Voltage Systems"
+            },
+            {
+              "id": "item_field_voip",
+              "text": "VOIP Setup"
+            }
+          ]
         },
         {
           "id": "skill_tools",
           "label": "Tools",
-          "items": ["Git", "GitHub", "Figma", "Excel"]
+          "items": [
+            {
+              "id": "item_tools_git",
+              "text": "Git"
+            },
+            {
+              "id": "item_tools_github",
+              "text": "GitHub"
+            },
+            {
+              "id": "item_tools_figma",
+              "text": "Figma"
+            },
+            {
+              "id": "item_tools_excel",
+              "text": "Excel"
+            }
+          ]
         }
       ]
     }

@@ -22,8 +22,7 @@ export function Selectable({
   as?: "div" | "li";
 }) {
   const isSelected = selectedIds.has(id);
-  const isHovered = hoveredId === id;
-  const hoverColor = mode === "edit" ? "var(--edit-soft)" : "var(--accent-soft)";
+  const isHovered = mode === "select" && hoveredId === id;
 
   return (
     <Tag
@@ -43,7 +42,7 @@ export function Selectable({
         isSelected
           ? undefined
           : isHovered
-            ? { backgroundColor: hoverColor }
+            ? { backgroundColor: "var(--accent-soft)" }
             : undefined
       }
       className={`rounded transition-colors ${

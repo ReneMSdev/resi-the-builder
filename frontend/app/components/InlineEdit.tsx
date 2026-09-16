@@ -453,6 +453,8 @@ export function AddLinkPill({
   const [label, setLabel] = useState("");
   const [url, setUrl] = useState("");
   const ref = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const settledRef = useRef(false);
 
   useEffect(() => {
     if (active) ref.current?.focus();
@@ -465,8 +467,22 @@ export function AddLinkPill({
   }
 
   function commit() {
+    if (settledRef.current) return;
+    settledRef.current = true;
     if (url.trim()) onAdd(label.trim(), url.trim());
     reset();
+  }
+
+  function cancel() {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    reset();
+  }
+
+  function handleContainerBlur(e: React.FocusEvent) {
+    const next = e.relatedTarget as Node | null;
+    if (next && containerRef.current?.contains(next)) return;
+    commit();
   }
 
   if (!active) {
@@ -474,6 +490,7 @@ export function AddLinkPill({
       <span
         onClick={(e) => {
           e.stopPropagation();
+          settledRef.current = false;
           setActive(true);
         }}
         className="cursor-pointer rounded-full border border-dashed border-(--muted) px-2 py-0.5 text-xs text-(--muted) hover:bg-(--edit-soft)"
@@ -485,15 +502,17 @@ export function AddLinkPill({
 
   return (
     <span
+      ref={containerRef}
       className="inline-flex flex-col gap-0.5 rounded border border-(--edit) bg-(--surface) p-1"
       onClick={(e) => e.stopPropagation()}
+      onBlur={handleContainerBlur}
     >
       <input
         ref={ref}
         type="text"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
-        onKeyDown={(e) => linkKeyDown(e, commit, reset)}
+        onKeyDown={(e) => linkKeyDown(e, commit, cancel)}
         placeholder="Label"
         className="rounded border border-(--border) px-1 text-xs outline-none"
       />
@@ -501,8 +520,7 @@ export function AddLinkPill({
         type="text"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        onKeyDown={(e) => linkKeyDown(e, commit, reset)}
-        onBlur={commit}
+        onKeyDown={(e) => linkKeyDown(e, commit, cancel)}
         placeholder="URL"
         className="rounded border border-(--border) px-1 text-xs outline-none"
       />

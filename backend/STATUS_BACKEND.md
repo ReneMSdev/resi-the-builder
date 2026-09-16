@@ -878,6 +878,69 @@ to update its types and rendering — not new UI work for them yet either, just 
 sure nothing breaks when `meta`/entry fields become objects instead of strings, the same
 way Part 3's skill-item shape change required a types.ts update.
 
+## Backend Part 5 — Automated test suite (2026-09-16)
+
+**Why**: manual curl/browser verification was the only regression net (it's how the
+`max_tokens` truncation bug got caught, but only because that area happened to get
+touched again). With Claude-in-Chrome eventually driving this API programmatically and
+unattended, contract regressions need to fail a test run, not wait for someone to notice.
+Frontend stays manual-only (a separate, already-made decision) — this is backend-only.
+
+**Structure**: `backend/tests/`, pytest + FastAPI's `TestClient`. `pytest.ini` sets
+`pythonpath = .` and registers two markers, both excluded by default via
+`addopts = -m "not live and not slow"`:
+- `live` — hits the real Anthropic API (real token spend, non-deterministic output).
+- `slow` — the PDF-conversion test (~10s, LibreOffice cold-start).
+
+**Run it**:
+- `pytest` — the default, safe suite. No network calls, no token spend, deterministic.
+  30 tests, runs in under a second.
+- `pytest -m slow` — the PDF conversion test (needs LibreOffice installed).
+- `pytest -m live` — 3 real-LLM smoke tests (generate resume, generate cover letter,
+  revise) against the actual API. Costs real tokens; run deliberately, not in CI.
+
+**How the Anthropic client is mocked**: `tests/conftest.py` has an autouse
+`block_real_llm_calls` fixture that replaces `client.messages.create` with a function
+that raises `AssertionError` for any test not marked `@pytest.mark.live` — a safety net
+so a test that forgets to mock its LLM call fails loudly instead of silently hitting the
+network. Tests that need a canned model response request the `mock_llm` fixture instead,
+which overrides that guard with a fake response built from whatever JSON text is passed
+in. `/render` needs no mocking (pure `python-docx` templating, no LLM call).
+
+**Isolation from real data**: `tmp_saved_items` monkeypatches `resumes.DATA_DIR` to a
+pytest tmp dir; `tmp_profile_path` monkeypatches both `profile.DATA_PATH` and
+`generate.DATA_PATH` to a scratch `profile.json` seeded from a `minimal_profile` fixture.
+No test reads or writes the real `app/data/` contents.
+
+**Coverage**: `/generate` (both types' success shape, unknown-type 400, malformed-JSON
+502, exhausted-usage-guard 429, oversized job_description/company_context 502);
+`/revise` (neither-resume-nor-cover_letter 400, both types' success shape, 502/429 paths,
+oversized-instruction 502, and `_normalize_revise_result`'s bare-`{}`-to-`{"updates":[]}`
+fix). Note on id-expansion: there's no backend expansion logic to unit-test — an
+entry/section/skill-group id "expanding" into multiple bullet updates is entirely
+prompt-driven model behavior, so the mocked tests only verify the route relays whatever
+`updates` the model returns, unfiltered; `/render` (real docx generation for both types,
+text-content-verified via `python-docx`, plus the format/missing-payload 400s, PDF gated
+behind `slow`); `/resumes` (create/get/list/delete round-trip against a temp dir, 404s);
+`/profile`, `/health`, `/usage` (sanity checks).
+
+**Verified the suite has actual teeth, not just green-by-construction**: temporarily
+removed the `result.setdefault("updates", [])` line from `_normalize_revise_result` —
+`test_revise_normalizes_bare_object_to_empty_updates` failed immediately (FastAPI's
+response-model validation rejected the bare `{}}`), confirming the mocked suite catches a
+real contract regression. Separately, re-tested the actual `max_tokens` story: reverting
+to the old `4096` and hitting the live `/generate` endpoint didn't reliably reproduce a
+truncation (model output length varies call to call — one run at `4096` came back fine),
+so as a sharper demonstration `max_tokens` was dropped to an obviously-too-small `300` and
+`pytest -m live tests/test_live.py::test_live_generate_resume` failed with a 502 exactly
+as expected. Reverted both changes immediately after; `git diff` against the last commit
+came back empty and the full default suite was re-confirmed green (30 passed).
+
+**Added to `requirements.txt`** (test-only): `pytest==8.3.3`, `httpx==0.27.2` (needed by
+`starlette.testclient.TestClient` — note this project's `anthropic` SDK actually pulls in
+a *different* package called `httpx2`, not `httpx`, so this was a genuinely new
+dependency, not already satisfied transitively).
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

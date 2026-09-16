@@ -1,4 +1,10 @@
-import { CoverLetter, Resume } from "../types";
+import { CoverLetter, IdText, Resume } from "../types";
+
+function patchIdText(field: IdText, updateMap: Map<string, string>): IdText {
+  return updateMap.has(field.id)
+    ? { ...field, text: updateMap.get(field.id)! }
+    : field;
+}
 
 export function applyRevisionUpdates(
   resume: Resume,
@@ -7,19 +13,30 @@ export function applyRevisionUpdates(
   const updateMap = new Map(updates.map((u) => [u.id, u.text]));
   if (updateMap.size === 0) return resume;
 
-  const newSummary = updateMap.has(resume.summary.id)
-    ? { ...resume.summary, text: updateMap.get(resume.summary.id)! }
-    : resume.summary;
+  const newMeta = {
+    ...resume.meta,
+    name: patchIdText(resume.meta.name, updateMap),
+    email: patchIdText(resume.meta.email, updateMap),
+    phone: patchIdText(resume.meta.phone, updateMap),
+  };
+
+  const newSummary = patchIdText(resume.summary, updateMap);
 
   const newSections = resume.sections.map((section) => {
     const newEntries = section.entries?.map((entry) => {
-      if (!entry.bullets) return entry;
-      const newBullets = entry.bullets.map((bullet) =>
+      const newBullets = entry.bullets?.map((bullet) =>
         updateMap.has(bullet.id)
           ? { ...bullet, text: updateMap.get(bullet.id)! }
           : bullet
       );
-      return { ...entry, bullets: newBullets };
+      return {
+        ...entry,
+        title: patchIdText(entry.title, updateMap),
+        organization: patchIdText(entry.organization, updateMap),
+        location: patchIdText(entry.location, updateMap),
+        dates: patchIdText(entry.dates, updateMap),
+        bullets: newBullets,
+      };
     });
 
     const newGroups = section.groups?.map((group) => {
@@ -36,7 +53,7 @@ export function applyRevisionUpdates(
     return { ...section, entries: newEntries, groups: newGroups };
   });
 
-  return { ...resume, summary: newSummary, sections: newSections };
+  return { ...resume, meta: newMeta, summary: newSummary, sections: newSections };
 }
 
 export function describeSelection(
@@ -90,13 +107,29 @@ export function applyCoverLetterUpdates(
   const updateMap = new Map(updates.map((u) => [u.id, u.text]));
   if (updateMap.size === 0) return coverLetter;
 
+  const newMeta = {
+    ...coverLetter.meta,
+    name: patchIdText(coverLetter.meta.name, updateMap),
+    email: patchIdText(coverLetter.meta.email, updateMap),
+    phone: patchIdText(coverLetter.meta.phone, updateMap),
+    date: patchIdText(coverLetter.meta.date, updateMap),
+    company: patchIdText(coverLetter.meta.company, updateMap),
+    role: patchIdText(coverLetter.meta.role, updateMap),
+  };
+
   const newParagraphs = coverLetter.paragraphs.map((paragraph) =>
     updateMap.has(paragraph.id)
       ? { ...paragraph, text: updateMap.get(paragraph.id)! }
       : paragraph
   );
 
-  return { ...coverLetter, paragraphs: newParagraphs };
+  return {
+    ...coverLetter,
+    meta: newMeta,
+    salutation: patchIdText(coverLetter.salutation, updateMap),
+    sign_off: patchIdText(coverLetter.sign_off, updateMap),
+    paragraphs: newParagraphs,
+  };
 }
 
 export function describeCoverLetterSelection(

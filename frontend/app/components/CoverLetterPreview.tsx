@@ -13,17 +13,21 @@ export function CoverLetterPreview({
   onToggle: (id: string) => void;
 }) {
   const { meta } = coverLetter;
-  const subject = [meta.role, meta.company].filter(Boolean).join(" at ");
+  const subject = [meta.role.text, meta.company.text]
+    .filter(Boolean)
+    .join(" at ");
 
   return (
     <div className="flex flex-col gap-3 rounded border border-[var(--border)] bg-[var(--surface)] p-8 text-sm text-[var(--foreground)] shadow-sm">
-      {meta.date && (
-        <p className="text-right text-xs text-[var(--muted)]">{meta.date}</p>
+      {meta.date.text && (
+        <p className="text-right text-xs text-[var(--muted)]">
+          {meta.date.text}
+        </p>
       )}
 
       {subject && <p className="font-bold">Re: {subject}</p>}
 
-      <p>Dear Hiring Manager,</p>
+      <p>{coverLetter.salutation.text}</p>
 
       {coverLetter.paragraphs.map((paragraph) => (
         <Selectable
@@ -38,10 +42,10 @@ export function CoverLetterPreview({
       ))}
 
       <div className="mt-2">
-        <p>Sincerely,</p>
-        <p className="font-bold">{meta.name}</p>
+        <p>{coverLetter.sign_off.text}</p>
+        <p className="font-bold">{meta.name.text}</p>
         <p className="text-xs text-[var(--muted)]">
-          {[meta.email, meta.phone].filter(Boolean).join(" | ")}
+          {[meta.email.text, meta.phone.text].filter(Boolean).join(" | ")}
         </p>
       </div>
     </div>

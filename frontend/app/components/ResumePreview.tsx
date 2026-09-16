@@ -12,14 +12,16 @@ export function ResumePreview({
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const contactParts = [resume.meta.email, resume.meta.phone].filter(Boolean);
+  const contactParts = [resume.meta.email.text, resume.meta.phone.text].filter(
+    Boolean
+  );
   for (const link of resume.meta.links ?? []) {
     contactParts.push(link.label ? `${link.label}: ${link.url}` : link.url);
   }
 
   return (
     <div className="flex flex-col gap-1 rounded border border-[var(--border)] bg-[var(--surface)] p-8 text-[var(--foreground)] shadow-sm">
-      <h2 className="text-center text-xl font-bold">{resume.meta.name}</h2>
+      <h2 className="text-center text-xl font-bold">{resume.meta.name.text}</h2>
       {contactParts.length > 0 && (
         <p className="text-center text-xs text-[var(--muted)]">
           {contactParts.join(" | ")}
@@ -79,7 +81,7 @@ export function ResumePreview({
                   onToggle={onToggle}
                   className="p-1 text-sm"
                 >
-                  {[entry.title, entry.organization, entry.dates]
+                  {[entry.title.text, entry.organization.text, entry.dates.text]
                     .filter(Boolean)
                     .join(" — ")}
                 </Selectable>
@@ -98,17 +100,17 @@ export function ResumePreview({
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="text-sm font-bold">
-                      {[entry.title, entry.organization]
+                      {[entry.title.text, entry.organization.text]
                         .filter(Boolean)
                         .join(" — ")}
                     </p>
-                    {entry.dates && (
-                      <p className="shrink-0 text-xs">{entry.dates}</p>
+                    {entry.dates.text && (
+                      <p className="shrink-0 text-xs">{entry.dates.text}</p>
                     )}
                   </div>
-                  {entry.location && (
+                  {entry.location.text && (
                     <p className="text-xs italic text-[var(--muted)]">
-                      {entry.location}
+                      {entry.location.text}
                     </p>
                   )}
                   {entry.bullets && entry.bullets.length > 0 && (

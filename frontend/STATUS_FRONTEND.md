@@ -465,3 +465,46 @@ with manual edits surviving later chat-scoped revisions) is a planned future pha
 not built in this pass. The stable `id`s added here for skill items and links (and
 already present on bullets/entries/summary/paragraphs) are intentional prep for that
 phase, not currently used for anything beyond `/revise` targeting and React keys.
+
+## Compatibility pass: meta/entry fields + cover-letter salutation as `{id, text}` (2026-09-16)
+
+Continuation of the id-inventory work above, ahead of the still-separate inline-editing
+phase. Backend migrated `Resume.meta.name/email/phone`, `Entry.title/organization/
+location/dates`, and all six `CoverLetterMeta` fields from plain strings to a generic
+`{id, text}` shape, and added `salutation`/`sign_off: {id, text}` to `CoverLetter`
+(previously hardcoded "Dear Hiring Manager," / "Sincerely," in `CoverLetterPreview.tsx`).
+This pass is purely defensive — no new selection UI — since leaving these as plain-string
+reads once the backend shape changed would have silently rendered `[object Object]`
+everywhere, the same failure mode hit with skill items in the previous pass.
+
+- **`app/types.ts`**: added a shared `IdText = { id: string; text: string }` type.
+  `Meta.name/email/phone`, `Entry.title/organization/location/dates`, and all of
+  `CoverLetterMeta` are now `IdText` (all required — backend always sends an id even
+  when the text is empty, so `Entry.location`/`dates` are no longer optional).
+  `CoverLetter` gained `salutation: IdText` and `sign_off: IdText`.
+- **`app/components/ResumePreview.tsx`** / **`CoverLetterPreview.tsx`**: every read of
+  these fields now goes through `.text` (`resume.meta.name.text`, `entry.dates.text`,
+  etc.). Truthy checks that used to gate on the field itself (`meta.date &&`,
+  `entry.location &&`, `[meta.role, meta.company].filter(Boolean)`) now check `.text`
+  specifically — checking the object itself would always be truthy even with empty
+  text, since backend always includes the id. `CoverLetterPreview.tsx`'s hardcoded
+  salutation/sign-off paragraphs are now `coverLetter.salutation.text` /
+  `coverLetter.sign_off.text`.
+- **`app/lib/resume.ts`**: added a small `patchIdText(field, updateMap)` helper and
+  used it everywhere an `IdText` leaf can appear — `resume.meta.name/email/phone`,
+  `entry.title/organization/location/dates`, `resume.summary`,
+  `coverLetter.meta.*`, `coverLetter.salutation`, `coverLetter.sign_off` — plain
+  text-replace, no comma-splitting (that's still skill-group-only). None of these
+  fields are selectable yet, so `applyRevisionUpdates`/`applyCoverLetterUpdates`
+  won't currently receive their ids from a real selection, but the patch logic is in
+  place for when the next phase makes them selectable.
+- No `Selectable` wrapping was added to any of these fields, per scope — that's
+  deliberately deferred to the inline-editing phase.
+
+Verified in a real browser: generated a fresh resume and a fresh cover letter (job
+description named a hiring manager) — nothing rendered as `[object Object]`, and the
+cover letter's salutation correctly used the named hiring manager ("Dear Jane Smith,")
+via `/generate`'s existing salutation-picking logic. Regression-checked: summary
+revision, a single bullet revision, a combined bullet+skill-group multi-select
+revision (both updated correctly in one round trip), and a cover-letter paragraph
+revision — all still work unchanged. `tsc --noEmit` and `eslint` both clean.

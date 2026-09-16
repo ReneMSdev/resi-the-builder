@@ -13,7 +13,52 @@ import {
   applyCoverLetterUpdates,
   describeSelection,
   describeCoverLetterSelection,
+  addBullet,
+  removeBullet,
+  addSkillItem,
+  removeSkillItem,
+  editSkillItem,
+  addLink,
+  removeLink,
+  editLink,
 } from './lib/resume'
+
+type PreviewMode = 'select' | 'edit'
+
+function ModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: PreviewMode
+  onChange: (mode: PreviewMode) => void
+}) {
+  return (
+    <div className='inline-flex overflow-hidden rounded border border-(--border)'>
+      <button
+        type='button'
+        onClick={() => onChange('select')}
+        className={`px-2 py-1 text-xs font-medium transition-colors hover:cursor-pointer ${
+          mode === 'select'
+            ? 'bg-(--accent) text-(--surface)'
+            : 'bg-(--surface) text-foreground hover:bg-(--accent-soft)'
+        }`}
+      >
+        Select
+      </button>
+      <button
+        type='button'
+        onClick={() => onChange('edit')}
+        className={`px-2 py-1 text-xs font-medium transition-colors hover:cursor-pointer ${
+          mode === 'edit'
+            ? 'bg-(--edit) text-(--surface)'
+            : 'bg-(--surface) text-foreground hover:bg-(--edit-soft)'
+        }`}
+      >
+        Edit
+      </button>
+    </div>
+  )
+}
 
 type BackendStatus = { state: 'loading' } | { state: 'ok' } | { state: 'error'; message: string }
 
@@ -48,6 +93,7 @@ export default function Home() {
   const [coverLetterState, setCoverLetterState] = useState<CoverLetterGenerateState>({
     state: 'idle',
   })
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('select')
   const [resumeSelectedIds, setResumeSelectedIds] = useState<Set<string>>(new Set())
   const [clSelectedIds, setClSelectedIds] = useState<Set<string>>(new Set())
   const [resumeReviseState, setResumeReviseState] = useState<ReviseState>({
@@ -151,6 +197,48 @@ export default function Home() {
       return next
     })
   }
+
+  function handleEditField(id: string, text: string) {
+    if (mode === 'resume') {
+      setResumeState((prev) =>
+        prev.state !== 'success'
+          ? prev
+          : { state: 'success', resume: applyRevisionUpdates(prev.resume, [{ id, text }]) },
+      )
+    } else if (mode === 'cover_letter') {
+      setCoverLetterState((prev) =>
+        prev.state !== 'success'
+          ? prev
+          : {
+              state: 'success',
+              coverLetter: applyCoverLetterUpdates(prev.coverLetter, [{ id, text }]),
+            },
+      )
+    }
+  }
+
+  function updateResume(updater: (resume: Resume) => Resume) {
+    setResumeState((prev) =>
+      prev.state !== 'success' ? prev : { state: 'success', resume: updater(prev.resume) },
+    )
+  }
+
+  const handleAddBullet = (entryId: string, text: string) =>
+    updateResume((resume) => addBullet(resume, entryId, text))
+  const handleRemoveBullet = (bulletId: string) =>
+    updateResume((resume) => removeBullet(resume, bulletId))
+  const handleAddSkillItem = (groupId: string, text: string) =>
+    updateResume((resume) => addSkillItem(resume, groupId, text))
+  const handleRemoveSkillItem = (groupId: string, itemId: string) =>
+    updateResume((resume) => removeSkillItem(resume, groupId, itemId))
+  const handleEditSkillItem = (groupId: string, itemId: string, text: string) =>
+    updateResume((resume) => editSkillItem(resume, groupId, itemId, text))
+  const handleAddLink = (label: string, url: string) =>
+    updateResume((resume) => addLink(resume, label, url))
+  const handleRemoveLink = (linkId: string) =>
+    updateResume((resume) => removeLink(resume, linkId))
+  const handleEditLink = (linkId: string, label: string, url: string) =>
+    updateResume((resume) => editLink(resume, linkId, label, url))
 
   async function handleRevise(instruction: string) {
     if (mode === 'resume' ? resumeState.state !== 'success' : coverLetterState.state !== 'success') {
@@ -338,11 +426,14 @@ export default function Home() {
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between gap-2'>
               <p className='text-xs text-(--muted)'>
-                {selectedIds.size === 0
-                  ? 'Click a bullet, entry, or section to select it.'
-                  : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+                {previewMode === 'edit'
+                  ? 'Edit mode: click any field to edit it.'
+                  : selectedIds.size === 0
+                    ? 'Click a bullet, entry, or section to select it.'
+                    : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
               </p>
               <div className='flex items-center gap-2'>
+                <ModeToggle mode={previewMode} onChange={setPreviewMode} />
                 <SaveButton type='resume' document={resumeState.resume} />
                 <DownloadButtons document={{ resume: resumeState.resume }} />
               </div>
@@ -351,6 +442,16 @@ export default function Home() {
               resume={resumeState.resume}
               selectedIds={selectedIds}
               onToggle={toggleSelected}
+              mode={previewMode}
+              onEditField={handleEditField}
+              onAddBullet={handleAddBullet}
+              onRemoveBullet={handleRemoveBullet}
+              onAddSkillItem={handleAddSkillItem}
+              onRemoveSkillItem={handleRemoveSkillItem}
+              onEditSkillItem={handleEditSkillItem}
+              onAddLink={handleAddLink}
+              onRemoveLink={handleRemoveLink}
+              onEditLink={handleEditLink}
             />
             <details className='text-xs text-(--muted)'>
               <summary className='cursor-pointer select-none'>Raw JSON</summary>
@@ -372,11 +473,14 @@ export default function Home() {
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between gap-2'>
               <p className='text-xs text-(--muted)'>
-                {selectedIds.size === 0
-                  ? 'Click a paragraph to select it.'
-                  : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+                {previewMode === 'edit'
+                  ? 'Edit mode: click any field to edit it.'
+                  : selectedIds.size === 0
+                    ? 'Click a paragraph to select it.'
+                    : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
               </p>
               <div className='flex items-center gap-2'>
+                <ModeToggle mode={previewMode} onChange={setPreviewMode} />
                 <SaveButton type='cover_letter' document={coverLetterState.coverLetter} />
                 <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
               </div>
@@ -385,6 +489,8 @@ export default function Home() {
               coverLetter={coverLetterState.coverLetter}
               selectedIds={selectedIds}
               onToggle={toggleSelected}
+              mode={previewMode}
+              onEditField={handleEditField}
             />
             <details className='text-xs text-(--muted)'>
               <summary className='cursor-pointer select-none'>Raw JSON</summary>

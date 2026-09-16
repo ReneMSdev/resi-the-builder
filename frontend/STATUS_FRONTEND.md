@@ -508,3 +508,138 @@ via `/generate`'s existing salutation-picking logic. Regression-checked: summary
 revision, a single bullet revision, a combined bullet+skill-group multi-select
 revision (both updated correctly in one round trip), and a cover-letter paragraph
 revision — all still work unchanged. `tsc --noEmit` and `eslint` both clean.
+
+## Feature: Inline manual editing, layered on chat-scoped select+revise (2026-09-16)
+
+Design decisions came from the user via the manager session, not derived independently:
+a single global Select/Edit toggle for the whole preview pane (not per-item); structural
+edits (adding/removing whole entries or sections) out of scope this pass — only
+leaf-level items (bullets, skill items, links) get add/remove; manual-edit-vs-later-
+chat-revision protection/tracking explicitly deferred (see "Known gap" below);
+`Section.title` stays a plain string, unchanged, out of scope.
+
+### Phase 1 — Mode toggle infrastructure
+
+- **`app/page.tsx`**: one `previewMode: 'select' | 'edit'` state (default `'select'`),
+  shared across the resume and cover-letter tabs (a true global toggle, not per-tab).
+  New `ModeToggle` segmented control rendered next to the selection-count indicator in
+  both success blocks. Switching modes never touches `selectedIds` — it's a separate
+  piece of state and nothing in the toggle handler reaches it.
+- **`app/components/Selectable.tsx`**: added `mode`, `hoveredId`, `onHover` props.
+  `onClick` only calls `onToggle` when `mode === 'select'` — in `'edit'` mode, clicking
+  a Selectable's own chrome (not an editable field inside it) is a no-op. Cursor is
+  `cursor-pointer` in select mode, `cursor-default` in edit mode (editable text spans
+  inside supply their own `cursor-text`, see Phase 2). The hover background color
+  itself differs by mode too (`--accent-soft` vs `--edit-soft`).
+- **Hover isolation bug found and fixed while building this**: the initial
+  implementation used `onMouseEnter`/`onMouseLeave` with `stopPropagation()` to lift a
+  single `hoveredId` (local `useState` in each of `ResumePreview`/`CoverLetterPreview`)
+  up from whichever Selectable the pointer is actually over. In the browser this did
+  not work — hovering a bullet lit up the entire enclosing section instead of just the
+  bullet (confirmed via a DOM query for the inline `background-color` style: only the
+  *section*-level element ever had it, never the entry or bullet). `mouseenter`/
+  `mouseleave` don't natively bubble, and calling `stopPropagation()` on them turned out
+  to interfere with how React's synthetic event system computes which ancestors get
+  notified, leaving stale/wrong elements "entered." Fixed by switching to
+  `onMouseOver`/`onMouseOut` (which do bubble, with well-defined, reliable
+  `stopPropagation()` semantics) — verified afterward via the same DOM inspection that
+  hovering a bullet highlights only the `<li>`, hovering an entry's own chrome (its
+  title/dates row, not over any bullet) highlights only the entry, and hovering a
+  section's own chrome (its heading, not inside any entry) highlights only the section.
+  One known minor UX quirk from the simple `onHover(null)`-on-leave approach: leaving a
+  nested item while still within an ancestor's chrome briefly shows nothing highlighted
+  until the next `mouseover` (rather than instantly reverting to the ancestor's
+  highlight) — acceptable, not a correctness issue, and nobody asked for pixel-perfect
+  continuity here.
+
+### Phase 2 — Inline editing for scalar text fields
+
+- **New `app/components/InlineEdit.tsx`**: `EditableText` (click a rendered text field
+  in edit mode → swaps to an `<input>`/`<textarea>` in place, pre-filled and
+  auto-selected; Enter saves, Escape reverts and cancels, Shift+Enter inserts a newline
+  for `multiline` fields, blur also saves). `JoinedFields` renders a set of `IdText`
+  fields separated by a delimiter (e.g. title — organization — dates), hiding
+  empty fields in select mode (matching the old `.filter(Boolean).join(...)` behavior)
+  but showing them with a placeholder in edit mode so an empty field is still reachable
+  to fill in.
+- Applied to every scalar field named in the spec: bullets, summary, `Entry`
+  title/organization/location/dates, `Meta` name/email/phone, `CoverLetterMeta`'s six
+  fields, `CoverLetter` salutation/sign_off, cover-letter paragraphs.
+- Saving reuses the existing `applyRevisionUpdates` / `applyCoverLetterUpdates` from the
+  compatibility pass above — a manual edit calls `onEditField(id, text)` in `page.tsx`,
+  which does exactly `applyRevisionUpdates(resume, [{id, text}])`, the same function and
+  the same `{id, text}` shape a `/revise` response already produces. No new mutation
+  path, no API call for a plain text edit.
+
+### Phase 3 — Add/remove for leaf-list items (bullets, skill items, links)
+
+- **`app/lib/resume.ts`**: added `addBullet`/`removeBullet`,
+  `addSkillItem`/`removeSkillItem`/`editSkillItem`, `addLink`/`removeLink`/`editLink` —
+  all pure, immutable, mirroring the existing map/filter/spread style. New items get a
+  `crypto.randomUUID()` id, same pattern already used for skill-group-rewrite ids.
+- **`InlineEdit.tsx`** also has: `AddGhostRow` (dashed ghost row → inline input in that
+  slot on click; blur-while-empty or Escape cancels with nothing added — used for
+  bullets), `TextPill`/`AddPill` (skill-item chips: click text to edit inline, hover
+  reveals a fading-in ✕ to remove, trailing dashed "+ Add item" ghost pill), and
+  `LinkPill`/`AddLinkPill` (same ✕/add-pill treatment as skill items, but two stacked
+  inputs — label then URL — since a link has two parts).
+- **`ResumePreview.tsx`**: skill groups render as pills only in edit mode (select mode
+  keeps the original comma-joined text, unchanged); bullets get a per-bullet hover-fade
+  ✕ (plain Tailwind `group`/`group-hover`, not the JS hover system above — no nested-
+  Selectable-bleed concern for a same-element sibling button) plus a trailing "+ Add
+  bullet" ghost `<li>`; `Meta.links` gets its own pill row in edit mode (select mode's
+  single piped contact line is unchanged) with a trailing "+ Add link" ghost pill.
+- Cover letter has no leaf-list add/remove (paragraphs aren't in the
+  bullets/skill-items/links list from the spec) — Phase 2 scalar editing only.
+
+### Verification (real browser, not just code review)
+
+- Toggled Select ↔ Edit repeatedly with a bullet already selected — `selectedIds`
+  survived every toggle in both directions, "Editing: 1 bullet" stayed correct
+  throughout, and the preview pane's border/hover-tint color visibly changed with mode.
+- Confirmed hover isolation for all three nesting levels (bullet-only, entry-own-chrome-
+  only, section-own-chrome-only) via direct DOM inspection, not just eyeballing a
+  screenshot.
+- Edited the resume name, an entry's dates field (Escape-cancel tested first — reverted
+  correctly, nothing saved), and a skill item's text — each patched only the target
+  field, nothing else shifted.
+- Removed a skill item (✕, no confirm), added a new one ("Kubernetes"), edited an
+  existing one's text — ids didn't collide, rendering stayed correct (no stale
+  `[object Object]`).
+- Removed a bullet, added a new one via the ghost row — same result.
+- Added a link via the two-stacked-input flow (clicked label field, typed, clicked into
+  the URL field, typed, Enter committed both at once), edited an existing link
+  (Escape-cancel tested first), removed a link.
+- Regression: switched back to Select mode and ran a real chat-scoped `/revise` on a
+  plain bullet, then on a skill group with manually-added/renamed items already in it
+  (group's edited state — including the manually added "Kubernetes" item and the
+  renamed "Node.js (TypeScript)" item — round-tripped correctly through the revise and
+  came back re-alphabetized with those edits intact) — both worked exactly as before.
+- Cover letter: edited `meta.company` (filled from empty via its edit-mode placeholder),
+  the salutation, and a paragraph (including a Shift+Enter-inserted newline, which
+  Enter then correctly committed as part of the saved text — note the embedded `\n`
+  doesn't render as a visual line break in the read-only `<p>` afterward, due to
+  ordinary HTML whitespace collapsing; this is a pre-existing display characteristic of
+  plain `<p>` text, not something this pass changed). Regression-checked a normal
+  paragraph `/revise` afterward — still works (the LLM even naturally cleaned up the
+  manually-added throwaway sentence as part of "make this more concise").
+- Saved a resume with the manual edits/additions above, then rendered it through the
+  live backend `/render` endpoint for both `.docx` and `.pdf` and inspected the actual
+  extracted text of each (`unzip` + regex-stripped `document.xml` for docx; `pypdf` for
+  PDF, installed to a scratch `--target` directory for this check only, not added to
+  the project) — the manually-added bullet text, the manually-added skill item
+  ("Kubernetes"), the manually-renamed skill item ("Node.js (TypeScript)"), and the
+  manually-edited name all appeared correctly in both rendered formats. This is the
+  first real exercise of `/render` with data that never passed through an LLM
+  `/generate` or `/revise` call.
+- `tsc --noEmit` and `eslint` both clean throughout.
+
+### Known gap (deliberately deferred, not built)
+
+No manual-edit-vs-later-chat-revision protection or tracking exists. If a field is
+edited manually and later swept up in a broader chat-scoped revision (or vice versa),
+there's no flag distinguishing "this came from a manual edit" from any other value, and
+no logic to protect one from being overwritten by the other. This was explicit scope
+for a future pass, not an oversight — the data shape used for an edited value
+(`{id, text}` in local state, same as everything else) was deliberately kept plain so
+that bolting a provenance flag on later doesn't require restructuring anything now.

@@ -142,3 +142,127 @@ export function describeCoverLetterSelection(
   if (count === 0) return "";
   return `${count} paragraph${count === 1 ? "" : "s"}`;
 }
+
+export function addBullet(resume: Resume, entryId: string, text: string): Resume {
+  return {
+    ...resume,
+    sections: resume.sections.map((section) => ({
+      ...section,
+      entries: section.entries?.map((entry) =>
+        entry.id !== entryId
+          ? entry
+          : {
+              ...entry,
+              bullets: [...(entry.bullets ?? []), { id: crypto.randomUUID(), text }],
+            }
+      ),
+    })),
+  };
+}
+
+export function removeBullet(resume: Resume, bulletId: string): Resume {
+  return {
+    ...resume,
+    sections: resume.sections.map((section) => ({
+      ...section,
+      entries: section.entries?.map((entry) =>
+        !entry.bullets
+          ? entry
+          : { ...entry, bullets: entry.bullets.filter((b) => b.id !== bulletId) }
+      ),
+    })),
+  };
+}
+
+export function addSkillItem(resume: Resume, groupId: string, text: string): Resume {
+  return {
+    ...resume,
+    sections: resume.sections.map((section) => ({
+      ...section,
+      groups: section.groups?.map((group) =>
+        group.id !== groupId
+          ? group
+          : { ...group, items: [...group.items, { id: crypto.randomUUID(), text }] }
+      ),
+    })),
+  };
+}
+
+export function removeSkillItem(
+  resume: Resume,
+  groupId: string,
+  itemId: string
+): Resume {
+  return {
+    ...resume,
+    sections: resume.sections.map((section) => ({
+      ...section,
+      groups: section.groups?.map((group) =>
+        group.id !== groupId
+          ? group
+          : { ...group, items: group.items.filter((item) => item.id !== itemId) }
+      ),
+    })),
+  };
+}
+
+export function editSkillItem(
+  resume: Resume,
+  groupId: string,
+  itemId: string,
+  text: string
+): Resume {
+  return {
+    ...resume,
+    sections: resume.sections.map((section) => ({
+      ...section,
+      groups: section.groups?.map((group) =>
+        group.id !== groupId
+          ? group
+          : {
+              ...group,
+              items: group.items.map((item) =>
+                item.id === itemId ? { ...item, text } : item
+              ),
+            }
+      ),
+    })),
+  };
+}
+
+export function addLink(resume: Resume, label: string, url: string): Resume {
+  return {
+    ...resume,
+    meta: {
+      ...resume.meta,
+      links: [...(resume.meta.links ?? []), { id: crypto.randomUUID(), label, url }],
+    },
+  };
+}
+
+export function removeLink(resume: Resume, linkId: string): Resume {
+  return {
+    ...resume,
+    meta: {
+      ...resume.meta,
+      links: (resume.meta.links ?? []).filter((link) => link.id !== linkId),
+    },
+  };
+}
+
+export function editLink(
+  resume: Resume,
+  linkId: string,
+  label: string,
+  url: string
+): Resume {
+  return {
+    ...resume,
+    meta: {
+      ...resume.meta,
+      links: (resume.meta.links ?? []).map((link) =>
+        link.id === linkId ? { ...link, label, url } : link
+      ),
+    },
+  };
+}

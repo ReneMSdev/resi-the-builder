@@ -11,6 +11,8 @@
   --accent-soft: #fbe1d2;
   --success: #4f7942;
   --danger: #b23a2e;
+  --edit: #3a6ea5;
+  --edit-soft: #dce8f4;
 }
 
 @theme inline {

@@ -5,7 +5,8 @@ from app.services.llm import MAX_INPUT_CHARS
 
 
 def test_generate_resume_success(client, mock_llm, tmp_profile_path, minimal_resume):
-    mock_llm(json.dumps(minimal_resume))
+    payload = {**minimal_resume, "cleaned_job_description": "Cleaned posting text."}
+    mock_llm(json.dumps(payload))
 
     resp = client.post("/generate", json={"job_description": "A generic job description."})
 
@@ -14,10 +15,13 @@ def test_generate_resume_success(client, mock_llm, tmp_profile_path, minimal_res
     assert body["cover_letter"] is None
     assert body["resume"]["meta"]["name"]["text"] == "Jane Doe"
     assert body["resume"]["sections"][0]["entries"][0]["bullets"][0]["text"] == "Built things."
+    assert body["cleaned_job_description"] == "Cleaned posting text."
+    assert "cleaned_job_description" not in body["resume"]
 
 
 def test_generate_cover_letter_success(client, mock_llm, tmp_profile_path, minimal_cover_letter):
-    mock_llm(json.dumps(minimal_cover_letter))
+    payload = {**minimal_cover_letter, "cleaned_job_description": "Cleaned posting text."}
+    mock_llm(json.dumps(payload))
 
     resp = client.post(
         "/generate",
@@ -29,6 +33,21 @@ def test_generate_cover_letter_success(client, mock_llm, tmp_profile_path, minim
     assert body["resume"] is None
     assert body["cover_letter"]["meta"]["company"]["text"] == "Acme Corp"
     assert len(body["cover_letter"]["paragraphs"]) == 2
+    assert body["cleaned_job_description"] == "Cleaned posting text."
+    assert "cleaned_job_description" not in body["cover_letter"]
+
+
+def test_generate_resume_defaults_cleaned_job_description_to_none_if_missing(
+    client, mock_llm, tmp_profile_path, minimal_resume
+):
+    """If the model omits the field (e.g. an older/degraded response), the route
+    shouldn't crash — it should just come back null."""
+    mock_llm(json.dumps(minimal_resume))
+
+    resp = client.post("/generate", json={"job_description": "A generic job description."})
+
+    assert resp.status_code == 200
+    assert resp.json()["cleaned_job_description"] is None
 
 
 def test_generate_rejects_unknown_type(client, tmp_profile_path):

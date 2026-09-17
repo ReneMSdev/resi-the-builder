@@ -105,6 +105,7 @@ class GenerateRequest(BaseModel):
 class GenerateResponse(BaseModel):
     resume: Optional[Resume] = None
     cover_letter: Optional[CoverLetter] = None
+    cleaned_job_description: Optional[str] = None
 
 
 class ReviseRequest(BaseModel):

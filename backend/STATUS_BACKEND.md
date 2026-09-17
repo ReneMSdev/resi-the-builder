@@ -941,6 +941,49 @@ came back empty and the full default suite was re-confirmed green (30 passed).
 a *different* package called `httpx2`, not `httpx`, so this was a genuinely new
 dependency, not already satisfied transitively).
 
+## Backend Part 6 — `cleaned_job_description` field (2026-09-16, UI redesign Phase 1)
+
+**Context**: first backend piece of the two-tab (Generate/Saved) redesign being planned
+with the user (full scope in `TODO.md`'s "Planned features" section). Users typically
+paste an entire scraped webpage as the job description — nav links, "Apply Now" buttons,
+cookie banners, application-form fields, EEO survey questions, footer boilerplate — mixed
+in with the actual posting. Since the model already has to read the whole thing to
+tailor content, it now also returns a cleaned version in the same call, at no extra API
+cost. This is Phase 1 only — the bigger `/applications` package-storage work (Phase 3 in
+the redesign) is separate and not started.
+
+**What changed**:
+- `GenerateResponse` (`app/models.py`) gains `cleaned_job_description: Optional[str] = None`.
+- Both `GENERATE_SYSTEM_PROMPT` and `COVER_LETTER_SYSTEM_PROMPT` (`app/services/llm.py`)
+  now instruct the model to also return a `"cleaned_job_description"` field alongside the
+  resume/cover-letter JSON it was already producing — same JSON object, one extra
+  top-level key. Explicitly framed as cleanup, not summarization: "keeping all the
+  substantive content ... in its original wording."
+- `app/routes/generate.py` pops that key off the parsed result dict before assigning the
+  rest to `resume`/`cover_letter`, so it surfaces at the top level of the response and
+  never leaks into the nested `Resume`/`CoverLetter` object. Defaults to `None` via
+  `dict.pop(..., None)` if the model ever omits it, so an older-shaped response can't crash
+  response-model validation.
+
+**Verified against a real scraped page**, not just clean sample text: pulled the actual
+rendered DOM text (`document.body.innerText`, not `get_page_text`'s already-cleaned
+article extraction) from a live Greenhouse job posting
+(`job-boards.greenhouse.io/justworks/jobs/6917404`) via Claude-in-Chrome — 10,984 raw
+characters including "Back to jobs", the "Apply" button, the entire application form
+(First Name/Last Name/Resume attach/Dropbox/Google Drive), the full EEO/demographic
+survey block, and footer boilerplate. Posted that raw text through `/generate`
+(`type: "resume"`): `cleaned_job_description` came back at 5,040 characters — all of the
+above stripped, all substantive content preserved (Who We Are, Who You Are,
+responsibilities, competencies/values, qualifications, tech stack, salary range) in its
+original wording, not leaked into the `resume` object. Repeated with a smaller synthetic
+junk sample (`type: "cover_letter"`) — same clean strip ("Apply Now", cookie banner,
+footer copyright all removed; substance intact), confirming both generation types work.
+
+**Test coverage** (`tests/test_generate.py`, mocked): resume/cover-letter success cases
+now assert `cleaned_job_description` surfaces at the top level and isn't nested inside
+`resume`/`cover_letter`; a third test confirms a model response that omits the field
+comes back as `null` instead of crashing. Full suite: 31 passed (was 30).
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

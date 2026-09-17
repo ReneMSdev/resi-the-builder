@@ -8,6 +8,9 @@ import { RevisionChat } from './components/RevisionChat'
 import { DownloadButtons } from './components/DownloadButtons'
 import { SaveButton } from './components/SaveButton'
 import { SavedTab } from './components/SavedTab'
+import { ToastContainer } from './components/Toast'
+import { HamburgerMenu } from './components/HamburgerMenu'
+import { ProfileView } from './components/ProfileView'
 import {
   applyRevisionUpdates,
   applyCoverLetterUpdates,
@@ -62,7 +65,7 @@ function ModeToggle({
 
 type BackendStatus = { state: 'loading' } | { state: 'ok' } | { state: 'error'; message: string }
 
-type Tab = 'jd' | 'resume' | 'cover_letter' | 'saved'
+type Tab = 'jd' | 'resume' | 'cover_letter' | 'saved' | 'profile'
 
 type ResumeGenerateState =
   | { state: 'idle' }
@@ -434,12 +437,15 @@ export default function Home() {
   return (
     <div className='flex flex-col flex-1 items-center bg-background font-sans'>
       <div className='flex w-full items-center justify-between border-b border-(--border) bg-(--topbar-bg) py-3 px-[50px]'>
-        <span
-          className='text-xl font-bold tracking-tight text-(--accent)'
-          style={{ fontFamily: 'var(--font-roboto-mono)' }}
-        >
-          Resume Builder
-        </span>
+        <div className='flex items-center gap-3'>
+          <HamburgerMenu onSelect={(view) => setTab(view)} />
+          <span
+            className='text-xl font-bold tracking-tight text-(--accent)'
+            style={{ fontFamily: 'var(--font-roboto-mono)' }}
+          >
+            Resume Builder
+          </span>
+        </div>
         {status.state === 'loading' && (
           <p className='text-sm text-(--muted)'>Checking backend...</p>
         )}
@@ -484,19 +490,14 @@ export default function Home() {
             >
               Cover Letter
             </button>
-            <button
-              type='button'
-              onClick={() => setTab('saved')}
-              className={tabClass('saved')}
-            >
-              Saved
-            </button>
           </div>
         </div>
 
         {tab === 'saved' && <SavedTab onLoad={handleLoadApplication} />}
 
-        {tab !== 'saved' && (
+        {tab === 'profile' && <ProfileView />}
+
+        {tab !== 'saved' && tab !== 'profile' && (
           <>
             {tab === 'jd' &&
               (resumeReady && coverLetterReady ? (
@@ -666,6 +667,7 @@ export default function Home() {
           </>
         )}
       </main>
+      <ToastContainer />
     </div>
   )
 }

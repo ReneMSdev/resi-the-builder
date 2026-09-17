@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { SavedItem, SavedItemSummary } from '../types'
+import { Application, ApplicationSummary } from '../types'
 
 type ListState =
   | { state: 'loading' }
-  | { state: 'success'; items: SavedItemSummary[] }
+  | { state: 'success'; items: ApplicationSummary[] }
   | { state: 'error'; message: string }
+
+type Tab = 'jd' | 'resume' | 'cover_letter'
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -20,7 +22,14 @@ function formatDate(iso: string) {
   })
 }
 
-export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
+const pillClass =
+  'rounded-full border border-(--border) bg-(--accent-soft) px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent) hover:text-(--surface)'
+
+export function SavedTab({
+  onLoad,
+}: {
+  onLoad: (application: Application, tab: Tab) => void
+}) {
   const [listState, setListState] = useState<ListState>(() =>
     process.env.NEXT_PUBLIC_API_URL
       ? { state: 'loading' }
@@ -30,7 +39,7 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
   function runFetch(apiUrl: string) {
-    fetch(`${apiUrl}/resumes`)
+    fetch(`${apiUrl}/applications`)
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.text()
@@ -38,7 +47,7 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
         }
         return res.json()
       })
-      .then((items: SavedItemSummary[]) => setListState({ state: 'success', items }))
+      .then((items: ApplicationSummary[]) => setListState({ state: 'success', items }))
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err)
         setListState({ state: 'error', message })
@@ -61,19 +70,19 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
     runFetch(apiUrl)
   }
 
-  async function handleLoad(id: string) {
+  async function handleOpen(id: string, tab: Tab) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
-    if (!apiUrl) return
+    if (!apiUrl || pendingId) return
 
     setPendingId(id)
     try {
-      const res = await fetch(`${apiUrl}/resumes/${id}`)
+      const res = await fetch(`${apiUrl}/applications/${id}`)
       if (!res.ok) {
         const body = await res.text()
         throw new Error(`${res.status}: ${body}`)
       }
-      const item: SavedItem = await res.json()
-      onLoad(item)
+      const application: Application = await res.json()
+      onLoad(application, tab)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       setListState({ state: 'error', message })
@@ -89,7 +98,7 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
     setConfirmingId(null)
     setPendingId(id)
     try {
-      const res = await fetch(`${apiUrl}/resumes/${id}`, { method: 'DELETE' })
+      const res = await fetch(`${apiUrl}/applications/${id}`, { method: 'DELETE' })
       if (!res.ok) {
         const body = await res.text()
         throw new Error(`${res.status}: ${body}`)
@@ -108,13 +117,13 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
   }
 
   if (listState.state === 'loading') {
-    return <p className='text-sm text-(--muted)'>Loading saved items...</p>
+    return <p className='text-sm text-(--muted)'>Loading saved applications...</p>
   }
 
   if (listState.state === 'error') {
     return (
       <div className='flex flex-col gap-2'>
-        <p className='font-medium text-(--danger)'>Error loading saved items: {listState.message}</p>
+        <p className='font-medium text-(--danger)'>Error loading saved applications: {listState.message}</p>
         <button
           type='button'
           onClick={handleRetry}
@@ -127,69 +136,99 @@ export function SavedTab({ onLoad }: { onLoad: (item: SavedItem) => void }) {
   }
 
   if (listState.items.length === 0) {
-    return <p className='text-sm text-(--muted)'>No saved items yet.</p>
+    return <p className='text-sm text-(--muted)'>No saved applications yet.</p>
   }
 
   return (
     <div className='flex flex-col gap-2'>
-      {listState.items.map((item) => (
-        <div
-          key={item.id}
-          className='flex items-center justify-between gap-2 rounded border border-(--border) bg-(--surface) p-3'
-        >
-          <div className='flex flex-col gap-1'>
-            <div className='flex items-center gap-2'>
+      {listState.items.map((item) => {
+        const isPending = pendingId === item.id
+        return (
+          <div
+            key={item.id}
+            onClick={() => handleOpen(item.id, 'jd')}
+            className={`flex items-center justify-between gap-2 rounded border border-(--border) bg-(--surface) p-3 transition-colors hover:cursor-pointer hover:bg-(--accent-soft) ${
+              isPending ? 'pointer-events-none opacity-50' : ''
+            }`}
+          >
+            <div className='flex flex-col gap-1'>
               <span className='text-sm font-medium text-foreground'>{item.name}</span>
-              <span className='rounded bg-(--accent-soft) px-1.5 py-0.5 text-xs font-medium text-foreground'>
-                {item.type === 'resume' ? 'Resume' : 'Cover Letter'}
-              </span>
+              <div className='flex flex-wrap items-center gap-1.5'>
+                <button
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpen(item.id, 'jd')
+                  }}
+                  className={pillClass}
+                >
+                  Job Description
+                </button>
+                {item.has_resume && (
+                  <button
+                    type='button'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleOpen(item.id, 'resume')
+                    }}
+                    className={pillClass}
+                  >
+                    Resume
+                  </button>
+                )}
+                {item.has_cover_letter && (
+                  <button
+                    type='button'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleOpen(item.id, 'cover_letter')
+                    }}
+                    className={pillClass}
+                  >
+                    Cover Letter
+                  </button>
+                )}
+              </div>
+              <span className='text-xs text-(--muted)'>{formatDate(item.created_at)}</span>
             </div>
-            <span className='text-xs text-(--muted)'>{formatDate(item.created_at)}</span>
-          </div>
-          <div className='flex gap-2'>
-            {confirmingId === item.id ? (
-              <>
-                <span className='self-center text-xs text-(--muted)'>Delete this item?</span>
-                <button
-                  type='button'
-                  onClick={() => handleDelete(item.id)}
-                  disabled={pendingId === item.id}
-                  className='rounded border border-(--danger) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
-                >
-                  Confirm
-                </button>
-                <button
-                  type='button'
-                  onClick={() => setConfirmingId(null)}
-                  disabled={pendingId === item.id}
-                  className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type='button'
-                  onClick={() => handleLoad(item.id)}
-                  disabled={pendingId === item.id}
-                  className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
-                >
-                  Load
-                </button>
+            <div
+              className='flex gap-2'
+              onClick={(e) => e.stopPropagation()}
+            >
+              {confirmingId === item.id ? (
+                <>
+                  <span className='self-center text-xs text-(--muted)'>Delete this item?</span>
+                  <button
+                    type='button'
+                    onClick={() => handleDelete(item.id)}
+                    disabled={isPending}
+                    className='rounded border border-(--danger) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => setConfirmingId(null)}
+                    disabled={isPending}
+                    className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
                 <button
                   type='button'
                   onClick={() => setConfirmingId(item.id)}
-                  disabled={pendingId === item.id}
+                  disabled={isPending}
                   className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
                 >
                   Delete
                 </button>
-              </>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

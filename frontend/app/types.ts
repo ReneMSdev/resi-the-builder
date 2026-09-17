@@ -56,13 +56,21 @@ export type CoverLetter = {
   paragraphs: Paragraph[];
 };
 
-export type SavedItemSummary = {
+export type JobDescription = { raw: string; cleaned: string | null };
+
+export type ApplicationSummary = {
   id: string;
   name: string;
-  type: "resume" | "cover_letter";
   created_at: string;
+  has_resume: boolean;
+  has_cover_letter: boolean;
 };
 
-export type SavedItem = SavedItemSummary & {
-  data: Resume | CoverLetter;
+export type Application = {
+  id: string;
+  name: string;
+  created_at: string;
+  job_description: JobDescription;
+  resume: Resume | null;
+  cover_letter: CoverLetter | null;
 };

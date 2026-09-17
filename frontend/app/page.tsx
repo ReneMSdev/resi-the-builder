@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CoverLetter, Resume, SavedItem } from './types'
+import { Application, CoverLetter, Resume } from './types'
 import { ResumePreview } from './components/ResumePreview'
 import { CoverLetterPreview } from './components/CoverLetterPreview'
 import { RevisionChat } from './components/RevisionChat'
@@ -167,6 +167,7 @@ export default function Home() {
   )
   const [tab, setTab] = useState<Tab>('jd')
   const [jobDescription, setJobDescription] = useState('')
+  const [cleanedJobDescription, setCleanedJobDescription] = useState<string | null>(null)
   const [companyContext, setCompanyContext] = useState('')
   const [resumeState, setResumeState] = useState<ResumeGenerateState>({
     state: 'idle',
@@ -242,7 +243,15 @@ export default function Home() {
         throw new Error(`${res.status}: ${body}`)
       }
 
-      const data: { resume: Resume | null; cover_letter: CoverLetter | null } = await res.json()
+      const data: {
+        resume: Resume | null
+        cover_letter: CoverLetter | null
+        cleaned_job_description?: string | null
+      } = await res.json()
+
+      if (data.cleaned_job_description) {
+        setCleanedJobDescription(data.cleaned_job_description)
+      }
 
       if (kind === 'resume') {
         if (!data.resume) {
@@ -377,19 +386,28 @@ export default function Home() {
     }
   }
 
-  function handleLoadSavedItem(item: SavedItem) {
-    if (item.type === 'resume') {
-      setResumeState({ state: 'success', resume: item.data as Resume })
-      setResumeSelectedIds(new Set())
-    } else {
-      setCoverLetterState({ state: 'success', coverLetter: item.data as CoverLetter })
-      setClSelectedIds(new Set())
-    }
-    setTab(item.type)
+  function handleLoadApplication(application: Application, targetTab: Tab) {
+    setJobDescription(application.job_description.raw)
+    setCleanedJobDescription(application.job_description.cleaned)
+    setResumeState(
+      application.resume ? { state: 'success', resume: application.resume } : { state: 'idle' },
+    )
+    setCoverLetterState(
+      application.cover_letter
+        ? { state: 'success', coverLetter: application.cover_letter }
+        : { state: 'idle' },
+    )
+    setResumeSelectedIds(new Set())
+    setClSelectedIds(new Set())
+    setResumeReviseState({ state: 'idle' })
+    setClReviseState({ state: 'idle' })
+    setPreviewMode('select')
+    setTab(targetTab)
   }
 
   function handleGenerateForNewJob() {
     setJobDescription('')
+    setCleanedJobDescription(null)
     setCompanyContext('')
     setResumeState({ state: 'idle' })
     setCoverLetterState({ state: 'idle' })
@@ -476,7 +494,7 @@ export default function Home() {
           </div>
         </div>
 
-        {tab === 'saved' && <SavedTab onLoad={handleLoadSavedItem} />}
+        {tab === 'saved' && <SavedTab onLoad={handleLoadApplication} />}
 
         {tab !== 'saved' && (
           <>
@@ -485,7 +503,7 @@ export default function Home() {
                 <div className='flex flex-col gap-2'>
                   <p className='text-xs text-(--muted)'>Job description (reference)</p>
                   <div className='whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 text-sm text-foreground'>
-                    {jobDescription}
+                    {cleanedJobDescription || jobDescription}
                   </div>
                 </div>
               ) : (
@@ -524,8 +542,9 @@ export default function Home() {
                         onChange={setPreviewMode}
                       />
                       <SaveButton
-                        type='resume'
-                        document={resumeState.resume}
+                        jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
+                        resume={resumeState.resume}
+                        coverLetter={coverLetterState.state === 'success' ? coverLetterState.coverLetter : null}
                       />
                       <DownloadButtons document={{ resume: resumeState.resume }} />
                     </div>
@@ -595,8 +614,9 @@ export default function Home() {
                         onChange={setPreviewMode}
                       />
                       <SaveButton
-                        type='cover_letter'
-                        document={coverLetterState.coverLetter}
+                        jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
+                        resume={resumeState.state === 'success' ? resumeState.resume : null}
+                        coverLetter={coverLetterState.coverLetter}
                       />
                       <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
                     </div>

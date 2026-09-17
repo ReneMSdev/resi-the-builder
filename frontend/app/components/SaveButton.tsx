@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CoverLetter, Resume } from '../types'
+import { CoverLetter, JobDescription, Resume } from '../types'
 
 type SaveState =
   | { state: 'idle' }
@@ -11,11 +11,13 @@ type SaveState =
   | { state: 'error'; message: string }
 
 export function SaveButton({
-  type,
-  document: doc,
+  jobDescription,
+  resume,
+  coverLetter,
 }: {
-  type: 'resume' | 'cover_letter'
-  document: Resume | CoverLetter
+  jobDescription: JobDescription
+  resume: Resume | null
+  coverLetter: CoverLetter | null
 }) {
   const [saveState, setSaveState] = useState<SaveState>({ state: 'idle' })
   const [name, setName] = useState('')
@@ -30,10 +32,15 @@ export function SaveButton({
     setSaveState({ state: 'saving' })
 
     try {
-      const res = await fetch(`${apiUrl}/resumes`, {
+      const res = await fetch(`${apiUrl}/applications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, type, data: doc }),
+        body: JSON.stringify({
+          name: name.trim() || null,
+          job_description: jobDescription,
+          resume,
+          cover_letter: coverLetter,
+        }),
       })
 
       if (!res.ok) {

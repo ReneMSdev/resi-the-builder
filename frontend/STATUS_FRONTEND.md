@@ -753,3 +753,78 @@ committed — so only the final flat-layout shape ever landed in git.
 Committed on `redesign/application-workspace` across three commits: `374312c`
 (two-bar layout), `6498546` (top-bar polish + divider), `a822a62` (auto-growing chat
 input). Not merged to `main`.
+
+## Feature: Wire Saved tab, Save button, and package loading to /applications (2026-09-17)
+
+Full cutover from the old `/resumes` endpoint (removed entirely in backend's Phase 3,
+`acb9ae5`) to the new `/applications` package storage — no parallel path kept. Backend
+contract: `POST /applications` (`{name?, job_description: {raw, cleaned?}, resume?,
+cover_letter?}` → full `Application`), `GET /applications` (lightweight
+`ApplicationSummary[]` with `has_resume`/`has_cover_letter` flags), `GET
+/applications/{id}` (full `Application`), `DELETE /applications/{id}`.
+
+- **`app/types.ts`**: `SavedItemSummary`/`SavedItem` replaced with `JobDescription`
+  (`{raw, cleaned}`), `ApplicationSummary`, and `Application`, matching the backend
+  models exactly.
+- **`SaveButton.tsx`**: no longer saves one document at a time against `type`/
+  `document` props. Now takes the whole session's state — `jobDescription: {raw,
+  cleaned}`, `resume: Resume | null`, `coverLetter: CoverLetter | null` — and POSTs it
+  as one `/applications` package. A resume-only session (no cover letter generated
+  yet) saves JD + resume with no forced empty CL slot, since `cover_letter` is simply
+  `null` in the request body. Same prompting/confirm/cancel UX as the old per-document
+  version, just a different payload and endpoint.
+- **`SavedTab.tsx`**: evolved in place (not rebuilt) into the pill-per-content-type
+  card design. Fetches `GET /applications` for the list; each row-card shows a Job
+  Description pill (always present — every application has one), a Resume pill
+  (`has_resume`), and a Cover Letter pill (`has_cover_letter`). Clicking a specific
+  pill (`stopPropagation`'d against the card's own click) fetches the full
+  `GET /applications/{id}` and calls `onLoad(application, thatTab)`; clicking the card
+  body anywhere else does the same with `tab: 'jd'`. Delete/Confirm/Cancel also
+  `stopPropagation`. Delete now calls `DELETE /applications/{id}`.
+- **`page.tsx`**: added `cleanedJobDescription` state, captured from `/generate`'s
+  `cleaned_job_description` field (added in backend's earlier Phase 1) on every
+  successful generate call, and reset alongside everything else on "Generate for new
+  job". `handleLoadSavedItem` replaced with `handleLoadApplication(application,
+  targetTab)`, which hydrates the Job Description, Resume, and Cover Letter tabs all
+  at once from one `Application` — each slot independently `success` or `idle` based
+  on whether `resume`/`cover_letter` is present — mirroring the same
+  "independent-slots, all populated together" pattern already used for
+  freshly-generated content in the Phase 2 redesign, rather than introducing new
+  state-management shape. Both `SaveButton` call sites (Resume tab, Cover Letter tab)
+  now pass the complete session data so either one saves the same full package. The
+  Job Description tab's reference view (shown once both Resume and Cover Letter
+  exist) now renders `cleanedJobDescription` when available, falling back to the raw
+  `jobDescription` text when it's null/empty (older data, or the rare case the model
+  omitted it) — this was a quick follow-up after the initial pass shipped with the
+  raw text only.
+
+### Verification (real browser + direct API checks, not just visual)
+
+- Loaded the pre-existing "Justworks" fixture (resume + cover letter, real cleaned JD
+  from backend's own Phase 1 testing) via its Resume pill — landed on the Resume tab
+  populated with the action row at the top; checked the Job Description tab and
+  confirmed it showed the reference view (both exist) rendering the **cleaned** text —
+  cross-checked via `curl`ing `/applications/{id}` directly first to confirm raw and
+  cleaned actually differ (raw opens with "Back to jobs / Software Engineer / New
+  York, New York / Apply / Who We Are..."; cleaned opens with "Software Engineer / New
+  York, New York / Who We Are..." — site-chrome stripped), then confirmed the
+  rendered page matched the cleaned version, not raw; checked the Cover Letter tab
+  also came in populated. Confirms all three tabs hydrate from one load.
+- Reset via "Generate for new job", generated a resume only (no cover letter) for a
+  fresh JD, saved with no custom name — `curl`ed `/applications` and confirmed
+  `has_resume: true, has_cover_letter: false`; confirmed the Saved-tab card showed
+  only the Job Description and Resume pills, no Cover Letter pill.
+- Clicked that card's body (not a pill) — correctly defaulted to the Job Description
+  tab, JD populated, and correctly showed only "Generate Cover Letter" (resume already
+  exists for the loaded package).
+- Deleted that package via Delete → Confirm — verified gone both in the UI and via a
+  follow-up `curl`.
+- Generated a Cover Letter on top of the still-loaded resume, saved again with a
+  custom name ("Fintech QA Role") — `curl`-confirmed both flags true and the name
+  matched exactly; confirmed all three pills rendered; clicked the Cover Letter pill
+  specifically (as opposed to the card body or the Resume pill) and landed correctly
+  on the Cover Letter tab. Deleted the test package afterward so only the original
+  fixture remained.
+- `tsc --noEmit` and `eslint` clean throughout.
+
+Committed as `b6f9a4c` on `redesign/application-workspace`. Not merged to `main`.

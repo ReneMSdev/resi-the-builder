@@ -1,6 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+function autoResize(el: HTMLTextAreaElement) {
+  const { borderTopWidth, borderBottomWidth } = getComputedStyle(el);
+  const border = parseFloat(borderTopWidth) + parseFloat(borderBottomWidth);
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight + border}px`;
+}
 
 export function RevisionChat({
   selectionSummary,
@@ -17,12 +24,28 @@ export function RevisionChat({
 }) {
   const [instruction, setInstruction] = useState("");
   const disabled = selectionCount === 0;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    if (textareaRef.current) autoResize(textareaRef.current);
+  }, [instruction]);
+
+  function submitInstruction() {
     if (disabled || !instruction.trim() || loading) return;
     onSubmit(instruction);
     setInstruction("");
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    submitInstruction();
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submitInstruction();
+    }
   }
 
   return (
@@ -32,18 +55,20 @@ export function RevisionChat({
           ? "Select an item above to start editing."
           : `Editing: ${selectionSummary}`}
       </p>
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <input
-          type="text"
+      <form onSubmit={handleSubmit} className="flex items-end gap-2">
+        <textarea
+          ref={textareaRef}
+          rows={1}
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
+          onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={
             disabled
               ? "Nothing selected"
               : "e.g. make this more concise, emphasize leadership..."
           }
-          className="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)] disabled:opacity-50"
+          className="max-h-[50vh] flex-1 resize-none overflow-y-auto rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)] disabled:opacity-50"
         />
         <button
           type="submit"

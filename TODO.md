@@ -47,30 +47,41 @@ into a STATUS doc as completed work.
   - **Loading a package** should hydrate all of its content back into the UI at once —
     JD, resume, and cover letter each into their own tab (see four-tab layout below),
     not just one document at a time like today's Saved-tab load does.
-- **UI redesign: two top-level tabs (Generate / Saved) + permanent 3-tab sub-bar** —
-  replaces the current Resume/Cover-Letter/Saved tab structure and the earlier
-  four-tab sketch (superseded). Also **supersedes** the earlier "collapse the
-  generate-input form" idea below — the input form no longer competes with the preview
-  for space at all.
-  - **Top-left**: static "Resume Builder" logo/wordmark in a distinctive font — no
-    click/link action needed, just branding.
-  - **Top-middle nav**: two tabs, **Generate** and **Saved**.
-  - **Generate section**: a permanent 3-tab sub-bar — **JD / Resume / CL** — always
-    present (not conditionally shown). Each sub-tab independently shows one of two
+- **UI redesign: two-bar flat layout** — replaces the current Resume/Cover-Letter/Saved
+  tab structure, the earlier four-tab sketch, and the nested Generate>sub-bar structure
+  from the first build pass (all superseded by this flatter version). Also
+  **supersedes** the earlier "collapse the generate-input form" idea below — the input
+  form no longer competes with the preview for space at all.
+  - **Top bar**: "Resume Builder" wordmark (left, distinctive font, no click/link
+    action), the existing backend-connectivity health check indicator ("backend: ok" /
+    error — carried over from the original Phase 1 connectivity check, just
+    repositioned here) in the middle, and a **"generate for new job"** action button on
+    the right. Evenly spaced with 50px padding on both edges, visually separated from
+    the second bar below (e.g. a border/background distinction). The button replaces
+    the earlier "clicking the Generate nav tab always opens a blank workspace" idea —
+    it's now an explicit always-visible reset action (still no confirmation dialog,
+    still no draft recovery, same behavior as before, just repositioned) rather than
+    something tied to navigating a tab.
+  - **Second bar**: four flat, peer-level tabs — **Job Description / Resume / Cover
+    Letter / Saved** — no nested wrapper. "Job Description" is the renamed/promoted
+    former "JD" sub-tab (identical behavior below); "Saved" is now just another peer
+    tab instead of a separate top-level concept.
+  - Each of Job Description / Resume / Cover Letter independently shows one of two
     states:
     - **Not yet generated**: shows the generate-inputs form (JD paste box, company
       context box, plus **only the Generate button(s) for content that doesn't exist
       yet**). Landing on the Resume or CL tab before that content exists shows this
       same form so you can trigger generation right from there.
       - **Decided: once a piece of content exists, its Generate button disappears
-        everywhere** (JD tab and the other not-yet-generated tab), to prevent
-        accidentally overwriting it. E.g. once a Resume is generated, "Generate Resume"
-        is gone from the JD tab and from the (still-ungenerated) CL tab's input form —
-        only "Generate Cover Letter" remains visible until CL exists too. Refining
-        already-generated content happens via that tab's own select/edit/revise UI, not
-        by regenerating.
-      - If both Resume and CL already exist, the JD tab shows the cleaned JD with no
-        generate buttons at all — it becomes a pure reference view at that point.
+        everywhere** (Job Description tab and the other not-yet-generated tab), to
+        prevent accidentally overwriting it. E.g. once a Resume is generated, "Generate
+        Resume" is gone from the Job Description tab and from the (still-ungenerated)
+        Cover Letter tab's input form — only "Generate Cover Letter" remains visible
+        until CL exists too. Refining already-generated content happens via that tab's
+        own select/edit/revise UI, not by regenerating.
+      - If both Resume and CL already exist, the Job Description tab shows the cleaned
+        JD with no generate buttons at all — it becomes a pure reference view at that
+        point.
     - **Generated**: shows the actual content instead of the input form. Resume/CL
       tabs, once generated, show only their content plus that tab's action buttons —
       no input form, no generate button.
@@ -80,21 +91,22 @@ into a STATUS doc as completed work.
       this is more a reorganization of existing state than new state management).
     - **Action buttons (Select/Edit mode toggle, Save, Download) go at the top of the
       generated content**, not the bottom.
-    - **Clear action: dropped for now, not needed** — no clear/reset button in this
-      pass. Related behavior instead: **clicking the top-level "Generate" nav item
-      always opens a brand-new, fully blank generate workspace** (JD/Resume/CL all
-      reset to not-generated), regardless of what was previously active. **Confirmed,
-      not a gap to fix**: no draft-saving/auto-recovery mechanism — navigating to
-      Generate from an in-progress-but-unsaved session simply loses it. Save explicitly
-      if you want to keep something.
+    - **Clear action: dropped for now, not needed** — no clear/reset button beyond the
+      top-bar action below. **The top bar's "generate for new job" button always opens
+      a brand-new, fully blank workspace** (Job Description/Resume/CL all reset to
+      not-generated), regardless of what was previously active. **Confirmed, not a gap
+      to fix**: no draft-saving/auto-recovery mechanism — clicking it from an
+      in-progress-but-unsaved session simply loses it. Save explicitly if you want to
+      keep something.
     - **JD cleanup**: piggyback on the existing `/generate` call by having the model
       also return a `cleaned_job_description` field in the same response, rather than a
-      separate dedicated "clean" endpoint — zero extra API calls/cost this way. A
-      separate dedicated call would let the JD tab populate before generating anything,
+      separate dedicated "clean" endpoint — zero extra API calls/cost this way. **Done,
+      Phase 1 (backend)**: `/generate`'s response now includes a top-level
+      `cleaned_job_description: string | null` field for both resume and cover-letter
+      generation, verified against real pasted-webpage JD text. A separate dedicated
+      call would have let the Job Description tab populate before generating anything,
       but roughly doubles call volume per job against the 50/day cap for what's mostly
-      cosmetic readability — not recommended unless a pre-generate preview turns out to
-      matter in practice. A non-LLM heuristic cleanup (regex/whitespace stripping) is
-      free but meaningfully lower quality across arbitrary site chrome.
+      cosmetic readability — not pursued.
   - **Saved tab**: a dedicated page for browsing saved packages — a simple Drive-like
     layout, evolving today's `SavedTab.tsx` row-cards rather than a new grid from
     scratch. **Decided layout**: one rectangular bar per package, each showing clickable

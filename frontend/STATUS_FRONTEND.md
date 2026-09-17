@@ -967,3 +967,70 @@ Committed on `redesign/application-workspace` across four commits: `fdbf03a` (to
 system), `77f22f3` (favicon/icons/popover), `abbb2f9` (hamburger menu + Profile view +
 Radix/Lucide adoption), `7b451fe` (scroll-lock + gutter-color checkpoint). Not merged
 to `main`.
+
+## Fix: Replace scrollbar-gutter/gradient hack with a non-scrolling html/body (2026-09-17)
+
+Follow-up to the previous entry's "Known follow-up, in progress" note — the
+gradient-based gutter-color fix still left a visible gap in the user's own check, and
+the decided direction was structural rather than another patch: stop `html`/`body`
+from scrolling at all, and give an inner content wrapper its own scrollbar instead, so
+the top bar is never adjacent to a scrolling context that needs gutter reservation in
+the first place. This eliminates the whole bug class rather than continuing to fight
+it.
+
+- **`app/layout.tsx`**: `html` gets `overflow-hidden` (already had `h-full`); `body`
+  changed from `min-h-full` to `h-full overflow-hidden`. Neither element can ever
+  scroll now.
+- **`app/page.tsx`**: the root wrapper is `h-full flex flex-col items-center
+  overflow-hidden` (previously no height/overflow control at all). `main` — the
+  actual content area — is `min-h-0 flex-1 overflow-y-auto`, making it the one and
+  only scrolling element on the page. The `min-h-0` is load-bearing: without it, a
+  flex-1 item won't shrink below its content's natural height in Chrome/Firefox,
+  which would silently defeat the internal scrolling and let content overflow the
+  parent instead of scrolling within `main`. The top bar sits above `main` as an
+  ordinary non-growing flex-column sibling, structurally never inside a scrolling
+  context.
+- **`app/globals.css`**: removed `scrollbar-gutter: stable` and the `html` background
+  gradient entirely — no longer needed once `html` never scrolls.
+
+**Regression found and fixed during verification** (not part of the original ask, a
+side effect of the restructure): `RevisionChat.tsx`'s `sticky bottom-0` bar used to
+stick flush to the window's bottom edge when `body` was the scroll container (no
+padding there). Once `main` (which has its own `py-8`) became the scroll container,
+its bottom padding blocked the sticky bar from reaching the true bottom — measured a
+consistent 36px gap, with resume/JD text visibly peeking through below the chat bar.
+First tried a negative `-mb-8` margin on the sticky element itself (mirroring the
+existing `-mx-16` horizontal-bleed trick already used there) — empirically this had
+**zero** effect on the gap; Chrome's sticky-bottom clamp calculation appears to ignore
+the sticky element's own margin for this case, contradicting the spec-reading
+expectation. Reverted that and fixed it at the actual source instead: `main`'s bottom
+padding (`pb-8`) is now conditional on a `showingRevisionChat` flag — applied normally
+for Job Description/Saved/Profile views, omitted when the sticky chat bar is present
+so its own internal padding provides the flush-to-edge breathing room instead.
+
+### Verification (direct DOM measurement, not just visual inspection)
+
+- `document.documentElement.clientWidth === window.innerWidth` held in every check —
+  confirms no scrollbar/gutter discrepancy exists anywhere anymore, at two window
+  sizes tested.
+- `elementFromPoint()` at the top bar's right edge now returns the bar's own `DIV`
+  (previously returned `null`, meaning only `html`'s background painted there) — its
+  own box genuinely reaches the true viewport edge, no background-painting trick
+  needed.
+- Loaded a long resume (`main.scrollHeight` over 2400px), confirmed `main` scrolls
+  internally while the top bar stays completely static and fully stone-colored.
+- Measured `main.getBoundingClientRect().bottom - chatBar...bottom` = exactly `0` on
+  both the Resume and Cover Letter tabs after the padding fix (was 36px before);
+  confirmed the Job Description tab (no chat bar) still retains its normal bottom
+  breathing room via the same measurement approach plus a scroll-to-bottom screenshot.
+- Hamburger dropdown, toast, and Save popover all confirmed unaffected — screenshot
+  showed the dropdown still opening flush under the top bar even after scrolling
+  `main` deep into a long resume (Radix portals its content straight to
+  `document.body`, entirely outside the new scroll structure; the toast's `fixed` and
+  Save popover's `absolute` positioning are likewise independent of it).
+- Grepped the whole `app/` tree for `window.scroll`/`document.body.scroll`/
+  `scrollIntoView`/explicit `position: fixed` — nothing else in the codebase makes a
+  window-level-scroll assumption this change could break.
+- `tsc --noEmit` and `eslint` (full project) clean.
+
+Committed as `c57fdca` on `redesign/application-workspace`. Not merged to `main`.

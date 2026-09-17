@@ -13,17 +13,19 @@ Claude to tailor a resume (or cover letter) from a master profile → user edits
 via chat-scoped revision → downloads a formatted `.docx`/`.pdf`. See
 `backend/CLAUDE_CODE_CONTEXT.md` for the original spec/architecture doc.
 
-## In progress: UI/storage redesign (branch `redesign/application-workspace`)
+## Complete, not yet merged: UI/storage redesign (branch `redesign/application-workspace`)
 
-Not yet merged to `main`. Reworking the frontend into a two-bar flat layout (top bar:
-logo/backend-status/"generate for new job"; second bar: Job Description/Resume/Cover
-Letter/Saved as flat peer tabs) and introducing a job-application "package" concept on
-the backend (bundling JD + resume + cover letter together, replacing today's
-one-document-at-a-time `/resumes` save). See `TODO.md`'s "Planned features" section for
-the full design and phase breakdown. Backend's `cleaned_job_description` field
-(Phase 1) and the frontend's new layout (Phase 2) are done and verified; the backend
-`/applications` package storage (Phase 3) and the Saved-tab/Save-button rework that
-depends on it are not started yet.
+All 5 phases done and verified, ready for merge review — not yet merged to `main`.
+Reworked the frontend into a two-bar flat layout (top bar: logo/backend-status/
+"generate for new job"; second bar: Job Description/Resume/Cover Letter/Saved as flat
+peer tabs), plus a top-bar polish round (stone background, Roboto Mono coral logo,
+contrast fixes, auto-growing chat input). Introduced a job-application "package"
+concept on the backend (`/applications`, replacing `/resumes` entirely) bundling JD +
+resume + cover letter together, with the Saved tab and Save button fully wired to it
+(per-package pills, one-click load hydrating all three tabs). See
+`backend/STATUS_BACKEND.md` ("Backend Part 6"/"Part 7") and
+`frontend/STATUS_FRONTEND.md` (the redesign + `/applications`-wiring sections) for full
+build/verification detail.
 
 ## Overall state (on `main`): feature-complete, running locally only
 

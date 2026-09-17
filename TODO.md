@@ -22,106 +22,12 @@ into a STATUS doc as completed work.
   Deferred as low priority since section headings ("Experience", "Skills") rarely need
   editing. Revisit if section-title editing is ever wanted.
 
-## Planned features (design not finalized — capturing scope before building)
+## Queued, small
 
-- **Job application packages** — bundle the job description, resume, and cover letter
-  together per job, replacing/extending today's `/resumes` save (which saves one
-  document at a time with no JD attached and no link between a resume and its paired
-  cover letter).
-  - **Storage location: decided — inside this project** (not a separate folder outside
-    the repo), since everything currently runs local-only. Likely
-    `backend/app/data/applications/{id}/`, following the existing gitignored
-    `saved_items/` pattern.
-  - **Storage form (recommended, not yet confirmed in detail)**: real per-job files, not
-    one opaque blob — JD as plain text, resume/cover letter each as both their
-    structured JSON (so `/revise` can still act on them later) and a rendered docx/pdf
-    snapshot. Goal: reviewable by opening files directly, and still API-queryable so a
-    future Chrome-automation session can fetch "everything for job X" in one call.
-  - **Save behavior**: Save should package up whatever currently exists in the session —
-    JD text, resume (if generated/edited), cover letter (if generated/edited) — as one
-    application, rather than requiring a separate save per document. **Decided**: if
-    only a resume exists (no cover letter generated), save JD + resume as the package —
-    no forced empty CL slot, no separate solo-document save path needed.
-  - **Decided: no migration needed** — existing individual `saved_items/` entries can
-    just be deleted; new packages get generated fresh going forward.
-  - **Loading a package** should hydrate all of its content back into the UI at once —
-    JD, resume, and cover letter each into their own tab (see four-tab layout below),
-    not just one document at a time like today's Saved-tab load does.
-- **UI redesign: two-bar flat layout** — **Phase 2 done, built and verified** (see
-  `frontend/STATUS_FRONTEND.md`), on branch `redesign/application-workspace`, not yet
-  merged to `main`. Replaces the current Resume/Cover-Letter/Saved tab structure, the
-  earlier four-tab sketch, and the nested Generate>sub-bar structure from the first
-  build pass (all superseded by this flatter version). Also **supersedes** the earlier
-  "collapse the generate-input form" idea, and the separate "Clear all" idea further
-  below — the top bar's "generate for new job" button covers that need instead.
-  - **Top bar**: "Resume Builder" wordmark (left, distinctive font, no click/link
-    action), the existing backend-connectivity health check indicator ("backend: ok" /
-    error — carried over from the original Phase 1 connectivity check, just
-    repositioned here) in the middle, and a **"generate for new job"** action button on
-    the right. Evenly spaced with 50px padding on both edges, visually separated from
-    the second bar below (e.g. a border/background distinction). The button replaces
-    the earlier "clicking the Generate nav tab always opens a blank workspace" idea —
-    it's now an explicit always-visible reset action (still no confirmation dialog,
-    still no draft recovery, same behavior as before, just repositioned) rather than
-    something tied to navigating a tab.
-  - **Second bar**: four flat, peer-level tabs — **Job Description / Resume / Cover
-    Letter / Saved** — no nested wrapper. "Job Description" is the renamed/promoted
-    former "JD" sub-tab (identical behavior below); "Saved" is now just another peer
-    tab instead of a separate top-level concept.
-  - Each of Job Description / Resume / Cover Letter independently shows one of two
-    states:
-    - **Not yet generated**: shows the generate-inputs form (JD paste box, company
-      context box, plus **only the Generate button(s) for content that doesn't exist
-      yet**). Landing on the Resume or CL tab before that content exists shows this
-      same form so you can trigger generation right from there.
-      - **Decided: once a piece of content exists, its Generate button disappears
-        everywhere** (Job Description tab and the other not-yet-generated tab), to
-        prevent accidentally overwriting it. E.g. once a Resume is generated, "Generate
-        Resume" is gone from the Job Description tab and from the (still-ungenerated)
-        Cover Letter tab's input form — only "Generate Cover Letter" remains visible
-        until CL exists too. Refining already-generated content happens via that tab's
-        own select/edit/revise UI, not by regenerating.
-      - If both Resume and CL already exist, the Job Description tab shows the cleaned
-        JD with no generate buttons at all — it becomes a pure reference view at that
-        point.
-    - **Generated**: shows the actual content instead of the input form. Resume/CL
-      tabs, once generated, show only their content plus that tab's action buttons —
-      no input form, no generate button.
-    - These are independent slots under one shared JD, not mutually exclusive —
-      generating one shouldn't clear or affect the other (mirrors the frontend's
-      existing per-mode state-slot pattern from the earlier tab-persistence fix, so
-      this is more a reorganization of existing state than new state management).
-    - **Action buttons (Select/Edit mode toggle, Save, Download) go at the top of the
-      generated content**, not the bottom.
-    - **Clear action: dropped for now, not needed** — no clear/reset button beyond the
-      top-bar action below. **The top bar's "generate for new job" button always opens
-      a brand-new, fully blank workspace** (Job Description/Resume/CL all reset to
-      not-generated), regardless of what was previously active. **Confirmed, not a gap
-      to fix**: no draft-saving/auto-recovery mechanism — clicking it from an
-      in-progress-but-unsaved session simply loses it. Save explicitly if you want to
-      keep something.
-    - **JD cleanup**: piggyback on the existing `/generate` call by having the model
-      also return a `cleaned_job_description` field in the same response, rather than a
-      separate dedicated "clean" endpoint — zero extra API calls/cost this way. **Done,
-      Phase 1 (backend)**: `/generate`'s response now includes a top-level
-      `cleaned_job_description: string | null` field for both resume and cover-letter
-      generation, verified against real pasted-webpage JD text. A separate dedicated
-      call would have let the Job Description tab populate before generating anything,
-      but roughly doubles call volume per job against the 50/day cap for what's mostly
-      cosmetic readability — not pursued.
-  - **Saved tab**: a dedicated page for browsing saved packages — a simple Drive-like
-    layout, evolving today's `SavedTab.tsx` row-cards rather than a new grid from
-    scratch. **Decided layout**: one rectangular bar per package, each showing clickable
-    pills for whichever of JD/Resume/CL exist on that package (a package missing a CL
-    just doesn't show a CL pill). Clicking a specific pill navigates to the Generate
-    tab with that specific sub-tab open and populated; clicking anywhere else on the
-    rectangle (not a pill) defaults to opening the JD sub-tab. Keep the existing Delete
-    button and the "created" date subtext from today's `SavedTab.tsx` — no change
-    needed there, just carried forward.
-  - **Not yet built**: the "job application packages" bundling described above this
-    section (backend Phase 3, `/applications` storage) and the Saved-tab pill rework /
-    Save-button repackaging that depends on it. The two-bar layout above is built and
-    working against today's existing single-document save model in the meantime.
+- **Favicon**: minimal document icon — page silhouette with a folded top-right corner
+  and a couple of horizontal lines suggesting text/bullets, solid coral (`--accent`)
+  fill. Decided design (option 2 of 4 discussed); not built yet. Ready to start now
+  that the application-workspace redesign (below) is complete.
 
 ## Infrastructure, not yet started
 
@@ -132,7 +38,7 @@ into a STATUS doc as completed work.
 
 ## Known soft spots (not bugs, flagged for whoever touches that area next)
 
-- **`POST /resumes` has no server-side schema validation** — `SaveRequest.data` is a loose
-  `dict`, never validated against `Resume`/`CoverLetter`. Confirmed (not just assumed) that
-  today's frontend save path always sends well-formed data, so this isn't an active bug —
-  but nothing server-side would catch a future regression on the save path.
+None open currently — the one previously tracked here (`POST /resumes` having no
+server-side schema validation) was closed as a side effect of the `/applications`
+redesign: `/resumes` is gone, and its replacement uses real typed
+`Optional[Resume]`/`Optional[CoverLetter]` fields instead of a loose dict.

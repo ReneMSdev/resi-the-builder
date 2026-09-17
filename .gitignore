@@ -7,6 +7,7 @@ backend/.pytest_cache/
 
 # User-generated data (not master data — profile.json is tracked intentionally)
 backend/app/data/saved_items/
+backend/app/data/applications/
 
 # Node
 frontend/node_modules/

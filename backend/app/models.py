@@ -130,15 +130,34 @@ class RenderRequest(BaseModel):
     format: str = "docx"  # "docx" or "pdf"
 
 
-class SavedItem(BaseModel):
+class JobDescription(BaseModel):
+    raw: str
+    cleaned: Optional[str] = None
+
+
+class Application(BaseModel):
+    """A saved job application package — JD plus whichever of resume/cover_letter
+    exist for it. Replaces the old one-document-at-a-time SavedItem/SaveRequest
+    (which stored `data` as a loose, unvalidated dict); resume/cover_letter are real
+    typed fields here instead."""
     id: str
     name: str
-    type: str  # "resume" | "cover_letter"
     created_at: str
-    data: dict  # already validated once by the caller before saving; keep loose here
+    job_description: JobDescription
+    resume: Optional[Resume] = None
+    cover_letter: Optional[CoverLetter] = None
 
 
-class SaveRequest(BaseModel):
+class ApplicationSummary(BaseModel):
+    id: str
+    name: str
+    created_at: str
+    has_resume: bool
+    has_cover_letter: bool
+
+
+class CreateApplicationRequest(BaseModel):
     name: Optional[str] = None
-    type: str
-    data: dict
+    job_description: JobDescription
+    resume: Optional[Resume] = None
+    cover_letter: Optional[CoverLetter] = None

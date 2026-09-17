@@ -24,6 +24,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  scrollbar-gutter: stable;
+  /* The reserved gutter strip belongs to html's own box, not its children's
+     constrained content width, so only html's background can paint it. This
+     mirrors the top bar's height (~69px) in stone, cream below, so the strip
+     reads as part of the top bar everywhere the top bar itself can't reach. */
+  background: linear-gradient(
+    to bottom,
+    var(--topbar-bg) 0,
+    var(--topbar-bg) 69px,
+    var(--background) 69px,
+    var(--background) 100%
+  );
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

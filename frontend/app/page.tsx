@@ -433,9 +433,11 @@ export default function Home() {
   const coverLetterGenerating = coverLetterState.state === 'loading'
   const resumeReady = resumeState.state === 'success'
   const coverLetterReady = coverLetterState.state === 'success'
+  const showingRevisionChat =
+    (tab === 'resume' && resumeReady) || (tab === 'cover_letter' && coverLetterReady)
 
   return (
-    <div className='flex flex-col flex-1 items-center bg-background font-sans'>
+    <div className='flex h-full flex-col items-center overflow-hidden bg-background font-sans'>
       <div className='flex w-full items-center justify-between border-b border-(--border) bg-(--topbar-bg) py-3 px-[50px]'>
         <div className='flex items-center gap-3'>
           <HamburgerMenu onSelect={(view) => setTab(view)} />
@@ -466,7 +468,11 @@ export default function Home() {
         </button>
       </div>
 
-      <main className='flex flex-1 w-full max-w-3xl flex-col gap-8 py-8 px-16'>
+      <main
+        className={`flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-8 overflow-y-auto px-16 pt-8 ${
+          showingRevisionChat ? '' : 'pb-8'
+        }`}
+      >
         <div className='w-full border-b border-(--border) pb-6'>
           <div className='flex gap-2 justify-center'>
             <button

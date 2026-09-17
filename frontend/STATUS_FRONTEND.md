@@ -828,3 +828,142 @@ cover_letter?}` → full `Application`), `GET /applications` (lightweight
 - `tsc --noEmit` and `eslint` clean throughout.
 
 Committed as `b6f9a4c` on `redesign/application-workspace`. Not merged to `main`.
+
+## Feature: Toast notifications, icons, hamburger menu, Profile view (2026-09-17)
+
+Continuation of the `redesign/application-workspace` branch — several small-to-medium
+UI passes, each requested and verified separately, landed here as four commits.
+
+### Toast notifications (`app/components/Toast.tsx`)
+
+Small reusable mechanism, not a one-off: a module-level `toasts` array + subscriber
+list, `showToast(text, variant?, duration?)` any component can call directly (no
+Context/Provider needed), and a `<ToastContainer/>` mounted once at the page root that
+subscribes and renders — fixed bottom-right, stacks multiple toasts, `'success'`/
+`'error'` variants using the existing `--success`/`--danger` tokens, 2.5s auto-dismiss.
+`SaveButton.tsx`'s inline fading "Saved!" span was replaced with `showToast('Saved!')`
+on successful save; no other existing inline message was a good fit for the same
+treatment (the rest are error-styled, not success).
+
+**Bug found and resolved during verification, worth recording**: the toast appeared to
+not work at all on the first several tries. Traced it to live-editing `Toast.tsx`
+(adding temporary debug logging, changing the duration) *while the page was already
+loaded* — Turbopack Fast Refresh re-executes a changed module's top-level state
+(resetting the `toasts`/`listeners` arrays) without necessarily remounting an
+already-mounted component that captured a reference to the old array, so the mounted
+`ToastContainer` was listening on a stale array while `showToast` (from the
+freshly-swapped module) wrote to a new one. Confirmed via a temporary console.log that
+`ToastContainer`'s mount effect only registers a listener on a genuine fresh page load,
+not mid-edit. Dev-only HMR artifact from the debugging process itself, not a real bug — no code
+change was needed once verification was redone on an unedited, freshly-loaded page:
+clicked Save → Confirm, screenshotted at +1s (toast visible, "Saved!" in a green pill
+bottom-right, Select/Edit/Save/Download buttons all in their exact original
+positions) and again at +4s (toast gone on its own, no residue, no layout shift at
+either point).
+
+### Favicon, Save/Download icons, Save popover (`app/icon.svg`, `app/components/icons.tsx`, `SaveButton.tsx`, `DownloadButtons.tsx`)
+
+- `app/icon.svg`: minimal coral document icon (folded top-right corner, two cream
+  lines suggesting text), replacing the default create-next-app `favicon.ico`. Checked
+  `node_modules/next/dist/docs` first per `AGENTS.md` — this version's `icon` file
+  convention accepts `.svg` directly, no build step needed. Verified via
+  `document.querySelectorAll('link[rel*="icon"]')` that exactly one correct `<link>`
+  tag is generated, no leftover favicon reference.
+- `app/components/icons.tsx`: hand-drawn `SaveIcon` (floppy disk) and `DownloadIcon`
+  (arrow into a tray), simple stroke-based SVGs using `stroke="currentColor"` so they
+  automatically match each button's existing text color — no icon library added for
+  these two (Lucide was later added for the hamburger menu, see below; swapping these
+  two to Lucide equivalents was floated as an optional consistency pass but
+  deliberately left alone, they work fine as-is).
+- `SaveButton.tsx`: the inline name-input/Confirm/Cancel used to swap the Save
+  button's own layout in place, which visibly shifted the neighboring Download
+  buttons when it opened. Converted to an absolutely-positioned popover anchored below
+  the Save button (`absolute left-0 top-full`) plus click-outside-to-close (a
+  `mousedown` listener scoped to while it's open). Verified: opening it never moves
+  the Select/Edit toggle or either Download button; outside-click and Cancel both
+  close it cleanly with no residue.
+
+### Hamburger dropdown menu + Profile view (`app/components/HamburgerMenu.tsx`, `app/components/ProfileView.tsx`, `page.tsx`)
+
+Adopted two new dependencies — the first runtime deps beyond Next/React/Tailwind on
+this project: `@radix-ui/react-dropdown-menu` (headless; styled entirely with the
+existing Tailwind/CSS-variable theme, no new visual system) and `lucide-react` (icons).
+
+- "Saved" removed from the flat second tab row entirely — the row is now 3 tabs (Job
+  Description/Resume/Cover Letter), down from 4. It's reached only via a new hamburger
+  icon placed before the "Resume Builder" wordmark, which opens a coral (`--accent`)
+  Radix `DropdownMenu` with two items: "Profile" (new) and "Saved" (unchanged
+  `SavedTab.tsx`, just a different entry point). Neither item is a flat tab, so no tab
+  shows active while viewing either — falls out for free from `tabClass`'s existing
+  `tab === t` check, no extra state needed.
+- The hamburger↔X toggle is a hand-built cross-fade+rotate between Lucide's `Menu`/`X`
+  icons (stacked absolutely, opacity/rotate CSS transition on a controlled `open`
+  state) rather than a true line-morph, since Lucide doesn't animate between icons
+  natively. Radix's built-in dismiss behavior (click-outside, Escape) closes the menu
+  for free, and since `open` is controlled the icon reverts automatically whenever
+  Radix closes it for any reason.
+- `app/components/ProfileView.tsx`: fetches `GET /profile`, renders it as raw JSON in
+  a `<pre>` — deliberately unstyled placeholder, matching how earlier phases of this
+  project started with raw JSON dumps before a styling pass. Used the same
+  lazy-initializer pattern as `SavedTab.tsx` for the missing-`NEXT_PUBLIC_API_URL`
+  case (setting error state synchronously inside the effect body tripped the
+  `react-hooks/set-state-in-effect` eslint rule; matched the existing codebase
+  convention instead of suppressing it).
+- Verified: hamburger fully morphs to X and the coral dropdown opens on click;
+  "Profile" shows real data from a live `/profile` call (name, email, links — not a
+  stub) and closes/reverts correctly; "Saved" behaves identically to before, just
+  relocated; click-outside and Escape both close the menu and revert the icon;
+  switching to a flat tab afterward restores its active highlight correctly.
+
+### Dropdown scroll-lock and gutter-color fixes, checkpoint (`app/globals.css`, `HamburgerMenu.tsx`)
+
+Two related fixes, both verified, though the second is a known-incomplete checkpoint
+(see "Known follow-up" below):
+
+- `DropdownMenu.Root` got `modal={false}` — the user wants the page to stay scrollable
+  while this small 2-item nav menu is open, not scroll-locked like a blocking dialog.
+- Radix's default modal behavior locks body scroll and compensates with `padding-right`
+  on `<body>` to prevent a width jump when the scrollbar disappears — but the top bar
+  isn't itself scroll-locked/compensated, so a color gap appeared alongside it whenever
+  the dropdown opened. First fix: `scrollbar-gutter: stable` on `html`, so the
+  scrollbar's space is always reserved and hiding it never changes available width at
+  all — this itself fully solves the *layout shift*, but exposed a second, narrower
+  problem: the permanently-reserved gutter strip belongs to `html`'s own box, not any
+  descendant's constrained content width. Confirmed by direct measurement (a probe
+  `div`, `getBoundingClientRect`) that both `100vw` and `position:fixed;left:0;right:0`
+  resolve *smaller* than the true viewport once `scrollbar-gutter: stable` is active in
+  current Chrome — neither classic full-bleed trick can reach into that space. Fixed
+  by giving `html` itself a hard-stop `background: linear-gradient(...)`: stone
+  (`--topbar-bg`) for the top bar's measured height (~69px), cream (`--background`)
+  below — since `html` is the actual scrolling element, this gradient is anchored to
+  the *document's* top regardless of scroll position, so it reads as part of the top
+  bar everywhere and reverts to cream past it, with no JS.
+- Verified: `elementFromPoint()` at the exact gutter pixel returns `null` (nothing
+  renders there but `html`'s own background) at two window widths (1191px, 900px);
+  scrolled a genuinely tall page (`scrollHeight: 2531`) 500px down with the dropdown
+  open, confirmed both that the page actually scrolled and that the dropdown (`[role=
+  "menu"]`) stayed open and correctly positioned the whole time; `document.body
+  .paddingRight` stayed `0px` throughout, confirming no scroll-lock compensation ever
+  fires; click-outside/Escape/item-selection all still close the menu correctly with
+  `modal={false}` (click-outside also correctly lets the same click pass through to
+  the page underneath in one motion, confirmed it simultaneously selected a resume
+  field — the intended non-modal behavior).
+
+**Known follow-up, in progress, not yet built**: the gradient-based fix above still
+left a visible gap in practice per the user's own check, and the decided direction is
+more structural — stop `html`/`body` from scrolling at all (`height: 100%`/`100vh` +
+`overflow: hidden`), and give an inner content wrapper below the top bar its own
+`overflow-y: auto` instead, so the top bar is never adjacent to a scrolling context
+that needs gutter reservation in the first place. That removes the need for
+`scrollbar-gutter`/the gradient hack entirely rather than continuing to patch around
+it. Not done as of this entry — captured here so the gradient-based commit below is
+understood as a checkpoint, not the final state.
+
+### Verification summary
+
+`tsc --noEmit` and `eslint` (full project) clean after every commit in this batch.
+
+Committed on `redesign/application-workspace` across four commits: `fdbf03a` (toast
+system), `77f22f3` (favicon/icons/popover), `abbb2f9` (hamburger menu + Profile view +
+Radix/Lucide adoption), `7b451fe` (scroll-lock + gutter-color checkpoint). Not merged
+to `main`.

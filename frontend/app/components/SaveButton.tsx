@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CoverLetter, JobDescription, Resume } from '../types'
+import { SaveIcon } from './icons'
+import { showToast } from './Toast'
 
 type SaveState =
   | { state: 'idle' }
   | { state: 'prompting' }
   | { state: 'saving' }
-  | { state: 'saved' }
   | { state: 'error'; message: string }
 
 export function SaveButton({
@@ -21,6 +22,20 @@ export function SaveButton({
 }) {
   const [saveState, setSaveState] = useState<SaveState>({ state: 'idle' })
   const [name, setName] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const isOpen = saveState.state === 'prompting' || saveState.state === 'saving'
+
+  useEffect(() => {
+    if (!isOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setSaveState((prev) => (prev.state === 'saving' ? prev : { state: 'idle' }))
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
 
   async function handleConfirm() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -49,62 +64,64 @@ export function SaveButton({
       }
 
       setName('')
-      setSaveState({ state: 'saved' })
-      setTimeout(() => {
-        setSaveState((prev) => (prev.state === 'saved' ? { state: 'idle' } : prev))
-      }, 2000)
+      setSaveState({ state: 'idle' })
+      showToast('Saved!')
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       setSaveState({ state: 'error', message })
     }
   }
 
-  if (saveState.state === 'prompting' || saveState.state === 'saving') {
-    return (
-      <div className='flex items-center gap-2'>
-        <input
-          type='text'
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder='Name (optional)'
-          autoFocus
-          disabled={saveState.state === 'saving'}
-          className='rounded border border-(--border) bg-(--surface) px-2 py-1 text-sm text-foreground'
-        />
-        <button
-          type='button'
-          onClick={handleConfirm}
-          disabled={saveState.state === 'saving'}
-          className='rounded bg-(--accent) px-3 py-1.5 text-sm font-medium text-(--surface) transition-colors hover:bg-(--accent-hover) disabled:opacity-50 hover:cursor-pointer'
-        >
-          {saveState.state === 'saving' ? 'Saving...' : 'Confirm'}
-        </button>
-        <button
-          type='button'
-          onClick={() => setSaveState({ state: 'idle' })}
-          disabled={saveState.state === 'saving'}
-          className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
-        >
-          Cancel
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <div className='flex items-center gap-2'>
+    <div
+      ref={containerRef}
+      className='relative flex items-center gap-2'
+    >
       <button
         type='button'
         onClick={() => setSaveState({ state: 'prompting' })}
-        className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft)'
+        className='flex items-center gap-1.5 rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft)'
       >
+        <SaveIcon className='h-4 w-4 shrink-0' />
         Save
       </button>
-      {saveState.state === 'saved' && (
-        <span className='text-xs font-medium text-(--success)'>Saved!</span>
-      )}
       {saveState.state === 'error' && (
         <span className='text-xs font-medium text-(--danger)'>Error saving: {saveState.message}</span>
+      )}
+
+      {isOpen && (
+        <div className='absolute left-0 top-full z-20 mt-2 flex w-64 flex-col gap-2 rounded border border-(--border) bg-(--surface) p-3 shadow-lg'>
+          <label className='flex flex-col gap-1'>
+            <span className='text-xs font-medium text-foreground'>Name (optional)</span>
+            <input
+              type='text'
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder='Untitled application'
+              autoFocus
+              disabled={saveState.state === 'saving'}
+              className='rounded border border-(--border) bg-background px-2 py-1 text-sm text-foreground'
+            />
+          </label>
+          <div className='flex justify-end gap-2'>
+            <button
+              type='button'
+              onClick={() => setSaveState({ state: 'idle' })}
+              disabled={saveState.state === 'saving'}
+              className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+            >
+              Cancel
+            </button>
+            <button
+              type='button'
+              onClick={handleConfirm}
+              disabled={saveState.state === 'saving'}
+              className='rounded bg-(--accent) px-3 py-1.5 text-sm font-medium text-(--surface) transition-colors hover:bg-(--accent-hover) disabled:opacity-50 hover:cursor-pointer'
+            >
+              {saveState.state === 'saving' ? 'Saving...' : 'Confirm'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

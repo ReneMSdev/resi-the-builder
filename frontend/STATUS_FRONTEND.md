@@ -643,3 +643,113 @@ no logic to protect one from being overwritten by the other. This was explicit s
 for a future pass, not an oversight — the data shape used for an edited value
 (`{id, text}` in local state, same as everything else) was deliberately kept plain so
 that bolting a provenance flag on later doesn't require restructuring anything now.
+
+## Feature: Application-workspace UI redesign — two-bar layout + polish round (2026-09-16)
+
+Built on branch `redesign/application-workspace` (not yet merged to `main`), per a
+design spec worked out between the user and the manager session, captured in
+`TODO.md`'s "UI redesign" section. The manager broke this into checkpointed phases so
+nothing ran too long; an initial nested Generate>JD/Resume/CL shell was built first,
+then immediately revised into the flat two-bar layout below before anything was
+committed — so only the final flat-layout shape ever landed in git.
+
+### Two-bar flat layout (`app/page.tsx`)
+
+- Replaces the old three-tab (Resume / Cover Letter / Saved) structure with two
+  stacked bars: a top bar (logo, backend-connectivity status, a "Generate for new job"
+  button) and a second bar of four flat peer-level tabs — Job Description, Resume,
+  Cover Letter, Saved — no nesting.
+- `Tab` state collapsed the old three-way `Mode` (`'resume' | 'cover_letter' |
+  'saved'`) plus an interim nested sub-tab into one flat `'jd' | 'resume' |
+  'cover_letter' | 'saved'`.
+- New shared `GenerateForm` component (JD text + company-context text + 0/1/2 Generate
+  buttons depending on what already exists) is the single component rendered in three
+  places: the Job Description tab, the Resume tab (when no resume yet), and the Cover
+  Letter tab (when no cover letter yet). Because it's the same component instance in
+  all three spots, "a Generate button disappears everywhere once that content exists"
+  falls out for free — there's no separate flag-syncing logic across tabs, just one
+  `showResumeButton`/`showCoverLetterButton` prop pair driven off `resumeState`/
+  `coverLetterState`.
+- Job Description tab shows `GenerateForm` until both Resume and Cover Letter exist,
+  then switches to a plain read-only block showing the raw pasted JD text (the
+  *cleaned* JD text the backend added in parallel isn't wired in yet — still shows the
+  raw string; a quick follow-up once that's confirmed ready).
+- "Generate for new job" (top bar) replaces the old per-tab-click reset: wipes JD text,
+  company context, both resume/cover-letter states, both selection sets, both revise
+  states, and lands on the Job Description tab — same reset payload as before, just
+  triggered by an explicit button instead of a nav-tab click, since "Generate" isn't a
+  tab anymore.
+- Action buttons (Select/Edit toggle, Save, Download) were already sitting above the
+  preview content in the pre-existing code — carried that ordering into the new
+  per-tab layout unchanged, no separate move was needed.
+- `SavedTab.tsx` itself is untouched — it's now just one more peer tab in the row;
+  `onLoad` routes into `Tab: item.type` instead of the old three-way mode switch.
+
+### Polish round (`app/globals.css`, `app/layout.tsx`, `app/page.tsx`, `app/components/RevisionChat.tsx`)
+
+- Top bar background moved to a new `--topbar-bg` token (`#292524`, a dark stone —
+  value later hand-tuned by the user directly in `globals.css`), separated from the
+  page below it by a `border-b` plus the background-color contrast, with tighter
+  vertical padding than the first pass.
+- "Resume Builder" wordmark now renders in Roboto Mono (loaded via `next/font/google`
+  — checked `node_modules/next/dist/docs` first per `AGENTS.md` before assuming the API
+  matched training data; it did) at the `--accent` coral color instead of the previous
+  serif/foreground styling. Weight went through a hand-edit by the user (600 → 700)
+  directly in `layout.tsx`; the Tailwind weight class on the logo span was kept in sync
+  (`font-semibold` → `font-bold`).
+- Added `--success-on-dark`, a separate token for the "Backend: ok" text specifically
+  on the dark top bar. Computed actual WCAG contrast ratios (relative-luminance
+  formula, not eyeballed): the original `--success` (`#4f7942`) against the new
+  `--topbar-bg` measures **2.99:1** — fails AA (needs 4.5:1). The new
+  `--success-on-dark` (`#4ade80`) measures **8.71:1** against the same background —
+  passes AA and AAA. `--success` itself was left unchanged, since `SaveButton.tsx`'s
+  "Saved!" text still relies on it against the light `--surface` background (4.91:1
+  there) — no single green satisfies AA against both a near-black and a near-white
+  background at once, so a second token was the correct fix rather than a compromise
+  value. (Flagged, not fixed: the top bar's error-state `--danger` text measures
+  2.56:1 and its loading-state `--muted` text measures 3.47:1 against the same dark
+  background — same root cause, out of scope until asked.)
+- Added a divider (`border-b`, same `--border` token as the top bar's own separator)
+  below the Job Description/Resume/Cover Letter/Saved tab row, spanning the content
+  column's width, separating the tabs from the generated content/action buttons below.
+- `RevisionChat.tsx`'s revision-instruction field changed from a single-line `<input>`
+  to an auto-growing `<textarea>` (same resize pattern already used in
+  `InlineEdit.tsx`: reset height to `auto`, then set to `scrollHeight`, re-run on every
+  keystroke), capped at `max-h-[50vh]` with `overflow-y-auto` beyond that instead of
+  pushing the rest of the page down. Enter submits, Shift+Enter inserts a newline (a
+  necessary addition once Enter alone would otherwise submit prematurely on a
+  multi-line box).
+- **Border-box height bug found and fixed while building the above**: the textarea has
+  `box-sizing: border-box` (Tailwind preflight default) and a 1px border on all sides.
+  `scrollHeight` excludes borders by spec, so setting `style.height = scrollHeight +
+  'px'` directly left the border-box height permanently ~2px short of what the content
+  needed — a scrollbar showed even on a completely empty, single-line box. Confirmed
+  via direct DOM measurement (`scrollHeight: 41` vs `clientHeight: 39` at idle) before
+  fixing, and confirmed the fix (`autoResize` now adds `getComputedStyle`'s
+  `borderTopWidth + borderBottomWidth` to the height it sets) at four sizes after:
+  empty (`41 === 41`, no scrollbar), 3 lines (`86 === 86`, no scrollbar), just under
+  the 50vh cap (`311` vs cap `335`, no scrollbar), and just past it (`scrollHeight: 356`
+  vs `clientHeight: 333`, scrollbar correctly appears).
+
+### Verification (real browser + DOM measurement, not just code review)
+
+- Two-bar layout: loaded a saved resume and a saved cover letter from the Saved tab in
+  turn — confirmed each landed on its own tab with content and the action-button row
+  at the top; confirmed the Job Description tab correctly showed only the
+  not-yet-generated Generate button for whichever type was still missing, and flipped
+  to the read-only reference view once both existed; ran one real end-to-end
+  `/generate` call through the new button (not just saved-item loading) and confirmed
+  "Generating..." → rendered content; confirmed "Generate for new job" fully resets
+  from multiple starting tabs, including from the Saved tab itself.
+- Polish round: screenshot-verified the stone top bar, tightened padding, and coral
+  Roboto Mono logo; verified the tab-row divider across three tab states (Job
+  Description, Saved, generated Resume); computed and cross-checked the WCAG contrast
+  numbers above with a small Python script rather than eyeballing; measured the
+  auto-growing textarea's actual rendered height against `window.innerHeight` (335px
+  at a 670px viewport, exactly 50vh) and confirmed `overflow-y: auto` plus a
+  `scrollHeight` that genuinely exceeded `clientHeight` only past the cap.
+- `tsc --noEmit` and `eslint` both clean throughout.
+
+Committed on `redesign/application-workspace` across three commits: `374312c`
+(two-bar layout), `6498546` (top-bar polish + divider), `a822a62` (auto-growing chat
+input). Not merged to `main`.

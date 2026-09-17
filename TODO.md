@@ -42,8 +42,8 @@ into a STATUS doc as completed work.
     application, rather than requiring a separate save per document. **Decided**: if
     only a resume exists (no cover letter generated), save JD + resume as the package —
     no forced empty CL slot, no separate solo-document save path needed.
-  - **Open question, not yet decided**: do the existing individual `saved_items/`
-    entries get migrated into the new package model, or left as legacy/orphaned data?
+  - **Decided: no migration needed** — existing individual `saved_items/` entries can
+    just be deleted; new packages get generated fresh going forward.
   - **Loading a package** should hydrate all of its content back into the UI at once —
     JD, resume, and cover letter each into their own tab (see four-tab layout below),
     not just one document at a time like today's Saved-tab load does.

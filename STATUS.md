@@ -1,6 +1,6 @@
 # Resume Builder — Global Status
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-09-16_
 
 High-level status for the whole monorepo. For implementation detail, see:
 - [`backend/STATUS_BACKEND.md`](backend/STATUS_BACKEND.md) — FastAPI service

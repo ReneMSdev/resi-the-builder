@@ -47,11 +47,13 @@ into a STATUS doc as completed work.
   - **Loading a package** should hydrate all of its content back into the UI at once —
     JD, resume, and cover letter each into their own tab (see four-tab layout below),
     not just one document at a time like today's Saved-tab load does.
-- **UI redesign: two-bar flat layout** — replaces the current Resume/Cover-Letter/Saved
-  tab structure, the earlier four-tab sketch, and the nested Generate>sub-bar structure
-  from the first build pass (all superseded by this flatter version). Also
-  **supersedes** the earlier "collapse the generate-input form" idea below — the input
-  form no longer competes with the preview for space at all.
+- **UI redesign: two-bar flat layout** — **Phase 2 done, built and verified** (see
+  `frontend/STATUS_FRONTEND.md`), on branch `redesign/application-workspace`, not yet
+  merged to `main`. Replaces the current Resume/Cover-Letter/Saved tab structure, the
+  earlier four-tab sketch, and the nested Generate>sub-bar structure from the first
+  build pass (all superseded by this flatter version). Also **supersedes** the earlier
+  "collapse the generate-input form" idea, and the separate "Clear all" idea further
+  below — the top bar's "generate for new job" button covers that need instead.
   - **Top bar**: "Resume Builder" wordmark (left, distinctive font, no click/link
     action), the existing backend-connectivity health check indicator ("backend: ok" /
     error — carried over from the original Phase 1 connectivity check, just
@@ -116,12 +118,10 @@ into a STATUS doc as completed work.
     rectangle (not a pill) defaults to opening the JD sub-tab. Keep the existing Delete
     button and the "created" date subtext from today's `SavedTab.tsx` — no change
     needed there, just carried forward.
-  - **Minor polish item, not blocking**: whether the "Generate" tab label stays static
-    or dynamically shows the loaded job's company/role — default to static for now.
-- **"Clear all" action** — lets the user reset current state without reloading the page
-  (e.g. realizing the wrong JD was pasted). **Decided**: reverts to a fresh generate
-  screen (JD/company-context inputs and any generated/edited Resume+CL content for the
-  current session), but does **not** delete anything already saved.
+  - **Not yet built**: the "job application packages" bundling described above this
+    section (backend Phase 3, `/applications` storage) and the Saved-tab pill rework /
+    Save-button repackaging that depends on it. The two-bar layout above is built and
+    working against today's existing single-document save model in the meantime.
 
 ## Infrastructure, not yet started
 

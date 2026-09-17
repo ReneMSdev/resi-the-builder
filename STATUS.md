@@ -13,7 +13,19 @@ Claude to tailor a resume (or cover letter) from a master profile → user edits
 via chat-scoped revision → downloads a formatted `.docx`/`.pdf`. See
 `backend/CLAUDE_CODE_CONTEXT.md` for the original spec/architecture doc.
 
-## Overall state: feature-complete, running locally only
+## In progress: UI/storage redesign (branch `redesign/application-workspace`)
+
+Not yet merged to `main`. Reworking the frontend into a two-bar flat layout (top bar:
+logo/backend-status/"generate for new job"; second bar: Job Description/Resume/Cover
+Letter/Saved as flat peer tabs) and introducing a job-application "package" concept on
+the backend (bundling JD + resume + cover letter together, replacing today's
+one-document-at-a-time `/resumes` save). See `TODO.md`'s "Planned features" section for
+the full design and phase breakdown. Backend's `cleaned_job_description` field
+(Phase 1) and the frontend's new layout (Phase 2) are done and verified; the backend
+`/applications` package storage (Phase 3) and the Saved-tab/Save-button rework that
+depends on it are not started yet.
+
+## Overall state (on `main`): feature-complete, running locally only
 
 Both halves of the original plan are done and verified end-to-end together:
 

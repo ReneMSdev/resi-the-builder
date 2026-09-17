@@ -314,8 +314,7 @@ export default function Home() {
     updateResume((resume) => editSkillItem(resume, groupId, itemId, text))
   const handleAddLink = (label: string, url: string) =>
     updateResume((resume) => addLink(resume, label, url))
-  const handleRemoveLink = (linkId: string) =>
-    updateResume((resume) => removeLink(resume, linkId))
+  const handleRemoveLink = (linkId: string) => updateResume((resume) => removeLink(resume, linkId))
   const handleEditLink = (linkId: string, label: string, url: string) =>
     updateResume((resume) => editLink(resume, linkId, label, url))
 
@@ -416,15 +415,18 @@ export default function Home() {
 
   return (
     <div className='flex flex-col flex-1 items-center bg-background font-sans'>
-      <div className='flex w-full items-center justify-between border-b border-(--border) bg-(--surface) py-4 px-[50px]'>
-        <span className='font-serif text-xl font-bold tracking-tight text-foreground'>
+      <div className='flex w-full items-center justify-between border-b border-(--border) bg-(--topbar-bg) py-3 px-[50px]'>
+        <span
+          className='text-xl font-bold tracking-tight text-(--accent)'
+          style={{ fontFamily: 'var(--font-roboto-mono)' }}
+        >
           Resume Builder
         </span>
         {status.state === 'loading' && (
           <p className='text-sm text-(--muted)'>Checking backend...</p>
         )}
         {status.state === 'ok' && (
-          <p className='text-sm font-medium text-(--success)'>Backend: ok</p>
+          <p className='text-sm font-medium text-(--success-on-dark)'>Backend: ok</p>
         )}
         {status.state === 'error' && (
           <p className='text-sm font-medium text-(--danger)'>
@@ -441,23 +443,37 @@ export default function Home() {
       </div>
 
       <main className='flex flex-1 w-full max-w-3xl flex-col gap-8 py-8 px-16'>
-        <div className='flex gap-2 self-center'>
-          <button type='button' onClick={() => setTab('jd')} className={tabClass('jd')}>
-            Job Description
-          </button>
-          <button type='button' onClick={() => setTab('resume')} className={tabClass('resume')}>
-            Resume
-          </button>
-          <button
-            type='button'
-            onClick={() => setTab('cover_letter')}
-            className={tabClass('cover_letter')}
-          >
-            Cover Letter
-          </button>
-          <button type='button' onClick={() => setTab('saved')} className={tabClass('saved')}>
-            Saved
-          </button>
+        <div className='w-full border-b border-(--border) pb-6'>
+          <div className='flex gap-2 justify-center'>
+            <button
+              type='button'
+              onClick={() => setTab('jd')}
+              className={tabClass('jd')}
+            >
+              Job Description
+            </button>
+            <button
+              type='button'
+              onClick={() => setTab('resume')}
+              className={tabClass('resume')}
+            >
+              Resume
+            </button>
+            <button
+              type='button'
+              onClick={() => setTab('cover_letter')}
+              className={tabClass('cover_letter')}
+            >
+              Cover Letter
+            </button>
+            <button
+              type='button'
+              onClick={() => setTab('saved')}
+              className={tabClass('saved')}
+            >
+              Saved
+            </button>
+          </div>
         </div>
 
         {tab === 'saved' && <SavedTab onLoad={handleLoadSavedItem} />}
@@ -503,8 +519,14 @@ export default function Home() {
                           : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
                     </p>
                     <div className='flex items-center gap-2'>
-                      <ModeToggle mode={previewMode} onChange={setPreviewMode} />
-                      <SaveButton type='resume' document={resumeState.resume} />
+                      <ModeToggle
+                        mode={previewMode}
+                        onChange={setPreviewMode}
+                      />
+                      <SaveButton
+                        type='resume'
+                        document={resumeState.resume}
+                      />
                       <DownloadButtons document={{ resume: resumeState.resume }} />
                     </div>
                   </div>
@@ -568,8 +590,14 @@ export default function Home() {
                           : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
                     </p>
                     <div className='flex items-center gap-2'>
-                      <ModeToggle mode={previewMode} onChange={setPreviewMode} />
-                      <SaveButton type='cover_letter' document={coverLetterState.coverLetter} />
+                      <ModeToggle
+                        mode={previewMode}
+                        onChange={setPreviewMode}
+                      />
+                      <SaveButton
+                        type='cover_letter'
+                        document={coverLetterState.coverLetter}
+                      />
                       <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
                     </div>
                   </div>

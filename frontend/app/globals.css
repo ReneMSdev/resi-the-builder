@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: #f6ecdb;
@@ -10,9 +10,11 @@
   --accent-hover: #d9633f;
   --accent-soft: #fbe1d2;
   --success: #4f7942;
+  --success-on-dark: #4ade80;
   --danger: #b23a2e;
   --edit: #3a6ea5;
   --edit-soft: #dce8f4;
+  --topbar-bg: #292524;
 }
 
 @theme inline {

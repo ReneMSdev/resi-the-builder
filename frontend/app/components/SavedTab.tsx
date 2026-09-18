@@ -6,6 +6,7 @@ import { buildAutoApplyPrompt } from '../lib/autoApplyPrompt'
 import { demoApplication, demoApplications } from '../lib/demo'
 import { useDemoMode } from '../lib/DemoModeContext'
 import { showToast } from './Toast'
+import { DemoCapabilityBanner } from './DemoCapabilityBanner'
 
 type ListState =
   | { state: 'loading' }
@@ -159,10 +160,10 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   function openAutoApply(id: string) {
-    if (demoMode) {
-      showToast('Auto Apply is out of scope for this demo')
-      return
-    }
+    // The popover itself opens normally in demo mode now — it's read-only
+    // context (the capability banner) plus interactive fields that don't do
+    // anything harmful to fill in; only the actual "Prepare Application"
+    // action needs demo-mode handling (see handlePrepareApplication).
     setAutoApplyId(id)
     setAutoApplyUrl('')
     setAutoApplyInstructions('')
@@ -175,9 +176,15 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   async function handlePrepareApplication(id: string) {
-    // Defense in depth: openAutoApply already blocks the popover with a
-    // toast in demo mode, so this should be unreachable there.
-    if (demoMode) return
+    // The popover is reachable in demo mode now, so this is the actual
+    // trigger point (not defense-in-depth) — kept clickable rather than
+    // disabled, matching the toast-on-click pattern Save/Update already use
+    // elsewhere in the demo, instead of introducing a one-off disabled
+    // button just for this popup.
+    if (demoMode) {
+      showToast('Auto Apply is out of scope for this demo')
+      return
+    }
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setAutoApplyState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -353,6 +360,9 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
                       </>
                     ) : (
                       <>
+                        {demoMode && (
+                          <DemoCapabilityBanner message="In the full app, this generates a ready-to-use prompt for a separate Claude-in-Chrome session to fill out the real application form — it never auto-submits; you always review and submit yourself." />
+                        )}
                         <label className='flex flex-col gap-1'>
                           <span className='text-xs font-medium text-foreground'>
                             Application form URL

@@ -2358,3 +2358,38 @@ Wrapped in `layout.tsx`: `<DemoModeProvider>{children}<DemoModeToggle /></DemoMo
   existing one in `InlineEdit.tsx`).
 - Killed the temporary port-3001 production server; confirmed the real dev
   server (port 3000) and `.env.local` unaffected throughout.
+
+---
+
+## Fix: Auto Apply opens its real popup in demo mode instead of a toast-only block (2026-09-18)
+
+Previously `openAutoApply` blocked the popover entirely in demo mode with a
+toast. Per the user, that hid useful context — changed so the popup opens
+normally in demo mode, with only the actual "Prepare Application" action
+still demo-gated:
+
+- `openAutoApply` no longer checks `demoMode` at all — the popover always
+  opens on click.
+- Added a `DemoCapabilityBanner` inside the popup's form view (only reached
+  in demo mode, since a successful "Prepare" — the `'ready'` state — is
+  unreachable there) explaining what Auto Apply does in the full app.
+- URL and extra-instructions fields needed no changes — they're plain
+  `useState` inputs with nothing demo-unsafe about typing into them.
+- **"Prepare Application" button**: kept clickable rather than disabled,
+  showing the existing "Auto Apply is out of scope for this demo" toast on
+  click (`handlePrepareApplication`'s `demoMode` check, previously
+  documented as unreachable defense-in-depth, is now the actual trigger
+  point). Chose this over disabling the button to stay consistent with
+  every other "not available in demo" case in this app (Save/Update, the
+  old Auto-Apply-trigger-button itself) — all toast-on-click, none disabled;
+  introducing a disabled button here would've been the one inconsistent
+  case rather than matching an established pattern.
+
+**Verified live** (toggled the local dev server into Demo mode via the
+Live/Demo toggle from the previous entry, no rebuild needed): popup opens
+on "Auto Apply" click; banner shows; typed into both the URL and
+instructions fields successfully; clicking "Prepare Application" showed the
+toast, left the popup open in its form state (no spurious loading/ready
+transition), and fired zero network requests (`read_network_requests`
+confirmed no port-8000 calls); Cancel still closes the popup normally.
+`tsc --noEmit` and `eslint app/` clean.

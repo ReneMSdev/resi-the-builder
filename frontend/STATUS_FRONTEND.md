@@ -1986,3 +1986,107 @@ either way): `NEXT_PUBLIC_DEMO_MODE=true npx next build`, then `next start -p
 - The optional second "Technician" fixture, per the reasoning above.
 - Actual Vercel project setup (Root Directory, env var in the dashboard) —
   confirmed out of scope for this task, a separate manual step.
+
+---
+
+## Fix: Profile-stranded-on-loading bug, and canned-revise redesign to a full id→refinement map (2026-09-18)
+
+Two items from live-demo feedback after the Vercel deploy, both frontend-only.
+
+### Bug fix: Profile permanently stuck on "Loading profile..." after "Generate for new job"
+
+Root cause: `handleGenerateForNewJob` in `page.tsx` unconditionally did
+`setProfileState({ state: 'idle' })`. In demo mode `profileState` only ever
+reaches `'success'` via the one-time `useState` initializer — the `/profile`
+fetch effect that would normally recover an `'idle'` state is deliberately
+`if (DEMO_MODE) return`'d out — so resetting to `'idle'` had no recovery path
+and permanently stranded the tab. Fixed by branching the same way the
+initializer already does: `setProfileState(DEMO_MODE ? { state: 'success',
+profile: demoProfile } : { state: 'idle' })`.
+
+Audited every other `setProfileState` call site (`grep -n "setProfileState"
+app/page.tsx`, 5 total) and `handleLoadApplication` for the same bug class — a
+reset that's fine in the real app because a later fetch/generate call fixes
+it, but has no recovery path in demo mode. No other instance found: the two
+calls inside the `/profile` effect are unreachable in demo mode (the effect
+itself returns early), and the `onProfileChange` callback passed to
+`<ProfileView>` always transitions straight to `'success'`, never to a
+stranding state. `handleLoadApplication` doesn't touch `profileState` at all.
+
+### Redesign: canned-revise chips → full id→refinement lookup, reusing the real selection+submit flow
+
+Scope change from the user: drop the earlier plan for three fictional demo
+packages; stay at one, but make it deliberately **shorter** (one Experience
+entry/3 bullets, one Projects entry/2 bullets, 2 cover-letter paragraphs)
+specifically so every remaining bullet — plus the summary and both cover
+letter paragraphs — can have its own canned refinement, fixing the root cause
+of the earlier "selection doesn't map to a canned revision" complaint (the
+old curated chip set only covered ~5 ids out of a much larger real document).
+
+Replaced `demoFixtures/revisions.ts` (curated suggestion-chip targets) with
+`demoFixtures/refinements.ts` — a plain `Record<string, string>` keyed by
+leaf id, one map for resume, one for cover letter. Removed the chip UI
+entirely from `RevisionChat.tsx` (reverted to its pre-chip shape, no
+`demoSuggestions`/`onDemoSuggestionClick` props) rather than keeping it
+alongside the new mechanism, to avoid two competing interaction patterns for
+the same feature. `handleRevise`'s demo branch now: after the existing
+`demoDelay()`, looks up every currently-selected id in the resume/cover-letter
+refinements map, builds an `updates` array from whatever's found, and runs it
+through the *exact same* `applyRevisionUpdates`/`applyCoverLetterUpdates` +
+`pushResumeHistory`/`pushClHistory` path a real `/revise` response already
+uses — so undo, history capping, and rendering all fall out for free, same as
+the old chip mechanism did. Typed instruction text is accepted but ignored
+(matches the real UI's interaction model — selection drives the diff, not
+free text). An id with no canned entry (skill items, links, whole
+sections/entries, or nothing selected) falls through to the existing graceful
+message, reworded for the new mechanism: "Nothing to refine for this
+selection in the demo — try selecting a bullet or the summary/paragraph."
+
+Rebuilt `demoFixtures/application.json` by hand to the smaller shape
+described above, and regenerated `demoFixtures/applications.json` to match.
+Validated the new JSON's structural correctness by round-tripping both the
+resume and cover letter through the real backend's `POST /render` (all 4
+docx/pdf combinations returned 200), which also produced the real matching
+`public/demo/{resume,cover_letter}.{docx,pdf}` files in the same step.
+
+### Verification (production build, same method as the original demo-mode pass)
+
+`NEXT_PUBLIC_DEMO_MODE=true npx next build` + `next start -p 3001` alongside
+the untouched real dev server on 3000; confirmed `.env.local` and the real
+server unaffected before and after, and cleaned up the port-3001 process when
+done.
+
+- **Profile bug fix**: navigated to Profile (loaded correctly), clicked
+  "Generate for new job" (reset to a blank JD form, as expected), navigated
+  back to Profile — still shows the full fixture immediately, not stuck on
+  "Loading profile...". Confirms the fix; this was the exact repro from the
+  live-demo bug report.
+- **Every resume bullet + summary**: selected `b1`, `b2`, `b3` (Experience)
+  individually and together, then `b4`, `b5` (Projects) together while
+  re-confirming the first 3 remained correct, then `summary_main` — all 6
+  produced their exact canned refinement text, verified against the literal
+  strings in `refinements.ts`, not just "something changed". 6 of 6 confirmed.
+- **Both cover-letter paragraphs**: selected `p1` and `p2` together, submitted
+  — both applied their exact canned text simultaneously.
+- **Unmapped-selection fallback**: selected the whole Experience entry
+  (`entry_salolabs`, not in the refinements map) and submitted — got the exact
+  graceful message, no crash, no silent no-op.
+- **Network audit**: `read_network_requests` after a fresh page load and after
+  a `.docx` download — zero requests to `127.0.0.1:8000` or any
+  `NEXT_PUBLIC_API_URL` origin; the download hit same-origin
+  `/demo/resume.docx` (200), matching the original demo-mode guarantee.
+- **Regression checks**: Update button still shows the "Saving isn't
+  available in this demo" toast (no popover, no network call); demo banner,
+  auto-load-on-mount, and the Job Description/Resume/Cover Letter tab bar all
+  behaved unchanged.
+- `tsc --noEmit` and `eslint` clean across the whole `app/` directory both
+  right after the code changes and confirmed unchanged since.
+
+### Known gap, flagged rather than resolved in this pass
+
+All commits for this fix are on `profile-editing`; the live Vercel deployment
+(`resi-the-builder.vercel.app`) auto-deploys from `main`. A live-site spot
+check — explicitly requested as the final verification step — isn't possible
+until `main` is updated, which is out of scope for this session to do
+unilaterally (branch merges aren't a pathspec-scoped frontend change).
+Flagged to the manager; live spot-check pending that.

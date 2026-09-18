@@ -12,7 +12,7 @@ import { ToastContainer } from './components/Toast'
 import { HamburgerMenu } from './components/HamburgerMenu'
 import { ProfileView } from './components/ProfileView'
 import { DEMO_MODE, demoApplication, demoDelay, demoProfile } from './lib/demo'
-import { demoResumeSuggestions, demoCoverLetterSuggestions } from './lib/demoFixtures/revisions'
+import { demoResumeRefinements, demoCoverLetterRefinements } from './lib/demoFixtures/refinements'
 import {
   applyRevisionUpdates,
   applyCoverLetterUpdates,
@@ -438,43 +438,51 @@ export default function Home() {
   const handleEditLink = (linkId: string, label: string, url: string) =>
     updateResume((resume) => editLink(resume, linkId, label, url))
 
-  function handleDemoSuggestion(suggestionId: string) {
-    // Applies a pre-scripted before/after diff via the same
-    // applyRevisionUpdates/applyCoverLetterUpdates + history path a real
-    // /revise response already uses — only the source of `updates` differs.
-    const suggestions = tab === 'resume' ? demoResumeSuggestions : demoCoverLetterSuggestions
-    const suggestion = suggestions.find((s) => s.id === suggestionId)
-    if (!suggestion) return
-
-    if (tab === 'resume' && resumeState.state === 'success') {
-      pushResumeHistory(resumeState.resume)
-      setResumeState({
-        state: 'success',
-        resume: applyRevisionUpdates(resumeState.resume, suggestion.updates),
-      })
-    } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
-      pushClHistory(coverLetterState.coverLetter)
-      setCoverLetterState({
-        state: 'success',
-        coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, suggestion.updates),
-      })
-    }
-    setReviseState({ state: 'idle' })
-  }
-
   async function handleRevise(instruction: string) {
     if (tab === 'resume' ? resumeState.state !== 'success' : coverLetterState.state !== 'success') {
       return
     }
 
     if (DEMO_MODE) {
-      // Free-typed instructions never reach a real model in demo mode — the
-      // suggestion chips (handleDemoSuggestion) are the only way to produce
-      // a real diff. This never calls fetch, only sets an inline message.
-      setReviseState({
-        state: 'error',
-        message: "This demo can't run arbitrary instructions — try one of the suggestions above.",
-      })
+      // Selection-driven, not instruction-driven: whatever text is typed is
+      // accepted, but the applied diff is always keyed by whatever's
+      // currently selected via a plain id -> refined-text lookup — the same
+      // selection+submit flow the real app already uses, just with a static
+      // lookup standing in for the model. An id with no canned refinement
+      // (skill items, links, whole sections/entries, or genuinely nothing
+      // selected) falls through to the graceful message below rather than
+      // silently doing nothing.
+      setReviseState({ state: 'loading' })
+      await demoDelay()
+
+      const refinements = tab === 'resume' ? demoResumeRefinements : demoCoverLetterRefinements
+      const updates = Array.from(selectedIds)
+        .filter((id) => id in refinements)
+        .map((id) => ({ id, text: refinements[id] }))
+
+      if (updates.length === 0) {
+        setReviseState({
+          state: 'error',
+          message:
+            'Nothing to refine for this selection in the demo — try selecting a bullet or the summary/paragraph.',
+        })
+        return
+      }
+
+      if (tab === 'resume' && resumeState.state === 'success') {
+        pushResumeHistory(resumeState.resume)
+        setResumeState({
+          state: 'success',
+          resume: applyRevisionUpdates(resumeState.resume, updates),
+        })
+      } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
+        pushClHistory(coverLetterState.coverLetter)
+        setCoverLetterState({
+          state: 'success',
+          coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, updates),
+        })
+      }
+      setReviseState({ state: 'idle' })
       return
     }
 
@@ -575,7 +583,13 @@ export default function Home() {
     setClReviseState({ state: 'idle' })
     setResumeHistory([])
     setClHistory([])
-    setProfileState({ state: 'idle' })
+    // In demo mode, profileState only ever reaches 'success' via the one-time
+    // useState initializer — the fetch effect that would normally recover
+    // an 'idle' state is deliberately never called in demo mode. Resetting
+    // to 'idle' here would permanently strand the Profile tab on "Loading
+    // profile..." for the rest of the session, since nothing ever moves it
+    // off 'idle' again. Reset straight back to the fixture instead.
+    setProfileState(DEMO_MODE ? { state: 'success', profile: demoProfile } : { state: 'idle' })
     setProfilePreviewMode('select')
     setProfileSelectedIds(new Set())
     setProfileReviseState({ state: 'idle' })
@@ -798,8 +812,6 @@ export default function Home() {
                       onSubmit={handleRevise}
                       canRevert={history.length > 0}
                       onRevert={handleRevert}
-                      demoSuggestions={DEMO_MODE ? demoResumeSuggestions : undefined}
-                      onDemoSuggestionClick={DEMO_MODE ? handleDemoSuggestion : undefined}
                     />
                   </div>
                 ) : (
@@ -872,8 +884,6 @@ export default function Home() {
                       onSubmit={handleRevise}
                       canRevert={history.length > 0}
                       onRevert={handleRevert}
-                      demoSuggestions={DEMO_MODE ? demoCoverLetterSuggestions : undefined}
-                      onDemoSuggestionClick={DEMO_MODE ? handleDemoSuggestion : undefined}
                     />
                   </div>
                 ) : (

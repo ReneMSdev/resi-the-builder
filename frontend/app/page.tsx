@@ -625,7 +625,7 @@ export default function Home() {
 
   return (
     <div className='flex h-full flex-col items-center overflow-hidden bg-background font-sans'>
-      <div className='flex w-full items-center justify-between border-b border-(--border) bg-(--topbar-bg) py-3 px-[50px]'>
+      <div className='flex w-full items-center justify-between border-b border-(--border) bg-(--topbar-bg) py-3 px-12.5'>
         <div className='flex items-center gap-3'>
           <HamburgerMenu onSelect={(view) => setTab(view)} />
           <span

@@ -86,7 +86,7 @@ export function DownloadButtons({
           type='button'
           onClick={() => handleDownload('docx')}
           disabled={isLoading}
-          className='flex items-center gap-1.5 rounded border border-[var(--border)] px-3 py-1.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:cursor-pointer hover:bg-[var(--accent-soft)] disabled:opacity-50'
+          className='flex items-center gap-1.5 rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
         >
           <DownloadIcon className='h-4 w-4 shrink-0' />
           {downloadState.state === 'loading' && downloadState.format === 'docx'
@@ -97,7 +97,7 @@ export function DownloadButtons({
           type='button'
           onClick={() => handleDownload('pdf')}
           disabled={isLoading}
-          className='flex items-center gap-1.5 rounded border border-[var(--border)] px-3 py-1.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:cursor-pointer hover:bg-[var(--accent-soft)] disabled:opacity-50'
+          className='flex items-center gap-1.5 rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
         >
           <DownloadIcon className='h-4 w-4 shrink-0' />
           {downloadState.state === 'loading' && downloadState.format === 'pdf'
@@ -106,7 +106,7 @@ export function DownloadButtons({
         </button>
       </div>
       {downloadState.state === 'error' && (
-        <p className='text-xs font-medium text-[var(--danger)]'>
+        <p className='text-xs font-medium text-(--danger)'>
           Error downloading: {downloadState.message}
         </p>
       )}

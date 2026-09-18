@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Undo2 } from "lucide-react";
 
 function autoResize(el: HTMLTextAreaElement) {
   const { borderTopWidth, borderBottomWidth } = getComputedStyle(el);
@@ -15,12 +16,16 @@ export function RevisionChat({
   loading,
   errorMessage,
   onSubmit,
+  canRevert,
+  onRevert,
 }: {
   selectionSummary: string;
   selectionCount: number;
   loading: boolean;
   errorMessage: string | null;
   onSubmit: (instruction: string) => void;
+  canRevert: boolean;
+  onRevert: () => void;
 }) {
   const [instruction, setInstruction] = useState("");
   const disabled = selectionCount === 0;
@@ -70,6 +75,16 @@ export function RevisionChat({
           }
           className="max-h-[50vh] flex-1 resize-none overflow-y-auto rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)] disabled:opacity-50"
         />
+        <button
+          type="button"
+          onClick={onRevert}
+          disabled={!canRevert}
+          title="Revert last change"
+          aria-label="Revert last change"
+          className="rounded border border-[var(--border)] p-2 text-[var(--foreground)] transition-colors hover:cursor-pointer hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Undo2 className="h-4 w-4" />
+        </button>
         <button
           type="submit"
           disabled={disabled || loading || !instruction.trim()}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CoverLetter, JobDescription, Resume } from '../types'
+import { Application, CoverLetter, JobDescription, Resume } from '../types'
 import { SaveIcon } from './icons'
 import { showToast } from './Toast'
 
@@ -15,16 +15,23 @@ export function SaveButton({
   jobDescription,
   resume,
   coverLetter,
+  applicationId,
+  initialName,
+  onSaved,
 }: {
   jobDescription: JobDescription
   resume: Resume | null
   coverLetter: CoverLetter | null
+  applicationId: string | null
+  initialName: string
+  onSaved: (application: Application) => void
 }) {
   const [saveState, setSaveState] = useState<SaveState>({ state: 'idle' })
   const [name, setName] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
 
   const isOpen = saveState.state === 'prompting' || saveState.state === 'saving'
+  const isUpdate = applicationId !== null
 
   useEffect(() => {
     if (!isOpen) return
@@ -47,25 +54,30 @@ export function SaveButton({
     setSaveState({ state: 'saving' })
 
     try {
-      const res = await fetch(`${apiUrl}/applications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim() || null,
-          job_description: jobDescription,
-          resume,
-          cover_letter: coverLetter,
-        }),
-      })
+      const res = await fetch(
+        isUpdate ? `${apiUrl}/applications/${applicationId}` : `${apiUrl}/applications`,
+        {
+          method: isUpdate ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim() || null,
+            job_description: jobDescription,
+            resume,
+            cover_letter: coverLetter,
+          }),
+        },
+      )
 
       if (!res.ok) {
         const body = await res.text()
         throw new Error(`${res.status}: ${body}`)
       }
 
-      setName('')
+      const application: Application = await res.json()
+
       setSaveState({ state: 'idle' })
-      showToast('Saved!')
+      onSaved(application)
+      showToast(isUpdate ? 'Updated!' : 'Saved!')
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       setSaveState({ state: 'error', message })
@@ -79,11 +91,14 @@ export function SaveButton({
     >
       <button
         type='button'
-        onClick={() => setSaveState({ state: 'prompting' })}
+        onClick={() => {
+          setName(initialName)
+          setSaveState({ state: 'prompting' })
+        }}
         className='flex items-center gap-1.5 rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft)'
       >
         <SaveIcon className='h-4 w-4 shrink-0' />
-        Save
+        {isUpdate ? 'Update' : 'Save'}
       </button>
       {saveState.state === 'error' && (
         <span className='text-xs font-medium text-(--danger)'>Error saving: {saveState.message}</span>
@@ -118,7 +133,7 @@ export function SaveButton({
               disabled={saveState.state === 'saving'}
               className='rounded bg-(--accent) px-3 py-1.5 text-sm font-medium text-(--surface) transition-colors hover:bg-(--accent-hover) disabled:opacity-50 hover:cursor-pointer'
             >
-              {saveState.state === 'saving' ? 'Saving...' : 'Confirm'}
+              {saveState.state === 'saving' ? (isUpdate ? 'Updating...' : 'Saving...') : 'Confirm'}
             </button>
           </div>
         </div>

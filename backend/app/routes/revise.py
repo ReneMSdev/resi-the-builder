@@ -14,11 +14,11 @@ def revise(req: ReviseRequest):
     try:
         if req.cover_letter is not None:
             result = revise_cover_letter(
-                req.cover_letter.model_dump(), req.selected_ids, req.instruction
+                req.cover_letter.model_dump(), req.selected_ids, req.instruction, req.job_description
             )
         else:
             result = revise_resume(
-                req.resume.model_dump(), req.selected_ids, req.instruction
+                req.resume.model_dump(), req.selected_ids, req.instruction, req.job_description
             )
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))

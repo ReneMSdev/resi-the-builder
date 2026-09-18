@@ -39,16 +39,19 @@ export function applyRevisionUpdates(
       };
     });
 
-    const newGroups = section.groups?.map((group) => {
-      if (!updateMap.has(group.id)) return group;
-      const items = updateMap
-        .get(group.id)!
-        .split(",")
-        .map((text) => text.trim())
-        .filter((text) => text.length > 0)
-        .map((text) => ({ id: crypto.randomUUID(), text }));
-      return { ...group, items };
-    });
+    const newGroups = section.groups
+      ?.map((group) => {
+        if (!updateMap.has(group.id)) return group;
+        const rawText = updateMap.get(group.id)!;
+        if (rawText.trim().length === 0) return null;
+        const items = rawText
+          .split(",")
+          .map((text) => text.trim())
+          .filter((text) => text.length > 0)
+          .map((text) => ({ id: crypto.randomUUID(), text }));
+        return { ...group, items };
+      })
+      .filter((group) => group !== null);
 
     return { ...section, entries: newEntries, groups: newGroups };
   });

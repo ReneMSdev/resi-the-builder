@@ -1034,3 +1034,235 @@ so its own internal padding provides the flush-to-edge breathing room instead.
 - `tsc --noEmit` and `eslint` (full project) clean.
 
 Committed as `c57fdca` on `redesign/application-workspace`. Not merged to `main`.
+
+## Feature: Save updates the loaded package in place instead of always creating a new one (2026-09-17)
+
+Backend added `PUT /applications/{id}` (same body shape as `POST`, returns the full
+updated `Application`, 404 if missing, `null` resume/cover_letter deletes that content
+server-side including its docx snapshot, `updated_at` bumped while `created_at` is
+preserved). Frontend wired this in so re-saving an already-loaded package updates it
+instead of creating a duplicate — previously every Save was an unconditional `POST`.
+
+- **`app/types.ts`**: added `updated_at: string` to `Application`, since the backend
+  now always includes it.
+- **`app/page.tsx`**: new `loadedApplication: {id, name} | null` state tracks which
+  package (if any) is currently checked out. Set by `handleLoadApplication` (first
+  statement, before the existing per-tab hydration), cleared by
+  `handleGenerateForNewJob` (first statement, before the existing resets). New
+  `handleSaved(application)` handler sets it from whatever `SaveButton` just
+  saved/updated, passed to `SaveButton` as its `onSaved` prop at both call sites
+  (Resume tab, Cover Letter tab) alongside `applicationId={loadedApplication?.id ??
+  null}` and `initialName={loadedApplication?.name ?? ''}`.
+- **`SaveButton.tsx`**: new `applicationId`/`initialName`/`onSaved` props. `isUpdate =
+  applicationId !== null` drives everything: `PUT /applications/{id}` vs
+  `POST /applications` (identical body either way — the same full-session payload
+  already being sent), the trigger button's label ("Update" vs "Save"), the popover's
+  name input pre-filling from `initialName` instead of always starting blank, the
+  confirm button's loading label ("Updating..." vs "Saving..."), and the toast text
+  ("Updated!" vs "Saved!"). On success, `onSaved(application)` is called with the
+  parsed response — this is what makes a *second* save in the same session (including
+  right after a fresh POST-created save, with no reload or navigation) correctly PUT
+  the just-created package instead of creating a duplicate, since the returned id/name
+  flow straight back into `loadedApplication`.
+- `tsc --noEmit` and `eslint` both clean.
+
+### Verification (real browser + direct API checks)
+
+Requested explicitly since this is update-vs-create logic, not a visual tweak: load a
+package, edit something, save, confirm via `GET /applications` that no duplicate was
+created and the existing one now reflects the change.
+
+- Pre-state: `GET /applications` showed exactly one record (the "Justworks — Software
+  Engineer" fixture).
+- Loaded it via the Saved tab's Resume pill — Save button correctly read "Update"
+  (screenshot-confirmed), validating `applicationId` flows through the load path.
+- Switched to Edit mode, appended " PUT-TEST" to the resume name field, committed it.
+- Clicked "Update" — popover pre-filled with "Justworks — Software Engineer" (not
+  blank, per the pre-fill requirement). Confirmed. Toast read "Updated!".
+- `GET /applications` afterward: still exactly one record, same id — no duplicate
+  created.
+- `GET /applications/{id}`: `created_at` unchanged, `updated_at` bumped to a later
+  timestamp, resume name field now read "Rene Maxey-Salomone PUT-TEST" — confirms the
+  existing record was updated in place, not replaced or duplicated.
+- Cleanup: `PUT` the record back with the original name restored; re-verified via
+  `GET` that the content was restored and still exactly one record exists.
+
+## Feature: JD context for /revise, additional_context rename, skill-group deletion (2026-09-18)
+
+Three small backend-driven contract changes, bundled together since all three landed
+in one backend delivery.
+
+- **`/revise` now always sends `job_description`**: `handleRevise` in `app/page.tsx`
+  sends `cleanedJobDescription || jobDescription` as a sibling field alongside
+  `selected_ids`/`instruction`/`resume`/`cover_letter`, in both the resume and
+  cover-letter branches (one shared request body, no branch duplication needed). Fixes
+  a real bug: revise instructions referencing the job description (e.g. "remove skill
+  groups not relevant to this role") previously 502'd since `/revise` never had JD
+  context to work with.
+- **`company_context` → `additional_context` rename**: request field to `/generate`,
+  local state (`companyContext`/`setCompanyContext` → `additionalContext`/
+  `setAdditionalContext`), and `GenerateForm`'s props/JSX all renamed consistently, no
+  back-compat kept (backend no longer accepts the old name either). UI label changed
+  from "Company context (optional)" to "Additional context (optional)", with a new
+  placeholder describing the broader scope (company relationship, extra qualifications
+  not in the profile, other free-form context) — reflects that the field was never
+  just about the company.
+- **Empty-text skill-group update means delete that group**: `applyRevisionUpdates` in
+  `app/lib/resume.ts` — when a skill-group id's incoming `/revise` update has empty
+  text (after trim), that group is now filtered out of `section.groups` entirely
+  instead of being rewritten into an empty `items: []`. No separate handling needed in
+  Save/Update — a group removed this way is simply absent from the next save/update's
+  payload, since Save/Update already just packages up whatever currently exists in
+  session state.
+- `tsc --noEmit` and `eslint` both clean.
+
+### Verification (real browser + direct `fetch`/curl checks, not just code review)
+
+- Confirmed the "Additional context" label/placeholder render correctly on the
+  Generate form, then ran a real `/generate` call with it filled in — succeeded with
+  no 422, confirming the renamed field lands correctly on both sides.
+- Selected a skill group ("Mobile: React Native (Expo)") and submitted a revise
+  instruction telling the model to delete it outright. First attempt with a vaguer
+  instruction ("this isn't relevant to the job description, remove it") returned
+  `{"updates": []}` — a no-op, the model's judgment call on an ambiguous instruction,
+  not a bug. A more direct instruction ("delete this entire skill group") got back
+  `{"id": "skill_mobile", "text": ""}`, and the pill disappeared entirely from the
+  rendered UI — confirmed via the Raw JSON panel that the group is fully gone from
+  `sections[].groups`, not merely emptied.
+- Selected the "Frontend" skill group and asked to "keep only the skills mentioned in
+  the job description in this group" — correctly filtered down to just "React" (the
+  only frontend skill the test JD mentioned), proving `job_description` is reaching
+  `/revise` and actually being used. All 5 `/revise` calls made during this
+  verification (2 direct `fetch` calls from the browser console plus 3 through the
+  real UI) returned 200 — no 502s, including the JD-referencing ones that would have
+  failed before this fix.
+- Regression-checked plain bullet-level revise afterward ("make this more concise, one
+  sentence") — still works correctly, only the targeted bullet changed.
+- No test data was saved to `/applications` during this verification (Save was never
+  clicked) — confirmed via `GET /applications` that only the pre-existing fixture
+  remained, nothing to clean up.
+
+## Feature: Undo/revert for chat-scoped revisions and manual edits (2026-09-18)
+
+Pure frontend feature, no backend involvement — a local per-document undo stack that
+gets applied before an explicit Save/Update, same as any other in-session state.
+
+- **`app/page.tsx`**: two new state slots, `resumeHistory: Resume[]` and `clHistory:
+  CoverLetter[]`, mirroring the existing per-tab state-slot pattern
+  (`resumeState`/`coverLetterState`). A derived `history = tab === 'resume' ?
+  resumeHistory : clHistory` follows the same pattern as `selectedIds`/`reviseState`.
+  Capped at `MAX_HISTORY = 10` (oldest entry dropped first once full) via
+  `pushResumeHistory`/`pushClHistory` helpers — a simple array of full prior document
+  states, no partial/scoped patches, matching how revise/manual-edits already apply as
+  whole-object immutable updates.
+- **Every content-mutating action pushes the pre-change document onto that document's
+  stack before applying the new state**: `updateResume` (covers `addBullet`/
+  `removeBullet`/`addSkillItem`/`removeSkillItem`/`editSkillItem`/`addLink`/
+  `removeLink`/`editLink` — all of `app/lib/resume.ts`'s mutators funnel through this
+  one function already), `handleEditField` (manual scalar-field edits via
+  `InlineEdit.tsx`), and `handleRevise`'s success path (both resume and cover-letter
+  branches). These three call sites were rewritten from React's functional
+  `setState((prev) => ...)` form to reading `resumeState`/`coverLetterState` directly
+  (already safe — synchronous event-handler closures, same pattern the request-body
+  construction in `handleRevise` already relied on) specifically so the pre-change
+  value could be captured and pushed onto history in the same breath as applying the
+  new state, without nesting a `setState` call inside another `setState`'s updater.
+  `handleRevise` only pushes when `data.updates.length > 0` — a no-op revise response
+  (the model declining to change anything) doesn't waste a history slot on an
+  identical snapshot.
+- **`handleRevert`**: pops the current tab's stack (LIFO) and sets it as the current
+  resume/cover-letter state. Single-direction undo, no redo, matching the simplest
+  model that covers the ask.
+- **Stack reset**: both `handleGenerateForNewJob` and `handleLoadApplication` now also
+  clear `resumeHistory`/`clHistory` — a fresh workspace or a newly-loaded package
+  makes the old undo history meaningless. **Save/Update does not touch either
+  stack** — confirmed this was intentional per the spec (a save is a snapshot upload,
+  not an undo checkpoint) and verified it holds in practice.
+- **`app/components/RevisionChat.tsx`**: new `canRevert`/`onRevert` props. A
+  `Undo2` (lucide-react, already a project dependency since the hamburger-menu pass)
+  icon button sits between the textarea and the Revise submit button, `type="button"`
+  so it can't trigger the form's submit, disabled when `canRevert` is false. Placed
+  inside the sticky chat bar rather than the Select/Edit top action row because that
+  bar is already rendered unconditionally regardless of `previewMode` (confirmed by
+  reading `page.tsx`'s JSX — `RevisionChat` sits below `ResumePreview`/
+  `CoverLetterPreview` in both Select and Edit mode, not hidden in either), so it's
+  reachable regardless of which mode manual edits vs. chat revisions happen in without
+  needing a second copy of the control.
+- `tsc --noEmit` and `eslint` both clean.
+
+### Verification (real browser, this is state/logic correctness — not CSS)
+
+- Selected a bullet, submitted a chat-scoped revise ("make this more concise, one
+  sentence") — bullet text changed, revert button went from disabled to enabled.
+  Clicked revert: bullet text came back byte-for-byte identical to the pre-revise
+  version (confirmed via the Raw JSON panel), and the button went back to disabled
+  since the stack was empty again.
+- Switched to Edit mode, manually edited the resume name field (appended " Jr."),
+  clicked revert — name reverted to the exact pre-edit value. Confirms the revert
+  control (living in the always-rendered chat bar) is reachable and functional from
+  Edit mode, not just Select mode.
+- Chained three manual edits to the same field (appended "-A", then "-B", then "-C"
+  in three separate edits) and reverted three times in a row: each click removed
+  exactly one suffix in reverse order (`...-A-B-C` → `...-A-B` → `...-A` →
+  original), confirming LIFO step-by-step behavior rather than jumping straight back
+  to the original or losing intermediate steps.
+- Made one more manual edit, then clicked **Update** (save) — confirmed via direct
+  DOM inspection that the revert button was still enabled (not disabled) immediately
+  after the save completed, i.e. Save/Update does not clear the stack. Reverted after
+  the save and confirmed the pre-edit content came back correctly, then re-saved to
+  leave the fixture clean.
+- Made a manual edit (unsaved), then reloaded the same package via the Saved tab —
+  confirmed the revert button was disabled afterward, i.e. loading a package resets
+  the stack (didn't get a chance to test against a genuinely *different* second saved
+  package since only one fixture exists in this environment, but the reset code path
+  is identical regardless of which package is loaded).
+- Cleanup: the one test edit that was actually persisted via Update mid-verification
+  was saved back to its original value before finishing; `GET /applications`
+  confirmed exactly one record remains with the original name intact.
+
+## Feature: "Current Application" top-bar button, hide second tab bar on Profile/Saved (2026-09-18)
+
+Two small layout/visibility changes to `app/page.tsx`.
+
+- **"Current Application" button**: sits left of "Generate for new job" in the top
+  bar's right-aligned button group (both now wrapped in one `flex items-center
+  gap-3` div, so the existing three-column `justify-between` layout — logo,
+  backend-status text, button group — stays intact rather than fighting a fourth
+  top-level flex child). Rendered only when `loadedApplication !== null` — the same
+  state already used to decide PUT vs POST in `SaveButton`. Label is the literal
+  text "Current Application", per the spec, not the loaded package's actual name.
+  Clicking it does `setTab('jd')`. Deliberately **not** re-fetching/re-hydrating via
+  `handleLoadApplication` the way a Saved-tab card click does — the application's
+  data is already the live session state (`jobDescription`/`resumeState`/
+  `coverLetterState` all reflect whatever's currently loaded, possibly including
+  unsaved edits or revisions), so re-fetching would silently clobber anything not
+  yet saved. Only the "land on the Job Description tab by default" convention was
+  reused, not the fetch-and-overwrite behavior — flagging this interpretation since
+  the request's wording could be read either way.
+- **Second tab bar (Job Description/Resume/Cover Letter) + its divider now hidden
+  entirely on Profile and Saved**: new `isContentTab = tab === 'jd' || tab ===
+  'resume' || tab === 'cover_letter'` derived value gates the tab-row `<div>` (was
+  previously always rendered). Also replaced the existing `tab !== 'saved' && tab
+  !== 'profile'` check further down (guarding the three tabs' actual content) with
+  the same `isContentTab`, removing a duplicated equivalent condition.
+
+### Verification (real browser + DOM inspection, not just visual)
+
+- Fresh session (no package loaded): confirmed "Current Application" does not
+  render at all.
+- Loaded the Justworks fixture via the Saved tab: button appeared immediately, and
+  stayed visible while navigating to Profile and Saved (since a package remains
+  loaded regardless of which view is active).
+- From Profile, clicked "Current Application" — landed on the Job Description tab
+  showing the loaded package's actual (cleaned) JD text, not a blank/default form.
+  Repeated from the Saved tab with the same result.
+- Clicked "Generate for new job" — button disappeared again, confirming it tracks
+  `loadedApplication` correctly in both directions.
+- Confirmed via `document.querySelectorAll('button')` that no "Job Description" /
+  "Cover Letter" tab button exists in the DOM at all while viewing Profile —
+  genuinely absent, not CSS-hidden. Visually confirmed the same for Saved, and
+  confirmed the tab row + divider are present and functional on all three content
+  tabs.
+- No test data touched `/applications` during this verification — confirmed via
+  `GET /applications` that only the original fixture remains.
+- `tsc --noEmit` and `eslint` both clean.

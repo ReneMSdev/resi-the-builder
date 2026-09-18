@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 from app.services import usage_guard
 from app.services.llm import MAX_INPUT_CHARS
@@ -88,14 +89,42 @@ def test_generate_rejects_oversized_job_description(client, tmp_profile_path):
     assert "exceeds the" in resp.json()["detail"]
 
 
-def test_generate_rejects_oversized_company_context(client, tmp_profile_path):
+def test_generate_rejects_oversized_additional_context(client, tmp_profile_path):
     resp = client.post(
         "/generate",
         json={
             "job_description": "A generic job description.",
-            "company_context": "x" * (MAX_INPUT_CHARS + 1),
+            "additional_context": "x" * (MAX_INPUT_CHARS + 1),
         },
     )
 
     assert resp.status_code == 502
     assert "exceeds the" in resp.json()["detail"]
+
+
+def test_generate_forwards_additional_context_to_the_model(
+    client, mock_llm, tmp_profile_path, minimal_resume
+):
+    """Contract check for the company_context -> additional_context rename: the field
+    is accepted under its new name and actually forwarded in the prompt sent to the
+    model, not silently dropped."""
+    captured = {}
+
+    def _capture(*args, **kwargs):
+        captured["user_content"] = kwargs["messages"][0]["content"]
+        block = SimpleNamespace(type="text", text=json.dumps(minimal_resume))
+        return SimpleNamespace(content=[block])
+
+    mock_llm(side_effect=_capture)
+
+    resp = client.post(
+        "/generate",
+        json={
+            "job_description": "A generic job description.",
+            "additional_context": "I know someone on the engineering team there.",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert "ADDITIONAL CONTEXT:" in captured["user_content"]
+    assert "I know someone on the engineering team there." in captured["user_content"]

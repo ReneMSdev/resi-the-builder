@@ -81,11 +81,13 @@ type CoverLetterGenerateState =
 
 type ReviseState = { state: 'idle' } | { state: 'loading' } | { state: 'error'; message: string }
 
+const MAX_HISTORY = 10
+
 function GenerateForm({
   jobDescription,
   onJobDescriptionChange,
-  companyContext,
-  onCompanyContextChange,
+  additionalContext,
+  onAdditionalContextChange,
   showResumeButton,
   showCoverLetterButton,
   resumeGenerating,
@@ -97,8 +99,8 @@ function GenerateForm({
 }: {
   jobDescription: string
   onJobDescriptionChange: (value: string) => void
-  companyContext: string
-  onCompanyContextChange: (value: string) => void
+  additionalContext: string
+  onAdditionalContextChange: (value: string) => void
   showResumeButton: boolean
   showCoverLetterButton: boolean
   resumeGenerating: boolean
@@ -121,11 +123,12 @@ function GenerateForm({
         />
       </label>
       <label className='flex flex-col gap-1'>
-        <span className='text-sm font-medium text-foreground'>Company context (optional)</span>
+        <span className='text-sm font-medium text-foreground'>Additional context (optional)</span>
         <textarea
           className='min-h-20 rounded border border-(--border) bg-(--surface) p-2 text-sm text-foreground'
-          value={companyContext}
-          onChange={(e) => onCompanyContextChange(e.target.value)}
+          placeholder='Anything else worth factoring in: your relationship to the company, extra qualifications not in your profile, or other free-form context.'
+          value={additionalContext}
+          onChange={(e) => onAdditionalContextChange(e.target.value)}
         />
       </label>
       <div className='flex flex-wrap items-center gap-3'>
@@ -171,7 +174,10 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>('jd')
   const [jobDescription, setJobDescription] = useState('')
   const [cleanedJobDescription, setCleanedJobDescription] = useState<string | null>(null)
-  const [companyContext, setCompanyContext] = useState('')
+  const [additionalContext, setAdditionalContext] = useState('')
+  const [loadedApplication, setLoadedApplication] = useState<{ id: string; name: string } | null>(
+    null,
+  )
   const [resumeState, setResumeState] = useState<ResumeGenerateState>({
     state: 'idle',
   })
@@ -187,11 +193,14 @@ export default function Home() {
   const [clReviseState, setClReviseState] = useState<ReviseState>({
     state: 'idle',
   })
+  const [resumeHistory, setResumeHistory] = useState<Resume[]>([])
+  const [clHistory, setClHistory] = useState<CoverLetter[]>([])
 
   const selectedIds = tab === 'resume' ? resumeSelectedIds : clSelectedIds
   const setSelectedIds = tab === 'resume' ? setResumeSelectedIds : setClSelectedIds
   const reviseState = tab === 'resume' ? resumeReviseState : clReviseState
   const setReviseState = tab === 'resume' ? setResumeReviseState : setClReviseState
+  const history = tab === 'resume' ? resumeHistory : clHistory
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -236,7 +245,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           job_description: jobDescription,
-          company_context: companyContext || undefined,
+          additional_context: additionalContext || undefined,
           type: kind,
         }),
       })
@@ -289,29 +298,54 @@ export default function Home() {
     })
   }
 
-  function handleEditField(id: string, text: string) {
+  function pushResumeHistory(resume: Resume) {
+    setResumeHistory((prev) => {
+      const next = [...prev, resume]
+      return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next
+    })
+  }
+
+  function pushClHistory(coverLetter: CoverLetter) {
+    setClHistory((prev) => {
+      const next = [...prev, coverLetter]
+      return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next
+    })
+  }
+
+  function handleRevert() {
     if (tab === 'resume') {
-      setResumeState((prev) =>
-        prev.state !== 'success'
-          ? prev
-          : { state: 'success', resume: applyRevisionUpdates(prev.resume, [{ id, text }]) },
-      )
+      if (resumeHistory.length === 0) return
+      const last = resumeHistory[resumeHistory.length - 1]
+      setResumeHistory(resumeHistory.slice(0, -1))
+      setResumeState({ state: 'success', resume: last })
     } else if (tab === 'cover_letter') {
-      setCoverLetterState((prev) =>
-        prev.state !== 'success'
-          ? prev
-          : {
-              state: 'success',
-              coverLetter: applyCoverLetterUpdates(prev.coverLetter, [{ id, text }]),
-            },
-      )
+      if (clHistory.length === 0) return
+      const last = clHistory[clHistory.length - 1]
+      setClHistory(clHistory.slice(0, -1))
+      setCoverLetterState({ state: 'success', coverLetter: last })
+    }
+  }
+
+  function handleEditField(id: string, text: string) {
+    if (tab === 'resume' && resumeState.state === 'success') {
+      pushResumeHistory(resumeState.resume)
+      setResumeState({
+        state: 'success',
+        resume: applyRevisionUpdates(resumeState.resume, [{ id, text }]),
+      })
+    } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
+      pushClHistory(coverLetterState.coverLetter)
+      setCoverLetterState({
+        state: 'success',
+        coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, [{ id, text }]),
+      })
     }
   }
 
   function updateResume(updater: (resume: Resume) => Resume) {
-    setResumeState((prev) =>
-      prev.state !== 'success' ? prev : { state: 'success', resume: updater(prev.resume) },
-    )
+    if (resumeState.state !== 'success') return
+    pushResumeHistory(resumeState.resume)
+    setResumeState({ state: 'success', resume: updater(resumeState.resume) })
   }
 
   const handleAddBullet = (entryId: string, text: string) =>
@@ -353,6 +387,7 @@ export default function Home() {
         body: JSON.stringify({
           selected_ids: Array.from(selectedIds),
           instruction,
+          job_description: cleanedJobDescription || jobDescription,
           ...(tab === 'resume' && resumeState.state === 'success'
             ? { resume: resumeState.resume }
             : coverLetterState.state === 'success'
@@ -368,19 +403,22 @@ export default function Home() {
 
       const data: { updates: { id: string; text: string }[] } = await res.json()
 
-      if (tab === 'resume') {
-        setResumeState((prev) => {
-          if (prev.state !== 'success') return prev
-          return { state: 'success', resume: applyRevisionUpdates(prev.resume, data.updates) }
-        })
-      } else {
-        setCoverLetterState((prev) => {
-          if (prev.state !== 'success') return prev
-          return {
+      if (tab === 'resume' && resumeState.state === 'success') {
+        if (data.updates.length > 0) {
+          pushResumeHistory(resumeState.resume)
+          setResumeState({
             state: 'success',
-            coverLetter: applyCoverLetterUpdates(prev.coverLetter, data.updates),
-          }
-        })
+            resume: applyRevisionUpdates(resumeState.resume, data.updates),
+          })
+        }
+      } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
+        if (data.updates.length > 0) {
+          pushClHistory(coverLetterState.coverLetter)
+          setCoverLetterState({
+            state: 'success',
+            coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, data.updates),
+          })
+        }
       }
       setReviseState({ state: 'idle' })
     } catch (err: unknown) {
@@ -389,7 +427,12 @@ export default function Home() {
     }
   }
 
+  function handleSaved(application: Application) {
+    setLoadedApplication({ id: application.id, name: application.name })
+  }
+
   function handleLoadApplication(application: Application, targetTab: Tab) {
+    setLoadedApplication({ id: application.id, name: application.name })
     setJobDescription(application.job_description.raw)
     setCleanedJobDescription(application.job_description.cleaned)
     setResumeState(
@@ -404,20 +447,25 @@ export default function Home() {
     setClSelectedIds(new Set())
     setResumeReviseState({ state: 'idle' })
     setClReviseState({ state: 'idle' })
+    setResumeHistory([])
+    setClHistory([])
     setPreviewMode('select')
     setTab(targetTab)
   }
 
   function handleGenerateForNewJob() {
+    setLoadedApplication(null)
     setJobDescription('')
     setCleanedJobDescription(null)
-    setCompanyContext('')
+    setAdditionalContext('')
     setResumeState({ state: 'idle' })
     setCoverLetterState({ state: 'idle' })
     setResumeSelectedIds(new Set())
     setClSelectedIds(new Set())
     setResumeReviseState({ state: 'idle' })
     setClReviseState({ state: 'idle' })
+    setResumeHistory([])
+    setClHistory([])
     setPreviewMode('select')
     setTab('jd')
   }
@@ -435,6 +483,7 @@ export default function Home() {
   const coverLetterReady = coverLetterState.state === 'success'
   const showingRevisionChat =
     (tab === 'resume' && resumeReady) || (tab === 'cover_letter' && coverLetterReady)
+  const isContentTab = tab === 'jd' || tab === 'resume' || tab === 'cover_letter'
 
   return (
     <div className='flex h-full flex-col items-center overflow-hidden bg-background font-sans'>
@@ -459,13 +508,24 @@ export default function Home() {
             Backend unreachable: {status.message}
           </p>
         )}
-        <button
-          type='button'
-          onClick={handleGenerateForNewJob}
-          className='rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover)'
-        >
-          Generate for new job
-        </button>
+        <div className='flex items-center gap-3'>
+          {loadedApplication && (
+            <button
+              type='button'
+              onClick={() => setTab('jd')}
+              className='rounded border border-(--border) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-white/10'
+            >
+              Current Application
+            </button>
+          )}
+          <button
+            type='button'
+            onClick={handleGenerateForNewJob}
+            className='rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover)'
+          >
+            Generate for new job
+          </button>
+        </div>
       </div>
 
       <main className='app-scrollbar min-h-0 w-full flex-1 overflow-y-auto'>
@@ -474,37 +534,39 @@ export default function Home() {
             showingRevisionChat ? '' : 'pb-8'
           }`}
         >
-          <div className='w-full border-b border-(--border) pb-6'>
-            <div className='flex gap-2 justify-center'>
-              <button
-                type='button'
-                onClick={() => setTab('jd')}
-                className={tabClass('jd')}
-              >
-                Job Description
-              </button>
-              <button
-                type='button'
-                onClick={() => setTab('resume')}
-                className={tabClass('resume')}
-              >
-                Resume
-              </button>
-              <button
-                type='button'
-                onClick={() => setTab('cover_letter')}
-                className={tabClass('cover_letter')}
-              >
-                Cover Letter
-              </button>
+          {isContentTab && (
+            <div className='w-full border-b border-(--border) pb-6'>
+              <div className='flex gap-2 justify-center'>
+                <button
+                  type='button'
+                  onClick={() => setTab('jd')}
+                  className={tabClass('jd')}
+                >
+                  Job Description
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setTab('resume')}
+                  className={tabClass('resume')}
+                >
+                  Resume
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setTab('cover_letter')}
+                  className={tabClass('cover_letter')}
+                >
+                  Cover Letter
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {tab === 'saved' && <SavedTab onLoad={handleLoadApplication} />}
 
           {tab === 'profile' && <ProfileView />}
 
-          {tab !== 'saved' && tab !== 'profile' && (
+          {isContentTab && (
             <>
               {tab === 'jd' &&
                 (resumeReady && coverLetterReady ? (
@@ -518,8 +580,8 @@ export default function Home() {
                   <GenerateForm
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
-                    companyContext={companyContext}
-                    onCompanyContextChange={setCompanyContext}
+                    additionalContext={additionalContext}
+                    onAdditionalContextChange={setAdditionalContext}
                     showResumeButton={!resumeReady}
                     showCoverLetterButton={!coverLetterReady}
                     resumeGenerating={resumeGenerating}
@@ -553,6 +615,9 @@ export default function Home() {
                           jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
                           resume={resumeState.resume}
                           coverLetter={coverLetterState.state === 'success' ? coverLetterState.coverLetter : null}
+                          applicationId={loadedApplication?.id ?? null}
+                          initialName={loadedApplication?.name ?? ''}
+                          onSaved={handleSaved}
                         />
                         <DownloadButtons document={{ resume: resumeState.resume }} />
                       </div>
@@ -584,14 +649,16 @@ export default function Home() {
                       loading={reviseState.state === 'loading'}
                       errorMessage={reviseState.state === 'error' ? reviseState.message : null}
                       onSubmit={handleRevise}
+                      canRevert={history.length > 0}
+                      onRevert={handleRevert}
                     />
                   </div>
                 ) : (
                   <GenerateForm
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
-                    companyContext={companyContext}
-                    onCompanyContextChange={setCompanyContext}
+                    additionalContext={additionalContext}
+                    onAdditionalContextChange={setAdditionalContext}
                     showResumeButton={!resumeReady}
                     showCoverLetterButton={!coverLetterReady}
                     resumeGenerating={resumeGenerating}
@@ -625,6 +692,9 @@ export default function Home() {
                           jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
                           resume={resumeState.state === 'success' ? resumeState.resume : null}
                           coverLetter={coverLetterState.coverLetter}
+                          applicationId={loadedApplication?.id ?? null}
+                          initialName={loadedApplication?.name ?? ''}
+                          onSaved={handleSaved}
                         />
                         <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
                       </div>
@@ -651,14 +721,16 @@ export default function Home() {
                       loading={reviseState.state === 'loading'}
                       errorMessage={reviseState.state === 'error' ? reviseState.message : null}
                       onSubmit={handleRevise}
+                      canRevert={history.length > 0}
+                      onRevert={handleRevert}
                     />
                   </div>
                 ) : (
                   <GenerateForm
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
-                    companyContext={companyContext}
-                    onCompanyContextChange={setCompanyContext}
+                    additionalContext={additionalContext}
+                    onAdditionalContextChange={setAdditionalContext}
                     showResumeButton={!resumeReady}
                     showCoverLetterButton={!coverLetterReady}
                     resumeGenerating={resumeGenerating}

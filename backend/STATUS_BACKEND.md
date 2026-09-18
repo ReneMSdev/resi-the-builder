@@ -1069,6 +1069,122 @@ route reads that directory anymore, and it stays gitignored) and deleting them w
 necessary to ship this, so it seemed better to leave that as an explicit manual cleanup
 step for whoever wants it gone rather than a silent side effect of this pass.
 
+## Backend Part 8 — `PUT /applications/{id}`, update a package in place (2026-09-17)
+
+**Why**: the Save button needs to update the currently-loaded package rather than always
+creating a new one — e.g. revise a bullet, then re-save into the same package instead of
+spawning a duplicate.
+
+**Contract**: same request body as `POST /applications`
+(`{name?, job_description: {raw, cleaned?}, resume?, cover_letter?}`). Overwrites
+`job_description.txt`/`job_description_cleaned.txt`, `resume.json`/`cover_letter.json`,
+and re-renders whichever `.docx` snapshot(s) are present, in place. `created_at` is
+preserved from the original package; added a new `updated_at` field to the `Application`
+model (always present — set equal to `created_at` on `POST`, bumped on every `PUT`) so
+the frontend can tell a package has been touched since creation. **A `null` field is
+treated as "this no longer exists in the session" and deletes the corresponding
+file(s)** (e.g. omitting `cover_letter` on a package that has one removes
+`cover_letter.json`/`cover_letter.docx`) — the frontend always sends full current session
+state, so `null` is a real signal, not "leave unchanged." 404 if the id doesn't exist.
+Not atomic (a failure partway through can leave some files updated and others not) —
+acceptable for a local single-user tool; unlike `POST`, a failed `PUT` does **not**
+delete the folder, since that would destroy the previous good state rather than just
+failing to apply the new one.
+
+**Test coverage** (`tests/test_applications.py`, +3 tests, 13 total in this file):
+content replacement reflected in both the response and on-disk files (job description
+text, resume JSON, and the re-rendered docx — checked by extracting text via
+`python-docx` and confirming the *old* bullet text is gone, not just that the new text is
+present), `created_at` preserved / `updated_at` changed, a subsequent `GET` matching the
+`PUT` response exactly, a `null` field deleting the corresponding JSON+docx files, and a
+404 on a nonexistent id. Full suite: 37 passed (was 34).
+
+**Manually verified against the live server** on the real "Justworks — Software
+Engineer" package from the Phase 3 dogfooding pass (left in place, not a throwaway):
+pulled its current resume, ran a real `/revise` call on the first bullet ("make this
+punchier and quantify impact"), applied the returned text, and `PUT` the updated resume
+back into the same package. Confirmed: `created_at` unchanged, `updated_at` changed,
+`GET /applications/{id}` afterward matched the `PUT` response exactly, and — opened
+directly with `python-docx` — `resume.docx` on disk contains the new bullet text and no
+longer contains the old bullet text. Backward-compat check: the pre-existing package
+(created before this change, so its `meta.json` had no `updated_at` key) correctly fell
+back to `updated_at == created_at` on `GET` rather than erroring.
+
+## Backend Part 9 — `/revise` gets job description context, `company_context` renamed to `additional_context`, and a real `_extract_json` robustness fix (2026-09-17)
+
+**1. `/revise` now receives the job description.** Root cause of a real user-hit bug:
+`/revise` never sent the job description to the model at all (original design — early
+revision instructions didn't need it), so an instruction like "remove skill groups that
+don't add value for this job description" made the model correctly say in prose that it
+lacked context, which broke JSON parsing and surfaced as a 502.
+- `ReviseRequest` (`app/models.py`) gains `job_description: Optional[str] = None`.
+- `revise_resume`/`revise_cover_letter` (`app/services/llm.py`) take a new
+  `job_description` parameter, forwarded from `app/routes/revise.py`, included in the
+  user message only when present (with the same `MAX_INPUT_CHARS` guard as everywhere
+  else user text enters a prompt).
+- `REVISE_SYSTEM_PROMPT`/`COVER_LETTER_REVISE_SYSTEM_PROMPT` now explain: use the job
+  description only when the instruction itself references the job/role/requirements/
+  company; otherwise ignore it and behave exactly as before — explicitly calling out that
+  a plain instruction like "make this more concise" means the same thing either way, so
+  this doesn't regress non-job-aware instructions. Frontend will always send it going
+  forward (decided, not opt-in).
+
+**2. `company_context` renamed to `additional_context`**, backend-wide — clean rename,
+no backward-compat shim (local single-user tool, no other consumers).
+`GenerateRequest.company_context` → `additional_context`; same rename through
+`generate_resume`/`generate_cover_letter`'s parameters, the `"ADDITIONAL COMPANY/ROLE
+CONTEXT:"` prompt label (now `"ADDITIONAL CONTEXT:"`), and the route. Not just a rename —
+**broadened what the field means to the model**: previously framed narrowly as
+company-specific tone/flavor, `GENERATE_SYSTEM_PROMPT`/`COVER_LETTER_SYSTEM_PROMPT` now
+frame it as genuinely open-ended (company info, the candidate's relationship to the
+company, additional qualifications not captured in `profile.json`, or any other free-form
+context) and instruct the model to use qualification-type content *substantively* —
+woven into a bullet/summary/paragraph the same as profile content would be — not just as
+flavor. Explicitly carved out as an exception to the existing "don't fabricate" rule,
+mirroring the same pattern already used in `REVISE_SYSTEM_PROMPT` for user-supplied new
+skills.
+
+**3. Found and fixed a real `_extract_json` bug while manually verifying #1.** Reproduced
+the user's exact failing case against a real multi-skill-group resume ("remove skill
+groups that don't add value for this job description") — the 502 was gone (confirming
+the JD-wiring fix worked, the model correctly reasoned about which groups to drop), but a
+*different* 502 appeared: the model sometimes prefaces its JSON with prose reasoning
+before a fenced code block despite being told "no preamble" — more likely for
+reasoning-heavy instructions like this one — and `_extract_json` only ever stripped a
+fence if the response *started* with one. Fixed by making fence-detection search the
+whole response (`re.search` for a ``` block anywhere) with a further fallback to the
+outermost `{...}` if no fence is found at all. Verified deterministically with 6 new unit
+tests in `tests/test_extract_json.py` (plain JSON, fenced-at-start, fenced-without-
+language-tag, prose-before-fence — the regression case, bare-object-in-prose-no-fence,
+and confirming genuinely non-JSON text still raises cleanly) rather than relying on
+reproducing flaky live model behavior. Then reproduced the original live failing case
+again post-fix: 200, correct groups removed based on JD relevance.
+
+**Observation, not fixed (out of scope for this pass)**: the model represented "remove
+this skill group entirely" as an update with empty `text` rather than omitting it — the
+`/revise` response schema has no concept of deleting a whole group (a group update is
+always `{id, text}`), so there's no clean way for the model to signal deletion within the
+existing contract. Whether the frontend should treat an empty-text skill-group update as
+"remove this pill" is a product/contract decision, not something this pass should
+silently redesign — flagging for a follow-up if it comes up again.
+
+**Test coverage**: `test_generate.py` +1 (confirms `additional_context` is forwarded to
+the model under its new name, not silently dropped), `test_revise.py` +3 (oversized
+`job_description` guard, `job_description` forwarded when present, and *not* injected
+into the prompt when absent — the no-regression check), `test_extract_json.py` new, 6
+tests. Full suite: 47 passed (was 37).
+
+**Manually verified against the live server**, both pieces:
+- `/revise`: reproduced the user's exact failing instruction against a real multi-group
+  resume (the "Justworks" dogfood package's skill section) with a real fintech/Python/AWS
+  job description — 200, four relevant skill groups kept and rewritten, Frontend/Tools
+  groups correctly zeroed out as not relevant.
+- `/generate`: a real resume generation with `additional_context` naming a HashiCorp
+  Terraform certification not present in `profile.json` — the certification showed up
+  woven into the summary, not just mentioned in passing. Cover letter generation with the
+  same context (plus "I know one of the founding engineers from a meetup") wove the
+  relationship into the opening paragraph and the certification into a body paragraph.
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

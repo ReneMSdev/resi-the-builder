@@ -24,73 +24,39 @@ into a STATUS doc as completed work.
 
 ## Planned feature (design confirmed — ready to build)
 
-- **Profile editing UI**, replacing `ProfileView.tsx`'s raw JSON dump. Reuses Resume's
-  existing interaction patterns rather than building something new — selection,
-  chat-scoped revision, manual inline editing, undo/revert — since `profile.json`
-  shares Resume's underlying schema (sections/entries/bullets/skill groups/links), just
-  larger and with one extra field (`summary_pool`).
-  - **Backend**: extend `/revise` to accept `profile: Optional[Profile]` alongside
-    `resume`/`cover_letter`. **New, distinct system prompt** (e.g.
-    `PROFILE_REVISE_SYSTEM_PROMPT`) — not the existing `REVISE_SYSTEM_PROMPT` reused
-    as-is. Mirrors its structural conventions (bullet/entry/section/skill-group/
-    meta-field id-expansion rules) but written specifically for profile editing: no
-    job-tailoring framing (this isn't about tailoring to a role, it's maintaining
-    accurate master data), includes `summary_pool`-specific handling. **Confirmed
-    gap**: `summary_pool` is currently just a plain array of strings — no ids, no
-    structure at all. **Migrate to grouped shape, mirroring `SkillGroup`'s existing
-    `{id, label, items: SkillItem[]}` pattern**:
-    `SummaryGroup { id, role_type, summaries: [{id, text}, ...] }` — `role_type` is a
-    short display label (e.g. "DevOps", "Technician", "Frontend", "Backend",
-    "Full-Stack") assigned per group based on reading actual content, not a
-    mechanical migration. **Each `role_type` may hold multiple candidate paragraphs**,
-    not just one — reuses the same leaf-list add/remove/edit conventions already
-    built for skill items/links, so a second phrasing variant can be added under an
-    existing Role Type later without inventing a new category. `role_type` doubles as
-    the collapsed nested-header in the UI (see below).
-    **`job_description` must NOT be sent** on
-    profile-type revise calls — not job-tailoring, irrelevant context here. `PUT
-    /profile` (already exists) is reused unchanged as the final write-to-disk step.
-  - **Also fold into this same backend batch**: clarify `GENERATE_SYSTEM_PROMPT`
-    (and `COVER_LETTER_SYSTEM_PROMPT` if relevant) that profile content — especially
-    `summary_pool`/Role Type groups — is contextual raw material to adapt/blend for
-    the job description, not a fixed menu of exact text to select verbatim. The
-    "don't fabricate skills, numbers, or experience not present in the profile"
-    protection already covers hard facts; what's missing is the explicit
-    permission/expectation to rewrite prose content (picking the closest-matching
-    Role Type as a strong starting point, not reproducing it unchanged). Today's
-    prompt never mentions `summary_pool` by name at all — this has been ambiguous by
-    omission, not a deliberate verbatim-selection design.
-  - **Frontend**: real preview reusing/adapting `ResumePreview` + `Selectable` for
-    click-to-select at bullet/entry/section/skill-group/link/meta-field level, plus a
-    new `summary_pool` section (each variant selectable, same pattern as skill items).
-    Chat-scoped revision via `RevisionChat` (no `job_description` sent). Manual inline
-    editing via the existing `InlineEdit` components. Undo/revert reusing the 10-step
-    stack pattern already built for Resume/CL — **clears after a successful Apply**
-    (confirmed: once applied, the current state genuinely is the master profile, so
-    prior undo history no longer applies).
-  - **All edits are local only** until an explicit **"Apply to Profile"** button
-    (distinct wording from "Save"/"Update" — this overwrites master data, not a
-    disposable package) — clicking it shows a confirmation step before calling `PUT
-    /profile`. No draft persistence if you navigate away without applying, consistent
-    with how Resume/CL editing already behaves.
-  - **Collapsible top-level sections**, all collapsed by default. **Confirmed order,
-    top to bottom**: Meta/Links, Summary Pool, Experience, Projects, Education,
-    Certifications, Skills (Summary Pool → Experience... matches `profile.json`'s own
-    existing top-level key/section order; Meta/Links moved to the top per explicit
-    request).
-  - **Nested collapse for Experience and Projects entries**: since each entry (6
-    experience, 4 project entries) carries multiple bullets, expanding the section
-    itself only reveals each entry's title/org/dates header — bullets stay collapsed
-    per-entry until that specific entry is clicked. Education/Certifications/Skills
-    stay flat (Skills confirmed fine as-is — one compact comma-list line per group,
-    nothing to gain from nesting).
-  - **Nested collapse for Summary Pool too**, same pattern: expanding the section
-    reveals each variant's `label` (the new job-intent category field, e.g. "DevOps",
-    "Cloud", "Technician") as a collapsed header; click one to reveal its full
-    paragraph text.
-  - **Meta/Links reference**: `Meta` has `name`/`email`/`phone` (each `{id, text}`) plus
-    a `links: Link[]` array (`{id, label, url}`) — no other fields. Editable the same
-    way Resume's meta/links already are (scalar edits + leaf-list add/remove/edit).
+- **Auto Apply prompt generator** — a "Prepare Application" flow that turns a saved
+  `/applications` package into a ready-to-use instruction prompt for a separate
+  Claude Code + Claude-in-Chrome session to drive the actual job-application form.
+  **Frontend-only, no backend changes needed** — pure text templating from data the
+  frontend can already fetch via the existing `GET /applications/{id}`, no LLM call
+  involved. See the memory note on the Chrome-automation plan for the standing hard
+  rule this must always restate: never auto-submit, fill only.
+  - **Entry point**: each card in the Saved tab gets a new **"Auto Apply"** button
+    (alongside the existing JD/Resume/CL pills and Delete). Clicking it selects that
+    application and opens a popup.
+  - **Popup fields**: a required **URL** text input (the actual application form's
+    URL — deliberately *not* auto-filled or persisted from any stored data, since the
+    JD's source page and the real application form are often different pages, and
+    some applications sit behind a login/account-creation flow with no stable,
+    bookmarkable URL until you're mid-session — so this is always entered fresh at
+    prepare-time, the only point it's reliably known). An optional **"extra
+    instructions for this application"** free-text box (e.g. a custom screening
+    question to answer a specific way) — same open-ended-context idea as
+    `additional_context` on the generate form, but scoped to this one automation run,
+    not saved anywhere.
+  - **"Prepare Application" button**: fetches the full package (`GET
+    /applications/{id}`, if not already loaded) and assembles a complete prompt from:
+    the JD (raw + cleaned), resume/cover-letter content including `meta`
+    name/email/phone/links, the rendered docx file paths already on disk
+    (`backend/app/data/applications/{id}/resume.docx` /
+    `cover_letter.docx`), the package name, the entered URL, the entered extra
+    instructions (if any), plus constant boilerplate: the backend base URL, explicit
+    fetch/file-path instructions for the session to follow, and the restated
+    never-submit safety rule. Displays the generated prompt in the popup with a Copy
+    button.
+  - **Popup has an X button** to close/cancel at any point — before generating (plain
+    cancel) or after the prompt's been copied (done, no separate "close" vs "cancel"
+    distinction needed).
 
 ## Queued, small
 

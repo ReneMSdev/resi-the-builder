@@ -1333,6 +1333,90 @@ mechanism depends on). One pre-existing test updated for the new list-of-blocks 
 shape (`messages[0]["content"]` is no longer a plain string). Full suite: 57 passed (was
 54).
 
+## Backend Part 12 — Unify system prompts so resume/cover-letter generation share the cache (2026-09-18)
+
+**Follow-up to Part 11's finding**: resume and cover-letter generation now share the
+profile+system-prompt cache, closing the gap Part 11 identified (they previously had
+separate cache entries since `GENERATE_SYSTEM_PROMPT`/`COVER_LETTER_SYSTEM_PROMPT` were
+fully separate texts). Agreed shape with the user: `system: [shared preamble]` →
+`user: [profile data]` → `user: [type-specific tail]` → `user: [job description +
+additional context]` — 3 of the 4 available cache_control breakpoints (system, profile,
+tail), the type-specific tail ordered *after* the profile block so the profile
+breakpoint's prefix stays identical across types.
+
+**This was a mechanical split, not a rewrite** — done by programmatic string extraction
+(Python slicing on exact substring boundaries, run in a scratch script) against the live
+`GENERATE_SYSTEM_PROMPT`/`COVER_LETTER_SYSTEM_PROMPT` constants, never retyped by hand,
+specifically to eliminate transcription risk on ~5,600 + ~4,600 characters of carefully-
+tuned prompt text. Verified with an exact round-trip check before touching the real
+file: `role_sentence + " You will be given:\n" + span_a + between_a_b + span_b +
+between_b_c + span_c + after_c == original`, character for character, for both prompts.
+Extraction was deliberately conservative — only sentences/spans that were (a) byte-
+identical between both prompts (verified via `difflib` character-level matching, not
+eyeballed) and (b) safe to physically separate from their neighbors without inserting
+the large profile-JSON block into the middle of an otherwise-coherent paragraph, were
+moved to the shared preamble. Several genuinely-identical fragments were deliberately
+**left in the tail** rather than extracted, because pulling them out would have required
+resegmenting a sentence (not just relocating one) or reordering an argument's
+conclusion ahead of its elaboration once the profile block sat between them — e.g. the
+"one exception" clause about additional-context-supplied facts is identical in both
+prompts but embedded mid-sentence with a differing lead-in, and the "Writing style..."
+paragraph has several identical sentences interleaved with type-specific additions
+(the dates-field carve-out and "starting every bullet with the same gerund pattern" only
+exist in the resume version). Both stayed whole in each tail per this pass's explicit
+"if unsure, leave in the tail" instruction.
+
+**New constants** (`app/services/llm.py`): `GENERATE_SHARED_PREAMBLE` (what you'll be
+given + what additional context/job-description-raw-as-pasted means, ~207 tokens
+including a small per-call overhead), `GENERATE_RESUME_TAIL` (role + task + writing
+style + `summary_pool`/`cleaned_job_description` handling + JSON schema + id-naming
+rules — 1,456 tokens, measured via `client.messages.count_tokens`, not estimated),
+`GENERATE_COVER_LETTER_TAIL` (same shape for cover letters — 1,150 tokens). Replaces the
+old `GENERATE_SYSTEM_PROMPT`/`COVER_LETTER_SYSTEM_PROMPT` (no other code referenced
+those names, confirmed by grep before renaming). `_generate_content_blocks()` replaces
+Part 11's `_profile_and_job_blocks()`, now building 3 content blocks (profile, tail,
+job+context) with cache breakpoints on the first two.
+
+**Real verification, all 4 points from this task**:
+
+1. **Cross-type cache hit, the whole point of this pass** — resume call, then a
+   cover-letter call for the same job, real API:
+   ```
+   Call 1 (resume, cold):        cache_creation=9960  cache_read=0
+   Call 2 (cover letter, after): cache_creation=1144  cache_read=8510   ← HIT (was 0 before this pass)
+   ```
+   8510 (read) is within measurement noise of Call 1's system+profile portion
+   (9960 total − 1456 resume-tail ≈ 8504, matching the 8510 read almost exactly), and
+   1144 (the new write) is within noise of the cover-letter tail's own 1150-token size —
+   both numbers cross-check cleanly against the independently-measured tail sizes above.
+2. **Regression check — same-type repeat calls still fully hit**, immediately after:
+   ```
+   Call 3 (resume again):        cache_creation=0  cache_read=9960   ← full hit, unchanged from Part 11
+   Call 4 (cover letter again):  cache_creation=0  cache_read=9654   ← full hit, unchanged from Part 11
+   ```
+3. **Tail token counts** (asked for as context, not a decision-blocker): resume tail
+   1,456 tokens, cover-letter tail 1,150 tokens, shared preamble ~200 tokens — measured
+   exactly via the token-counting endpoint, not estimated from character counts.
+4. **Output-quality spot check**, same real job description (a fintech backend/Python/
+   AWS posting), generated once through the OLD single-block prompt structure (fetched
+   verbatim from the pre-restructuring commit via `git show`, loaded as a separate module
+   instance so both could run in the same script) and once through the NEW restructured
+   version, back to back: summaries are substance-equivalent (same role framing, same
+   tech stack emphasis, same certifications mentioned, natural wording variance
+   consistent with ordinary model non-determinism, not a quality regression). Confirmed
+   programmatically, not just read by eye: zero em dashes in both (writing-style rule
+   intact), `cleaned_job_description` present in both (JD-chrome-stripping instruction
+   intact), skills section correctly uses `groups` not `entries` in both (schema
+   instruction intact), meta/bullet id-naming conventions identical in both. No
+   instruction was lost or miscategorized in the split.
+
+**Test coverage** (`tests/test_generate.py`): the two existing cache-structure tests
+updated for 3 blocks instead of 2 (breakpoints on blocks 1 and 2, not block 1 and the
+final block); a new test asserting resume and cover-letter calls produce byte-identical
+system and profile blocks while their tail blocks differ — this is the actual
+cross-type-sharing property being tested, not just "cache_control is present somewhere."
+Full suite: 58 passed (was 57 after Part 11).
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

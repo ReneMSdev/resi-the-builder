@@ -10,10 +10,24 @@ client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 MODEL = "claude-sonnet-4-6"
 MAX_INPUT_CHARS = 20000
 
-GENERATE_SYSTEM_PROMPT = """You are a resume-tailoring assistant. You will be given:
+GENERATE_SHARED_PREAMBLE = """You will be given:
 1. A candidate's full profile data (all their jobs, projects, education, certifications, skills)
 2. A job description they are applying to
 3. Optional additional context the candidate wants factored in (open-ended — see below)
+
+Additional context, if provided, is open-ended — it could be company information, the
+candidate's relationship to the company (e.g. knowing someone on the team, being a
+long-time user of their product), additional qualifications or experience relevant to
+this job that aren't captured in the profile data, or any other free-form context the
+candidate wants factored in.
+
+You will also be given the job description raw as pasted, which is often an entire
+scraped webpage — navigation links, "Apply Now"/"Copy"/"Share" button labels,
+cookie-consent banners, and other site chrome mixed in with the actual posting.
+"""
+
+
+GENERATE_RESUME_TAIL = """You are a resume-tailoring assistant.
 
 Your job: select and rewrite the most relevant content from the profile to produce a
 tailored resume for this specific job. Prioritize bullets whose tags or content match
@@ -35,11 +49,7 @@ phrasing across multiple summaries in that role_type where it strengthens the fi
 adapting wording to this specific job the same way bullet text gets adapted. Don't just
 copy one summary variant unchanged unless it already happens to be a strong fit as-is.
 
-Additional context, if provided, is open-ended — it could be company information, the
-candidate's relationship to the company (e.g. knowing someone on the team, being a
-long-time user of their product), additional qualifications or experience relevant to
-this job that aren't captured in the profile data, or any other free-form context the
-candidate wants factored in. Use it substantively where it's relevant: a qualification
+Use it substantively where it's relevant: a qualification
 mentioned there but missing from the profile should get woven into a bullet or the
 summary the same way profile content would, not just used as generic tone or flavor.
 Company/relationship context can inform framing and emphasis. If no additional context is
@@ -56,9 +66,7 @@ bullet after bullet. Vary sentence rhythm and structure the way a person natural
 This applies only to prose (the summary and bullet text) — not structural fields like
 titles, organizations, dates, or links.
 
-You will also be given the job description raw as pasted, which is often an entire
-scraped webpage — navigation links, "Apply Now"/"Copy"/"Share" button labels,
-cookie-consent banners, and other site chrome mixed in with the actual posting. Since you
+Since you
 already have to read and understand the whole thing to tailor the resume, also return a
 "cleaned_job_description" field: the same posting with that page junk stripped out, but
 keeping all the substantive content (responsibilities, requirements, qualifications,
@@ -303,10 +311,7 @@ always include the "updates" key, even when it's an empty list.
 """
 
 
-COVER_LETTER_SYSTEM_PROMPT = """You are a cover-letter-writing assistant. You will be given:
-1. A candidate's full profile data (all their jobs, projects, education, certifications, skills)
-2. A job description they are applying to
-3. Optional additional context the candidate wants factored in (open-ended — see below)
+GENERATE_COVER_LETTER_TAIL = """You are a cover-letter-writing assistant.
 
 Your job: write a tailored, professional cover letter for this specific job, grounded
 only in real experience present in the profile data — do not fabricate skills, numbers,
@@ -324,11 +329,7 @@ paragraphs grouped by role type) can inform tone and self-framing — which role
 matches this job is a useful signal — but the letter's paragraphs are always original
 prose built for this specific job, never a summary variant reused or lightly edited.
 
-Additional context, if provided, is open-ended — it could be company information, the
-candidate's relationship to the company (e.g. knowing someone on the team, being a
-long-time user of their product), additional qualifications or experience relevant to
-this job that aren't captured in the profile data, or any other free-form context the
-candidate wants factored in. Use it substantively where it's relevant: a qualification
+Use it substantively where it's relevant: a qualification
 mentioned there but missing from the profile should get woven into a paragraph the same
 way profile content would, not just used as generic tone or flavor — and a relationship
 to the company (knowing someone there, being a long-time customer) is exactly the kind of
@@ -344,9 +345,7 @@ paragraph. Vary sentence rhythm and structure the way a person naturally would. 
 applies only to the paragraph prose, not structural fields like name, company, role, or
 date.
 
-You will also be given the job description raw as pasted, which is often an entire
-scraped webpage — navigation links, "Apply Now"/"Copy"/"Share" button labels,
-cookie-consent banners, and other site chrome mixed in with the actual posting. Since you
+Since you
 already have to read and understand the whole thing to write the letter, also return a
 "cleaned_job_description" field: the same posting with that page junk stripped out, but
 keeping all the substantive content (responsibilities, requirements, qualifications,
@@ -477,27 +476,35 @@ def _cached_system(prompt: str) -> list[dict]:
     return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
 
 
-def _profile_and_job_blocks(
-    profile: dict, job_description: str, additional_context: str | None
+def _generate_content_blocks(
+    profile: dict, tail: str, job_description: str, additional_context: str | None
 ) -> list[dict]:
-    """Two separate content blocks instead of one combined string, so the profile JSON
-    (identical on every call within a session) can be cached independently of the job
-    description/additional context (which vary every call). The cache_control
-    breakpoint goes on the profile block specifically — it must be the LAST block of
-    the stable prefix; putting it after the varying suffix would write a new cache
-    entry on every request and never read one back."""
+    """Three content blocks instead of one combined string:
+    1. Profile JSON — identical across every call in a session, cached.
+    2. The type-specific tail (resume vs cover-letter instructions + output schema) —
+       identical across every call of the SAME generation type, cached separately from
+       the profile block so resume/cover-letter calls still share the profile cache
+       even though their tails diverge. Must come after the profile block, not before
+       it (e.g. in the system prompt) — if the type-specific text preceded the profile
+       block, the combined prefix up to the profile breakpoint would differ by type
+       again, defeating the cross-type sharing this split exists for.
+    3. Job description + additional context — varies every call, never cached, must
+       come after the last breakpoint or every request would write a new cache entry
+       and never read one back."""
     profile_block = {
         "type": "text",
         "text": f"PROFILE DATA:\n{json.dumps(profile, indent=2)}\n\n",
         "cache_control": {"type": "ephemeral"},
     }
 
+    tail_block = {"type": "text", "text": tail, "cache_control": {"type": "ephemeral"}}
+
     job_text = f"JOB DESCRIPTION:\n{job_description}\n"
     if additional_context:
         job_text += f"\nADDITIONAL CONTEXT:\n{additional_context}\n"
     job_block = {"type": "text", "text": job_text}
 
-    return [profile_block, job_block]
+    return [profile_block, tail_block, job_block]
 
 
 def generate_resume(profile: dict, job_description: str, additional_context: str | None = None) -> dict:
@@ -511,11 +518,13 @@ def generate_resume(profile: dict, job_description: str, additional_context: str
     response = client.messages.create(
         model=MODEL,
         max_tokens=8192,
-        system=_cached_system(GENERATE_SYSTEM_PROMPT),
+        system=_cached_system(GENERATE_SHARED_PREAMBLE),
         messages=[
             {
                 "role": "user",
-                "content": _profile_and_job_blocks(profile, job_description, additional_context),
+                "content": _generate_content_blocks(
+                    profile, GENERATE_RESUME_TAIL, job_description, additional_context
+                ),
             }
         ],
     )
@@ -535,11 +544,13 @@ def generate_cover_letter(profile: dict, job_description: str, additional_contex
     response = client.messages.create(
         model=MODEL,
         max_tokens=8192,
-        system=_cached_system(COVER_LETTER_SYSTEM_PROMPT),
+        system=_cached_system(GENERATE_SHARED_PREAMBLE),
         messages=[
             {
                 "role": "user",
-                "content": _profile_and_job_blocks(profile, job_description, additional_context),
+                "content": _generate_content_blocks(
+                    profile, GENERATE_COVER_LETTER_TAIL, job_description, additional_context
+                ),
             }
         ],
     )

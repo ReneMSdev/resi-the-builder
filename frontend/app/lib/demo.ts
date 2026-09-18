@@ -6,7 +6,15 @@ import profileFixture from './demoFixtures/profile.json'
 // Set only in Vercel's project settings for the portfolio-demo deployment.
 // Local dev (.env.local) never sets this, so it always stays false there —
 // demo mode is an explicit opt-in, never an accidental fallback.
-export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+//
+// This is the raw, permanent, build-time value — it never changes after the
+// bundle is built, unlike the runtime-overridable `demoMode` from
+// `useDemoMode()` (see DemoModeContext.tsx). Nothing in the app should read
+// this directly to decide what to render or fetch; it exists only to gate
+// whether the Live/Demo runtime override is allowed to exist at all. On a
+// build where this is `true` (the public Vercel demo), the override is
+// structurally unreachable, not just defaulted off.
+export const BUILD_DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 
 export const demoApplication = applicationFixture as Application
 export const demoApplications = applicationsFixture as ApplicationSummary[]

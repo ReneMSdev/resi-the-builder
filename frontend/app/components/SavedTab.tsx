@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Application, ApplicationSummary } from '../types'
 import { buildAutoApplyPrompt } from '../lib/autoApplyPrompt'
-import { DEMO_MODE, demoApplication, demoApplications } from '../lib/demo'
+import { demoApplication, demoApplications } from '../lib/demo'
+import { useDemoMode } from '../lib/DemoModeContext'
 import { showToast } from './Toast'
+import { DemoCapabilityBanner } from './DemoCapabilityBanner'
 
 type ListState =
   | { state: 'loading' }
@@ -35,8 +37,9 @@ const pillClass =
   'rounded-full border border-(--border) bg-(--accent-soft) px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent) hover:text-(--surface)'
 
 export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: Tab) => void }) {
+  const { demoMode } = useDemoMode()
   const [listState, setListState] = useState<ListState>(() => {
-    if (DEMO_MODE) return { state: 'success', items: demoApplications }
+    if (demoMode) return { state: 'success', items: demoApplications }
     return process.env.NEXT_PUBLIC_API_URL
       ? { state: 'loading' }
       : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' }
@@ -70,10 +73,13 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   useEffect(() => {
     // Demo mode initializes listState straight to 'success' with the fixture
     // data, so it's never 'loading' here — guarded explicitly anyway.
-    if (DEMO_MODE) return
+    if (demoMode) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) return
     runFetch(apiUrl)
+    // demoMode never changes without a full page reload (see
+    // DemoModeContext.tsx), so this only ever needs to run once per mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -91,7 +97,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     // Defense in depth: listState is initialized straight to 'success' in
     // demo mode and never transitions to 'error', so the Retry button that
     // calls this is never actually rendered there.
-    if (DEMO_MODE) return
+    if (demoMode) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setListState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -102,7 +108,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   async function handleOpen(id: string, tab: Tab) {
-    if (DEMO_MODE) {
+    if (demoMode) {
       onLoad(demoApplication, tab)
       return
     }
@@ -128,7 +134,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
 
   async function handleDelete(id: string) {
     // Defense in depth: the Delete button itself isn't rendered in demo mode.
-    if (DEMO_MODE) return
+    if (demoMode) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) return
 
@@ -154,10 +160,10 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   function openAutoApply(id: string) {
-    if (DEMO_MODE) {
-      showToast('Auto Apply is out of scope for this demo')
-      return
-    }
+    // The popover itself opens normally in demo mode now — it's read-only
+    // context (the capability banner) plus interactive fields that don't do
+    // anything harmful to fill in; only the actual "Prepare Application"
+    // action needs demo-mode handling (see handlePrepareApplication).
     setAutoApplyId(id)
     setAutoApplyUrl('')
     setAutoApplyInstructions('')
@@ -170,9 +176,15 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   async function handlePrepareApplication(id: string) {
-    // Defense in depth: openAutoApply already blocks the popover with a
-    // toast in demo mode, so this should be unreachable there.
-    if (DEMO_MODE) return
+    // The popover is reachable in demo mode now, so this is the actual
+    // trigger point (not defense-in-depth) — kept clickable rather than
+    // disabled, matching the toast-on-click pattern Save/Update already use
+    // elsewhere in the demo, instead of introducing a one-off disabled
+    // button just for this popup.
+    if (demoMode) {
+      showToast('Auto Apply is out of scope for this demo')
+      return
+    }
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setAutoApplyState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -348,6 +360,9 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
                       </>
                     ) : (
                       <>
+                        {demoMode && (
+                          <DemoCapabilityBanner message="In the full app, this generates a ready-to-use prompt for a separate Claude-in-Chrome session to fill out the real application form — it never auto-submits; you always review and submit yourself." />
+                        )}
                         <label className='flex flex-col gap-1'>
                           <span className='text-xs font-medium text-foreground'>
                             Application form URL
@@ -403,7 +418,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
                 )}
               </div>
 
-              {!DEMO_MODE &&
+              {!demoMode &&
                 (confirmingId === item.id ? (
                   <>
                     <span className='self-center text-xs text-(--muted)'>Delete this item?</span>

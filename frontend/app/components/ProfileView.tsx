@@ -5,7 +5,7 @@ import { Profile } from '../types'
 import { ProfilePreview } from './ProfilePreview'
 import { RevisionChat } from './RevisionChat'
 import { showToast } from './Toast'
-import { DEMO_MODE } from '../lib/demo'
+import { useDemoMode } from '../lib/DemoModeContext'
 import {
   applyProfileRevisionUpdates,
   describeProfileSelection,
@@ -96,6 +96,7 @@ export function ProfileView({
   openIds: Set<string>
   setOpenIds: Dispatch<SetStateAction<Set<string>>>
 }) {
+  const { demoMode } = useDemoMode()
   const [applyState, setApplyState] = useState<ApplyState>({ state: 'idle' })
 
   function toggleSelected(id: string) {
@@ -167,7 +168,7 @@ export function ProfileView({
   async function handleRevise(instruction: string) {
     // Defense in depth: demo mode doesn't render RevisionChat for Profile at
     // all (view-only there), so this should be unreachable.
-    if (DEMO_MODE) return
+    if (demoMode) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setReviseState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -208,7 +209,7 @@ export function ProfileView({
   async function handleApplyConfirm() {
     // Defense in depth: the Apply button itself short-circuits before the
     // confirm popover ever opens in demo mode.
-    if (DEMO_MODE) return
+    if (demoMode) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setApplyState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -251,7 +252,7 @@ export function ProfileView({
               : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
         </p>
         <div className='relative flex items-center gap-2'>
-          {!DEMO_MODE && (
+          {!demoMode && (
             <ModeToggle
               mode={previewMode}
               onChange={setPreviewMode}
@@ -260,7 +261,7 @@ export function ProfileView({
           <button
             type='button'
             onClick={() => {
-              if (DEMO_MODE) {
+              if (demoMode) {
                 showToast("Profile editing isn't available in this demo")
                 return
               }
@@ -275,7 +276,7 @@ export function ProfileView({
               Error applying: {applyState.message}
             </span>
           )}
-          {!DEMO_MODE && isApplyOpen && (
+          {!demoMode && isApplyOpen && (
             <div className='absolute right-0 top-full z-20 mt-2 flex w-72 flex-col gap-2 rounded border border-(--border) bg-(--surface) p-3 shadow-lg'>
               <p className='text-sm text-foreground'>
                 Overwrite your master profile with these changes?
@@ -330,7 +331,7 @@ export function ProfileView({
         </pre>
       </details>
 
-      {DEMO_MODE ? (
+      {demoMode ? (
         <p className='sticky bottom-0 z-10 -mx-16 border-t border-(--border) bg-background px-16 py-3 text-xs text-(--muted)'>
           Profile is view-only in this demo — chat-scoped editing isn&apos;t available here.
         </p>

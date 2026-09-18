@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono, Roboto_Mono } from 'next/font/google'
+import { DemoModeProvider } from './lib/DemoModeContext'
+import { DemoModeToggle } from './components/DemoModeToggle'
 import './globals.css'
 
 const geistSans = Geist({
@@ -29,7 +31,12 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       lang='en'
       className={`${geistSans.variable} ${geistMono.variable} ${robotoMono.variable} h-full overflow-hidden antialiased`}
     >
-      <body className='h-full flex flex-col overflow-hidden'>{children}</body>
+      <body className='h-full flex flex-col overflow-hidden'>
+        <DemoModeProvider>
+          {children}
+          <DemoModeToggle />
+        </DemoModeProvider>
+      </body>
     </html>
   )
 }

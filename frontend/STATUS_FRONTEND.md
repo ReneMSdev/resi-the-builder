@@ -2090,3 +2090,387 @@ check — explicitly requested as the final verification step — isn't possible
 until `main` is updated, which is out of scope for this session to do
 unilaterally (branch merges aren't a pathspec-scoped frontend change).
 Flagged to the manager; live spot-check pending that.
+
+---
+
+## Feature: Demo-mode UX iteration round — single-select+pill, generate-it-yourself landing, capability banners (2026-09-18)
+
+Three related, user-driven refinements to demo mode, done together for one
+review pass on `working` (deliberately not merged/pushed to `main` yet — the
+user wants to see this land before it reaches the live Vercel deploy). All
+frontend-only, no backend involvement.
+
+### 1. Single-select + suggested-edit pill (replaces free-text-triggered lookup)
+
+Goal: make it unambiguous what a canned edit would apply to, and stop
+implying the demo runs a real model on typed text.
+
+- **`toggleSelected` (`page.tsx`)** branches on `DEMO_MODE`: in demo mode,
+  clicking an unselected item replaces the whole selection (`new
+  Set([id])`) instead of adding to it; clicking the sole selected item still
+  toggles it off (`new Set()`). The real app's multi-select behavior is
+  completely unchanged — this only affects the mutation, not
+  `ResumePreview`/`CoverLetterPreview`'s click handlers, which still just
+  call `onToggle(id)` either way.
+- **`handleRevise`'s demo branch** is now just an early `return` — free text
+  has no trigger path in demo mode. The actual apply logic moved to a new
+  **`handleApplyDemoRefinement`**, called only by the new pill, which looks
+  up the single selected id in `demoResumeRefinements`/
+  `demoCoverLetterRefinements` and applies it through the same
+  `applyRevisionUpdates`/`applyCoverLetterUpdates` + history-push path as
+  before — undo/redo needed no changes.
+- **`RevisionChat.tsx`** gained `demoMode`, `demoPillAvailable`, and
+  `onApplyDemoRefinement` props (all optional, default off, so the real app's
+  usage is untouched). In demo mode: the textarea and Revise button render in
+  their normal shape but are permanently `disabled` (kept visible rather than
+  removed, so the layout doesn't shift between modes); a green
+  (`--success`) banner above the "Editing: ..." line explains this is
+  pre-scripted, not a live AI; and a single pill ("✨ Apply suggested edit")
+  appears only when exactly one item is selected and it has a mapped
+  refinement — otherwise, if something's selected but unmapped, a muted "No
+  suggested edit for this selection." note takes its place instead of a dead
+  gap.
+- Removed the "nothing to refine" error-message fallback from the old
+  multi-select mechanism entirely, since an unmapped selection can no longer
+  reach a submit action at all — the pill's absence already communicates
+  that.
+
+### 2. Generate-it-yourself landing flow (replaces mount-time auto-load)
+
+Goal, per direct user feedback: showing the "AI generation" step happen
+reads as a better demo than a visitor landing on an already-finished resume
+with nothing to do.
+
+- Removed the `useEffect` that called `handleLoadApplication(demoApplication,
+  'resume')` on mount. The JD tab (`tab`'s actual default state) is no longer
+  overridden, so a visitor now lands there.
+- `jobDescription`'s `useState` initializer now reads
+  `DEMO_MODE ? demoApplication.job_description.raw : ''` instead of always
+  `''`, so the textarea shows a realistic, ready-to-generate JD instead of an
+  empty box — no blank-page friction, no need for a visitor to have their own
+  JD handy.
+- `handleGenerate`'s demo branch now ends with
+  `setTab(kind === 'resume' ? 'resume' : 'cover_letter')` after setting that
+  type's state to `'success'`, so clicking Generate takes the visitor
+  straight to what they just "generated" instead of leaving them on the JD
+  tab. Generating the other type is completely untouched — each type's
+  `GenerateForm` fallback still renders independently keyed off its own
+  `resumeState`/`coverLetterState`, so generating only one never silently
+  populates the other (this fell out for free, no new logic needed).
+- **Judgment call, flagged per the ask rather than picked silently**:
+  `handleGenerateForNewJob`'s reset now also re-populates the canned JD
+  (`DEMO_MODE ? demoApplication.job_description.raw : ''`) instead of always
+  resetting to `''`. Reasoning: since the pre-filled landing state exists
+  specifically to remove empty-textarea friction, resetting to blank would
+  silently reintroduce that same friction the moment someone tries the reset
+  button — and since canned Generate ignores the textarea's actual content
+  either way, this only changes what the visitor sees, never what re-running
+  Generate produces.
+
+### 3. Per-tab demo-capability banners (portfolio framing, distinct from #1's how-to banner)
+
+Goal: the demo intentionally runs on canned data with no live AI, and
+visitors should read that as a demo constraint, not the real product's
+ceiling — distinct in purpose from RevisionChat's "how to use this demo"
+banner, so implemented as a separate, stacked element rather than merged into
+it.
+
+- New **`components/DemoCapabilityBanner.tsx`** — a small reusable
+  presentational component (`{ message: string }` prop, same green
+  `--success` treatment as the RevisionChat banner). It doesn't check
+  `DEMO_MODE` itself; each call site gates rendering with `{DEMO_MODE && ...}`,
+  so the component stays generically reusable.
+- Rendered once above each tab's actual content, all in `page.tsx`: Job
+  Description (above the JD reference view or `GenerateForm`), Resume (above
+  the `ResumePreview`/`GenerateForm` branch, stacked above RevisionChat's own
+  banner when both are visible), Cover Letter (same pattern), Profile (above
+  `ProfileView`/loading/error states), Saved (above `SavedTab`). Copy is
+  starter text from the user's own phrasing, lightly adapted; open to a
+  wording pass.
+
+### Verification (production build, functional/interaction change)
+
+Same method as prior passes: `NEXT_PUBLIC_DEMO_MODE=true npx next build` +
+`next start -p 3001` alongside the untouched real dev server on 3000;
+confirmed `.env.local` and the real server unaffected before and after,
+cleaned up the port-3001 process when done.
+
+- **Single-select**: clicking a second bullet while one was already selected
+  replaced the selection rather than adding to it (confirmed via the
+  highlight and "Selected: 1 item" count); clicking the same item again
+  cleared it back to empty.
+- **Pill mechanism**: selected `b1` (mapped) — pill appeared, clicking it
+  applied the exact canned refinement; selected the whole Experience entry
+  (unmapped) — pill was replaced by the "No suggested edit..." note, no dead
+  gap; repeated both checks on the Cover Letter tab's `p1` with its own
+  independent selection state.
+- **Undo regression check**: after applying `b1`'s refinement via the pill,
+  clicking Undo reverted it to the original bullet text exactly — confirms
+  the history/undo path is unaffected by the new trigger mechanism.
+- **Landing flow**: fresh load lands on the JD tab with the canned JD
+  already filled in (not blank, not auto-loaded to Resume); clicking
+  "Generate Resume" auto-switched to the Resume tab with the fixture
+  content; the untouched Cover Letter tab still showed its own
+  `GenerateForm` (not silently populated); generating the cover letter
+  next auto-switched to that tab too; "Generate for new job" reset landed
+  back on the JD tab with the canned JD re-populated, not blank.
+- **Capability banners**: confirmed all five (Job Description, Resume,
+  Cover Letter, Profile, Saved) render with the intended copy, in the right
+  position, only in demo mode.
+- **Network audit**: `read_network_requests` showed zero requests to port
+  8000 across the whole pass.
+- `tsc --noEmit` and `eslint app/` clean throughout.
+
+### Not done in this pass
+
+A fourth ask — a runtime Live/Demo toggle so demo mode can be previewed
+without a separate production build, and so a curious visitor can see what
+"Live" looks like — was paused by the user before implementation started
+(only `layout.tsx` was read for context, no code written). Constraint from
+the user once it's picked back up: the toggle must be completely absent from
+the public Vercel build, not just hidden, likely by gating its existence on
+the build-time `NEXT_PUBLIC_DEMO_MODE` value rather than on runtime state.
+
+---
+
+## Feature: Runtime Live/Demo toggle, gated so it cannot exist on the public demo build (2026-09-18)
+
+Implements the paused toggle from the previous entry, now with a concrete
+plan from the user. Hard constraint driving every design choice here: a
+public demo visitor must never be able to reach real network calls through
+this — not "hidden," structurally absent from that build's shipped code.
+
+### The two-flag split
+
+- **`app/lib/demo.ts`**: `DEMO_MODE` renamed to `BUILD_DEMO_MODE` — the raw,
+  permanent, build-time value from `NEXT_PUBLIC_DEMO_MODE`, exactly as
+  before. Nothing reads this to decide what to render/fetch anymore; it
+  exists only to gate whether the runtime override can exist at all.
+- **New `app/lib/DemoModeContext.tsx`**: `DemoModeProvider` +
+  `useDemoMode()` (`{ demoMode, toggle }`). `readInitialDemoMode()` returns
+  `true` unconditionally, without ever touching `localStorage`, when
+  `BUILD_DEMO_MODE` is true — the override branch is skipped entirely, not
+  defaulted off, so there's no code path where a public build's runtime
+  state could differ from `true`. When `BUILD_DEMO_MODE` is false, it reads
+  a `demoModeOverride` key from `localStorage` (`'true'`/`'false'`),
+  falling back to `BUILD_DEMO_MODE` if unset or unreadable (private
+  browsing, blocked storage).
+- **`toggle()`** persists the flipped value to `localStorage` and calls
+  `window.location.reload()` rather than flipping in-place state. Reasoning:
+  nearly every `demoMode`-gated `useState` initializer and mount effect in
+  this app (profile state, resume/cover-letter state, the JD prefill, etc.)
+  only ever runs once per page load — an in-place flip would leave most of
+  the app on the old mode until a manual refresh anyway, so a reload gets
+  every consumer to a consistent state in one step instead of partially.
+  `toggle()` is also a no-op when `BUILD_DEMO_MODE` is true, matching
+  `readInitialDemoMode`'s guarantee.
+
+### Hydration-safe mounting (found by testing, not anticipated)
+
+First pass read `localStorage` synchronously in the `useState` initializer.
+Locally this threw a real hydration-mismatch exception in the browser
+console (Next's dev overlay flagged it as "1 Issue") whenever the persisted
+override differed from `BUILD_DEMO_MODE`: `next dev`/a static prerender has
+no `window`, so the server-rendered HTML always reflects `BUILD_DEMO_MODE`,
+while the client's first hydration pass wanted the corrected override value
+— React detected the text mismatch and discarded/regenerated the whole tree.
+Fixed by gating `DemoModeProvider`'s children behind a `mounted` flag that
+starts `true` immediately when `BUILD_DEMO_MODE` is true (no override
+possible, so first render is already final and matches the server exactly)
+and starts `false` otherwise, flipping to `true` in a mount effect that also
+resolves the real `demoMode` value from `localStorage` at the same time.
+This means the one render that actually depends on `demoMode` only ever
+happens client-side with no server-rendered counterpart to mismatch against
+— briefly showing nothing (the app's `--background` color from `body`'s own
+CSS, not a white flash) instead of a discard-and-rebuild. Verified this
+resolves it: reloading with an override set no longer throws, no "1 Issue"
+badge, correct content on the very next paint.
+
+### Every `DEMO_MODE` static import swapped for the hook
+
+Mechanical rename (`DEMO_MODE` → `demoMode`, from `useDemoMode()` instead of
+a static import) across `page.tsx`, `ProfileView.tsx`, `SavedTab.tsx`,
+`DownloadButtons.tsx`, `SaveButton.tsx`. Safe as a pure rename rather than a
+logic change because `toggle()` always reloads: `demoMode` never changes
+within a session, so every existing `useState(() => demoMode ? X : Y)` lazy
+initializer keeps behaving exactly as it did with the old module constant.
+`RevisionChat.tsx` and `DemoCapabilityBanner.tsx` needed no changes — both
+already took `demoMode`/gating as props or left it to their callers, not a
+direct import. Added `demoMode` isn't a dependency array entry in the two
+`page.tsx` effects and one `SavedTab.tsx` effect that reference it (guarded
+`if (demoMode) return` at the top, mirroring the existing
+`eslint-disable-next-line react-hooks/exhaustive-deps` pattern already used
+in `InlineEdit.tsx`) — legitimate since, again, `demoMode` is stable for the
+life of a page load.
+
+### Toggle UI: `app/components/DemoModeToggle.tsx`
+
+Checks `BUILD_DEMO_MODE` directly (not the hook's `demoMode`) and returns
+`null` outright if true — this is the actual enforcement point, independent
+of whatever the context computes, matching the "structurally absent, not
+just hidden" requirement. Otherwise renders a small pill (`"Live mode"` /
+`"Demo mode"`, `toggle()` on click), styled muted/neutral rather than the
+demo banners' success-green, since it's a dev tool, not part of the demo's
+own visual language.
+
+**Positioning, found by testing rather than guessed**: the original
+`bottom-4 left-4` placement collided with Next's own dev-mode indicator
+badge, which also anchors bottom-left during `next dev` and is only ever
+absent in production — bad for exactly the local-dev use case this toggle
+targets. Moved to `bottom-20 right-4`: right side to dodge the dev badge,
+and offset up from `bottom-4` to clear `ToastContainer`'s toast stack, which
+anchors at `bottom-4 right-4` and grows upward.
+
+Wrapped in `layout.tsx`: `<DemoModeProvider>{children}<DemoModeToggle /></DemoModeProvider>`.
+
+### Verification
+
+- **Local dev, both directions, no rebuild**: on the real dev server
+  (`localhost:3000`, `BUILD_DEMO_MODE` false), clicking "Live mode" flipped
+  to the full canned demo experience (banner, prefilled JD, capability
+  banners) after one reload; clicking "Demo mode" flipped back to "Backend:
+  ok" and real `/health` calls succeeding against the local backend — this
+  is the actual benefit promised: no separate production build needed to
+  preview demo mode.
+- **No hydration errors** on either toggle direction after the mounted-gate
+  fix — confirmed via `read_console_messages` (no hydration exception) and
+  visually (no "1 Issue" badge in Next's dev overlay).
+- **Public-build absence, the critical check**: `NEXT_PUBLIC_DEMO_MODE=true
+  npx next build`, then grepped the actual build output — zero matches for
+  `demoModeOverride` or the toggle's button text (`"Live mode"`/`"Demo
+  mode"`) in either the prerendered `index.html` or the static JS chunks.
+  This is a stronger guarantee than "doesn't render": the code path is
+  tree-shaken out, not just skipped at runtime.
+- **Defense-in-depth against a manually-set override**: on that same public
+  build, manually ran `localStorage.setItem('demoModeOverride', 'false')`
+  via devtools (simulating a visitor trying to force Live mode) and
+  reloaded — the app stayed in Demo mode with no toggle rendered, confirming
+  `BUILD_DEMO_MODE` truly short-circuits the override path rather than the
+  override just defaulting the same way.
+- **Regression check**: re-ran the single-select/pill mechanism (selected a
+  bullet, pill appeared, applied correctly) and the per-tab capability
+  banners on the public build — all still correct now that they read
+  `demoMode` from the hook instead of the old constant.
+- `tsc --noEmit` and `eslint app/` clean (one legitimate
+  `eslint-disable-next-line react-hooks/set-state-in-effect` added for the
+  mount-effect localStorage sync, and three `exhaustive-deps` disables for
+  the now-hook-sourced `demoMode` in effects — same precedent as the
+  existing one in `InlineEdit.tsx`).
+- Killed the temporary port-3001 production server; confirmed the real dev
+  server (port 3000) and `.env.local` unaffected throughout.
+
+---
+
+## Fix: Auto Apply opens its real popup in demo mode instead of a toast-only block (2026-09-18)
+
+Previously `openAutoApply` blocked the popover entirely in demo mode with a
+toast. Per the user, that hid useful context — changed so the popup opens
+normally in demo mode, with only the actual "Prepare Application" action
+still demo-gated:
+
+- `openAutoApply` no longer checks `demoMode` at all — the popover always
+  opens on click.
+- Added a `DemoCapabilityBanner` inside the popup's form view (only reached
+  in demo mode, since a successful "Prepare" — the `'ready'` state — is
+  unreachable there) explaining what Auto Apply does in the full app.
+- URL and extra-instructions fields needed no changes — they're plain
+  `useState` inputs with nothing demo-unsafe about typing into them.
+- **"Prepare Application" button**: kept clickable rather than disabled,
+  showing the existing "Auto Apply is out of scope for this demo" toast on
+  click (`handlePrepareApplication`'s `demoMode` check, previously
+  documented as unreachable defense-in-depth, is now the actual trigger
+  point). Chose this over disabling the button to stay consistent with
+  every other "not available in demo" case in this app (Save/Update, the
+  old Auto-Apply-trigger-button itself) — all toast-on-click, none disabled;
+  introducing a disabled button here would've been the one inconsistent
+  case rather than matching an established pattern.
+
+**Verified live** (toggled the local dev server into Demo mode via the
+Live/Demo toggle from the previous entry, no rebuild needed): popup opens
+on "Auto Apply" click; banner shows; typed into both the URL and
+instructions fields successfully; clicking "Prepare Application" showed the
+toast, left the popup open in its form state (no spurious loading/ready
+transition), and fired zero network requests (`read_network_requests`
+confirmed no port-8000 calls); Cancel still closes the popup normally.
+`tsc --noEmit` and `eslint app/` clean.
+
+---
+
+## Feature: "Current Application" button appears after a demo Generate (2026-09-18)
+
+Ask: once either Generate button succeeds in demo mode, show the existing
+"Current Application" top-bar button (already present for a truly loaded
+saved package), so a visitor can navigate away and jump straight back to
+what they generated.
+
+**Deviated from the suggested implementation, and why**: the suggestion was
+to reuse `loadedApplication` (set it after a demo generate, same as a real
+load does) rather than add a new render condition. Traced through the
+existing code first rather than assuming that round-trips cleanly:
+`loadedApplication` also drives `SaveButton`'s Save-vs-Update label
+(`isUpdate = applicationId !== null`), and the real (non-demo) `handleGenerate`
+deliberately never sets `loadedApplication` — a freshly generated,
+never-saved resume already says "Save," not "Update," and this exact
+distinction was called out and regression-checked in an earlier
+`STATUS_FRONTEND.md` entry ("landed on the same fixture resume ... with the
+Save button reading 'Save' rather than 'Update'"). Reusing `loadedApplication`
+for this would make demo mode's Generate diverge from that established,
+already-tested real-app behavior just to also drive this one button.
+
+Used a separate `demoHasGenerated` boolean instead: set `true` in
+`handleGenerate`'s demo branch after either type succeeds, reset to `false`
+in `handleGenerateForNewJob` (alongside the existing `setLoadedApplication(null)`).
+The top-bar button's render check became
+`{(loadedApplication || demoHasGenerated) && (...)}` — everything else about
+the button (label, `onClick={() => setTab('jd')}`) is unchanged and doesn't
+need to know which of the two conditions triggered it. `handleLoadApplication`
+(the Saved-tab explicit-load path) needed no changes — it already sets
+`loadedApplication`, which independently satisfies the same render check.
+
+**Verification**: traced the full path by hand rather than a full browser
+pass, per the updated verification-scope guidance — this is a single
+boolean gating one render condition, with no new async/effect logic and no
+interaction with anything except the two touch points above. Fresh load:
+both flags false, button hidden (matches the landing-flow entry above).
+Generate Resume only: `demoHasGenerated` true, button shows, persists across
+tab navigation (plain component state, unaffected by `tab`). "Current
+Application" click: unchanged `setTab('jd')`, independent of which flag is
+set. "Generate for new job": both flags reset to their initial values,
+button hidden again. `tsc --noEmit` and `eslint app/` clean.
+
+---
+
+## Fix: JD tab shows the cleaned reference view after either Generate, not both, in demo mode (2026-09-18)
+
+Root cause: the JD tab's ternary gated the cleaned-JD reference view on
+`resumeReady && coverLetterReady`, so it kept showing `GenerateForm` until
+*both* types existed — even though `cleanedJobDescription` is already set
+the moment either type's demo Generate succeeds (unconditional in
+`handleGenerate`'s demo branch, before the resume/cover-letter-specific
+part). Requiring both makes sense in the real app (generation takes real
+time; an interim state isn't worth showing), but demo mode is instant and
+canned either way, so the user wanted the reference view as soon as either
+one exists.
+
+Fix: `resumeReady && coverLetterReady ? (...)` became
+`(demoMode ? resumeReady || coverLetterReady : resumeReady && coverLetterReady) ? (...)`
+— real (non-demo) behavior is byte-for-byte the same expression as before
+when `demoMode` is false.
+
+**Traced instead of browser-verified**, per the current lighter-verification
+guidance (single conditional, no new state/effects):
+- Neither generated: `false || false` → `GenerateForm`, same as before.
+- Only resume generated: `true || false` → reference view, showing
+  `cleanedJobDescription` (already set). Previously would have still shown
+  `GenerateForm` here — this is the fixed case.
+- Only cover letter generated: symmetric, same fix.
+- Both generated: `true || true` → reference view, same outcome as the old
+  `&&` (both being true already made the old condition true too).
+- Traded off deliberately, not a regression: once only one type is ready in
+  demo mode, the JD tab's own inline "Generate [other type]" button
+  disappears (the `GenerateForm` branch it lived in no longer renders there).
+  The other type's own tab still has its own independent `GenerateForm`
+  fallback (from the earlier "generate-it-yourself landing" work), so
+  nothing is unreachable — just reached by switching tabs instead of
+  generating inline from JD.
+- `tsc --noEmit` and `eslint app/` clean.

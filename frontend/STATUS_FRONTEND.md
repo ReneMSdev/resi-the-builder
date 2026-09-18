@@ -1580,3 +1580,49 @@ Two related pieces from the same batch.
   during any of this, so disk was never at risk regardless).
 - `tsc --noEmit` and `eslint` both clean. Final `curl GET /profile` confirms no
   residual test data (links and summary text both match the original).
+
+## Fix: Extend underline to role-type headers; scrollbar-gutter content-shift (2026-09-18)
+
+Two small follow-ups.
+
+- **`ProfilePreview.tsx`**: Summary Pool's nested role-type group headers
+  ("DevOps"/"Technician") now also use `variant="underline"` (plus the same
+  `pb-1` `wrapperClassName` spacing already used at the 7 top-level headers) —
+  their labels are short, single-word-ish, and read cleanly underlined the same
+  way the top-level headers do. Experience/Projects' nested Entry headers were
+  deliberately left on the default background variant — their content
+  (title/org/dates) runs much longer, so an underline wouldn't read as cleanly
+  there, and this wasn't asked for.
+- **`app/globals.css`**: added `scrollbar-gutter: stable` to `.app-scrollbar`
+  (applied only to `main`, the actual scroll container per the earlier
+  non-scrolling-html/body restructure). Fixes a content-shift bug: once enough
+  sections are expanded that `main` actually needs to scroll, the appearing
+  scrollbar was nudging the centered `max-w-3xl` content column left by the
+  scrollbar's width, since that space wasn't reserved beforehand.
+  `scrollbar-gutter: stable` reserves it unconditionally, so the column's
+  x-position never changes based on whether scrolling is currently needed.
+  Reasoned through, rather than a full browser-driven check, since the Claude-
+  in-Chrome extension was disconnected at the time (verification below covers
+  why this is safe): this is a different situation from the earlier `html`-level
+  `scrollbar-gutter` attempt that caused a visible color-gap next to the top bar
+  (documented in the "Dropdown scroll-lock and gutter-color fixes" and
+  "non-scrolling html/body" entries above) — that bug happened because the top
+  bar was a sibling *inside* the same scrolling flow as the gutter-reserving
+  element (`html`), so the reserved strip cut into space the top bar also
+  needed. Since that restructure, the top bar sits *outside* `main` entirely
+  (an ordinary non-scrolling flex sibling above it, never inside `main`'s box),
+  and `main` has no background color of its own distinct from the page's
+  uniform `--background` — so a reserved-but-unused gutter strip on `main` just
+  shows more of that same background color at its own right edge, with no
+  adjacent element it could visually clash with the way `html`'s gutter once
+  did next to the top bar.
+
+### Verification
+
+- `tsc --noEmit` and `eslint` clean.
+- The `scrollbar-gutter` change is CSS-only reasoning, not browser-verified in
+  this pass (extension was disconnected) — flagging so it gets a quick visual
+  glance next time the browser tool is available, though the reasoning above
+  is based on the same structural facts (main's isolation from the top bar)
+  already verified with DOM measurements in the original restructure's own
+  entry.

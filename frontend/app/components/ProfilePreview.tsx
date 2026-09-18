@@ -258,7 +258,9 @@ export function ProfilePreview({
                   mode={mode}
                   hoveredId={hoveredId}
                   onHover={setHoveredId}
+                  variant="underline"
                   className="text-sm font-bold"
+                  wrapperClassName="pb-1"
                 >
                   {group.role_type}
                 </CollapsibleSelectableHeader>

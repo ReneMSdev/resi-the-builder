@@ -32,6 +32,7 @@ body {
 
 .app-scrollbar {
   scrollbar-color: var(--muted) var(--background);
+  scrollbar-gutter: stable;
 }
 
 .app-scrollbar::-webkit-scrollbar {

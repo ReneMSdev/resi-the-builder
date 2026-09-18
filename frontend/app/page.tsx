@@ -772,7 +772,7 @@ export default function Home() {
                   {demoMode && (
                     <DemoCapabilityBanner message="This demo uses a pre-written job description and pre-generated results. In the full app, Claude reads any real job posting and tailors your resume and cover letter to it automatically." />
                   )}
-                  {(demoMode ? resumeReady || coverLetterReady : resumeReady && coverLetterReady) ? (
+                  {(resumeReady || coverLetterReady) ? (
                     <div className='flex flex-col gap-2'>
                       <p className='text-xs text-(--muted)'>Job description (reference)</p>
                       <div className='whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 text-sm text-foreground'>

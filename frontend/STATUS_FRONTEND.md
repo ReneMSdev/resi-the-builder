@@ -2474,3 +2474,29 @@ guidance (single conditional, no new state/effects):
   nothing is unreachable — just reached by switching tabs instead of
   generating inline from JD.
 - `tsc --noEmit` and `eslint app/` clean.
+
+---
+
+## Fix: extend the JD-tab "either ready" gate to the real app, not just demo mode (2026-09-18)
+
+Follow-up product decision on the previous entry: the same behavior — show
+the cleaned-JD reference view as soon as *either* resume or cover letter
+exists, not both — is now wanted for the real app too, not just demo mode.
+`cleaned_job_description` is already set unconditionally in the real
+`/generate` response handling (before the resume/cover-letter-specific
+branch), the same pattern demo mode's handler already had, so no other
+change was needed for the reference view to have correct content as soon as
+either type is ready.
+
+Simplified `(demoMode ? resumeReady || coverLetterReady : resumeReady && coverLetterReady) ? (...)`
+to `(resumeReady || coverLetterReady) ? (...)` — confirmed via grep that
+`resumeReady`/`coverLetterReady` have no other usages in `page.tsx` besides
+this gate, the unrelated `showingRevisionChat` check, and the
+`GenerateForm` button-visibility props (both untouched).
+
+**Traced, not browser-verified**, per the current lighter-verification
+guidance: neither ready → `GenerateForm` (unchanged); resume-only ready →
+reference view with the cleaned JD, Cover Letter tab still independently
+shows its own `GenerateForm` fallback (separate tab block, unaffected);
+cover-letter-only ready → symmetric; both ready → reference view (same
+outcome as the old `&&`). `tsc --noEmit` and `eslint app/` clean.

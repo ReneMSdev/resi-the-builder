@@ -2437,3 +2437,40 @@ tab navigation (plain component state, unaffected by `tab`). "Current
 Application" click: unchanged `setTab('jd')`, independent of which flag is
 set. "Generate for new job": both flags reset to their initial values,
 button hidden again. `tsc --noEmit` and `eslint app/` clean.
+
+---
+
+## Fix: JD tab shows the cleaned reference view after either Generate, not both, in demo mode (2026-09-18)
+
+Root cause: the JD tab's ternary gated the cleaned-JD reference view on
+`resumeReady && coverLetterReady`, so it kept showing `GenerateForm` until
+*both* types existed — even though `cleanedJobDescription` is already set
+the moment either type's demo Generate succeeds (unconditional in
+`handleGenerate`'s demo branch, before the resume/cover-letter-specific
+part). Requiring both makes sense in the real app (generation takes real
+time; an interim state isn't worth showing), but demo mode is instant and
+canned either way, so the user wanted the reference view as soon as either
+one exists.
+
+Fix: `resumeReady && coverLetterReady ? (...)` became
+`(demoMode ? resumeReady || coverLetterReady : resumeReady && coverLetterReady) ? (...)`
+— real (non-demo) behavior is byte-for-byte the same expression as before
+when `demoMode` is false.
+
+**Traced instead of browser-verified**, per the current lighter-verification
+guidance (single conditional, no new state/effects):
+- Neither generated: `false || false` → `GenerateForm`, same as before.
+- Only resume generated: `true || false` → reference view, showing
+  `cleanedJobDescription` (already set). Previously would have still shown
+  `GenerateForm` here — this is the fixed case.
+- Only cover letter generated: symmetric, same fix.
+- Both generated: `true || true` → reference view, same outcome as the old
+  `&&` (both being true already made the old condition true too).
+- Traded off deliberately, not a regression: once only one type is ready in
+  demo mode, the JD tab's own inline "Generate [other type]" button
+  disappears (the `GenerateForm` branch it lived in no longer renders there).
+  The other type's own tab still has its own independent `GenerateForm`
+  fallback (from the earlier "generate-it-yourself landing" work), so
+  nothing is unreachable — just reached by switching tabs instead of
+  generating inline from JD.
+- `tsc --noEmit` and `eslint app/` clean.

@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from anthropic import Anthropic
 
 from app.services.usage_guard import check_and_increment
@@ -12,13 +13,26 @@ MAX_INPUT_CHARS = 20000
 GENERATE_SYSTEM_PROMPT = """You are a resume-tailoring assistant. You will be given:
 1. A candidate's full profile data (all their jobs, projects, education, certifications, skills)
 2. A job description they are applying to
-3. Optional extra context about the company/role
+3. Optional additional context the candidate wants factored in (open-ended — see below)
 
 Your job: select and rewrite the most relevant content from the profile to produce a
 tailored resume for this specific job. Prioritize bullets whose tags or content match
 the job description's requirements. Rewrite bullet text to naturally incorporate keywords
 from the job description where truthful and accurate — do not fabricate skills, numbers,
-or experience not present in the profile.
+or experience not present in the profile, with one exception: content the candidate
+explicitly supplies via the additional context field is a fact they're directly telling
+you, not something you're inferring or inventing, so it's fair game to use the same as
+profile content would be.
+
+Additional context, if provided, is open-ended — it could be company information, the
+candidate's relationship to the company (e.g. knowing someone on the team, being a
+long-time user of their product), additional qualifications or experience relevant to
+this job that aren't captured in the profile data, or any other free-form context the
+candidate wants factored in. Use it substantively where it's relevant: a qualification
+mentioned there but missing from the profile should get woven into a bullet or the
+summary the same way profile content would, not just used as generic tone or flavor.
+Company/relationship context can inform framing and emphasis. If no additional context is
+given, proceed exactly as you would without this section.
 
 Writing style for the summary and bullet text: write like a person, not like an AI. Never
 use em dashes or en dashes as punctuation (use a comma, period, or parentheses instead) —
@@ -99,6 +113,15 @@ REVISE_SYSTEM_PROMPT = """You are a resume-editing assistant. You will be given:
 2. A list of selected IDs the user wants revised
 3. A free-text instruction describing how to revise them (e.g. "make these punchier and
    quantify impact", "shorten to one line", "emphasize leadership")
+4. Optionally, the job description the candidate is applying to
+
+The job description, when present, is for context only — use it when the instruction
+itself references the job, role, requirements, or company (e.g. "remove skill groups
+that don't add value for this job description," "emphasize the Python experience since
+the JD calls for it"). When no job description is given, or the instruction doesn't call
+for job-specific judgment, ignore it and behave exactly as you would without it — e.g.
+"make this more concise" means the same thing whether or not a job description is
+attached.
 
 Each selected ID refers to something in the resume JSON:
 - A bullet ID (e.g. "b_salo_2") — revise that single bullet's text per the instruction.
@@ -177,17 +200,31 @@ always include the "updates" key, even when it's an empty list.
 COVER_LETTER_SYSTEM_PROMPT = """You are a cover-letter-writing assistant. You will be given:
 1. A candidate's full profile data (all their jobs, projects, education, certifications, skills)
 2. A job description they are applying to
-3. Optional extra context about the company/role
+3. Optional additional context the candidate wants factored in (open-ended — see below)
 
 Your job: write a tailored, professional cover letter for this specific job, grounded
 only in real experience present in the profile data — do not fabricate skills, numbers,
-achievements, or experience not present in the profile. Extract the company name and
-role title from the job description if present (leave blank in meta if genuinely
-unclear rather than guessing). The letter should be 3-4 paragraphs: an opening stating
-the role and genuine interest, one or two body paragraphs connecting specific profile
-experience to the job's stated requirements, and a closing paragraph. Keep it concise
-professional business-letter tone, not generic filler — reference specific, real
-accomplishments from the profile data rather than vague claims.
+achievements, or experience not present in the profile, with one exception: content the
+candidate explicitly supplies via the additional context field is a fact they're directly
+telling you, not something you're inferring or inventing, so it's fair game to use the
+same as profile content would be. Extract the company name and role title from the job
+description if present (leave blank in meta if genuinely unclear rather than guessing).
+The letter should be 3-4 paragraphs: an opening stating the role and genuine interest,
+one or two body paragraphs connecting specific profile experience to the job's stated
+requirements, and a closing paragraph. Keep it concise professional business-letter tone,
+not generic filler — reference specific, real accomplishments from the profile data
+rather than vague claims.
+
+Additional context, if provided, is open-ended — it could be company information, the
+candidate's relationship to the company (e.g. knowing someone on the team, being a
+long-time user of their product), additional qualifications or experience relevant to
+this job that aren't captured in the profile data, or any other free-form context the
+candidate wants factored in. Use it substantively where it's relevant: a qualification
+mentioned there but missing from the profile should get woven into a paragraph the same
+way profile content would, not just used as generic tone or flavor — and a relationship
+to the company (knowing someone there, being a long-time customer) is exactly the kind of
+detail a real cover letter opening would name. If no additional context is given, proceed
+exactly as you would without this section.
 
 Writing style for the paragraphs: write like a person, not like an AI. Never use em
 dashes or en dashes as punctuation (use a comma, period, or parentheses instead). Avoid
@@ -245,6 +282,14 @@ COVER_LETTER_REVISE_SYSTEM_PROMPT = """You are a cover-letter-editing assistant.
 2. A list of selected IDs the user wants revised
 3. A free-text instruction describing how to revise them (e.g. "make this punchier",
    "shorten to two sentences", "emphasize leadership")
+4. Optionally, the job description the candidate is applying to
+
+The job description, when present, is for context only — use it when the instruction
+itself references the job, role, requirements, or company (e.g. "tie this paragraph more
+directly to what the JD asks for"). When no job description is given, or the instruction
+doesn't call for job-specific judgment, ignore it and behave exactly as you would without
+it — e.g. "make this punchier" means the same thing whether or not a job description is
+attached.
 
 Each selected ID refers to something in the cover letter JSON:
 - A paragraph ID (e.g. "p2") from the "paragraphs" array — revise that paragraph's text
@@ -284,15 +329,27 @@ include the "updates" key, even when it's an empty list.
 
 def _extract_json(text: str) -> dict:
     text = text.strip()
-    if text.startswith("```"):
-        text = text.split("```")[1]
-        if text.startswith("json"):
-            text = text[4:]
-        text = text.strip()
+
+    # The model is instructed to return only JSON, but occasionally "thinks out loud"
+    # in prose before a fenced block anyway (more likely for reasoning-heavy
+    # instructions) — look for a ```/```json fence anywhere in the text, not just at
+    # the very start.
+    fence_match = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
+    if fence_match:
+        text = fence_match.group(1).strip()
 
     try:
         return json.loads(text)
     except json.JSONDecodeError as e:
+        # No fence, but there may still be a JSON object embedded in surrounding
+        # prose — fall back to the outermost {...} before giving up.
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end > start:
+            try:
+                return json.loads(text[start:end + 1])
+            except json.JSONDecodeError:
+                pass
         raise ValueError(f"Model did not return valid JSON: {e}\nRaw output:\n{text[:500]}")
 
 
@@ -304,11 +361,11 @@ def _normalize_revise_result(result: dict) -> dict:
     return result
 
 
-def generate_resume(profile: dict, job_description: str, company_context: str | None = None) -> dict:
+def generate_resume(profile: dict, job_description: str, additional_context: str | None = None) -> dict:
     if len(job_description) > MAX_INPUT_CHARS:
         raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
-    if company_context and len(company_context) > MAX_INPUT_CHARS:
-        raise ValueError(f"company_context exceeds the {MAX_INPUT_CHARS}-character limit.")
+    if additional_context and len(additional_context) > MAX_INPUT_CHARS:
+        raise ValueError(f"additional_context exceeds the {MAX_INPUT_CHARS}-character limit.")
 
     check_and_increment()
 
@@ -318,8 +375,8 @@ def generate_resume(profile: dict, job_description: str, company_context: str | 
 JOB DESCRIPTION:
 {job_description}
 """
-    if company_context:
-        user_content += f"\nADDITIONAL COMPANY/ROLE CONTEXT:\n{company_context}\n"
+    if additional_context:
+        user_content += f"\nADDITIONAL CONTEXT:\n{additional_context}\n"
 
     response = client.messages.create(
         model=MODEL,
@@ -332,11 +389,11 @@ JOB DESCRIPTION:
     return _extract_json(text)
 
 
-def generate_cover_letter(profile: dict, job_description: str, company_context: str | None = None) -> dict:
+def generate_cover_letter(profile: dict, job_description: str, additional_context: str | None = None) -> dict:
     if len(job_description) > MAX_INPUT_CHARS:
         raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
-    if company_context and len(company_context) > MAX_INPUT_CHARS:
-        raise ValueError(f"company_context exceeds the {MAX_INPUT_CHARS}-character limit.")
+    if additional_context and len(additional_context) > MAX_INPUT_CHARS:
+        raise ValueError(f"additional_context exceeds the {MAX_INPUT_CHARS}-character limit.")
 
     check_and_increment()
 
@@ -346,8 +403,8 @@ def generate_cover_letter(profile: dict, job_description: str, company_context: 
 JOB DESCRIPTION:
 {job_description}
 """
-    if company_context:
-        user_content += f"\nADDITIONAL COMPANY/ROLE CONTEXT:\n{company_context}\n"
+    if additional_context:
+        user_content += f"\nADDITIONAL CONTEXT:\n{additional_context}\n"
 
     response = client.messages.create(
         model=MODEL,
@@ -360,9 +417,13 @@ JOB DESCRIPTION:
     return _extract_json(text)
 
 
-def revise_resume(resume: dict, selected_ids: list[str], instruction: str) -> dict:
+def revise_resume(
+    resume: dict, selected_ids: list[str], instruction: str, job_description: str | None = None
+) -> dict:
     if len(instruction) > MAX_INPUT_CHARS:
         raise ValueError(f"instruction exceeds the {MAX_INPUT_CHARS}-character limit.")
+    if job_description and len(job_description) > MAX_INPUT_CHARS:
+        raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
 
     check_and_increment()
 
@@ -375,6 +436,8 @@ SELECTED IDS:
 INSTRUCTION:
 {instruction}
 """
+    if job_description:
+        user_content += f"\nJOB DESCRIPTION (context only — see system prompt for when to use this):\n{job_description}\n"
 
     response = client.messages.create(
         model=MODEL,
@@ -387,9 +450,13 @@ INSTRUCTION:
     return _normalize_revise_result(_extract_json(text))
 
 
-def revise_cover_letter(cover_letter: dict, selected_ids: list[str], instruction: str) -> dict:
+def revise_cover_letter(
+    cover_letter: dict, selected_ids: list[str], instruction: str, job_description: str | None = None
+) -> dict:
     if len(instruction) > MAX_INPUT_CHARS:
         raise ValueError(f"instruction exceeds the {MAX_INPUT_CHARS}-character limit.")
+    if job_description and len(job_description) > MAX_INPUT_CHARS:
+        raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
 
     check_and_increment()
 
@@ -402,6 +469,8 @@ SELECTED IDS:
 INSTRUCTION:
 {instruction}
 """
+    if job_description:
+        user_content += f"\nJOB DESCRIPTION (context only — see system prompt for when to use this):\n{job_description}\n"
 
     response = client.messages.create(
         model=MODEL,

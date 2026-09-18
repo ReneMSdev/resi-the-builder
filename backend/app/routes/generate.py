@@ -23,11 +23,11 @@ def generate(req: GenerateRequest):
 
     try:
         if req.type == "cover_letter":
-            result = generate_cover_letter(profile, req.job_description, req.company_context)
+            result = generate_cover_letter(profile, req.job_description, req.additional_context)
             cleaned_jd = result.pop("cleaned_job_description", None)
             return {"cover_letter": result, "cleaned_job_description": cleaned_jd}
         else:
-            result = generate_resume(profile, req.job_description, req.company_context)
+            result = generate_resume(profile, req.job_description, req.additional_context)
             cleaned_jd = result.pop("cleaned_job_description", None)
             return {"resume": result, "cleaned_job_description": cleaned_jd}
     except ValueError as e:

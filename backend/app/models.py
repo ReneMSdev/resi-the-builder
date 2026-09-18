@@ -98,7 +98,7 @@ class CoverLetter(BaseModel):
 
 class GenerateRequest(BaseModel):
     job_description: str
-    company_context: Optional[str] = None
+    additional_context: Optional[str] = None
     type: str = "resume"  # "resume" | "cover_letter"
 
 
@@ -113,6 +113,7 @@ class ReviseRequest(BaseModel):
     instruction: str
     resume: Optional[Resume] = None
     cover_letter: Optional[CoverLetter] = None
+    job_description: Optional[str] = None
 
 
 class ReviseUpdate(BaseModel):

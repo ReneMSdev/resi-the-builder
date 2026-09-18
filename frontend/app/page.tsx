@@ -84,8 +84,8 @@ type ReviseState = { state: 'idle' } | { state: 'loading' } | { state: 'error'; 
 function GenerateForm({
   jobDescription,
   onJobDescriptionChange,
-  companyContext,
-  onCompanyContextChange,
+  additionalContext,
+  onAdditionalContextChange,
   showResumeButton,
   showCoverLetterButton,
   resumeGenerating,
@@ -97,8 +97,8 @@ function GenerateForm({
 }: {
   jobDescription: string
   onJobDescriptionChange: (value: string) => void
-  companyContext: string
-  onCompanyContextChange: (value: string) => void
+  additionalContext: string
+  onAdditionalContextChange: (value: string) => void
   showResumeButton: boolean
   showCoverLetterButton: boolean
   resumeGenerating: boolean
@@ -121,11 +121,12 @@ function GenerateForm({
         />
       </label>
       <label className='flex flex-col gap-1'>
-        <span className='text-sm font-medium text-foreground'>Company context (optional)</span>
+        <span className='text-sm font-medium text-foreground'>Additional context (optional)</span>
         <textarea
           className='min-h-20 rounded border border-(--border) bg-(--surface) p-2 text-sm text-foreground'
-          value={companyContext}
-          onChange={(e) => onCompanyContextChange(e.target.value)}
+          placeholder='Anything else worth factoring in: your relationship to the company, extra qualifications not in your profile, or other free-form context.'
+          value={additionalContext}
+          onChange={(e) => onAdditionalContextChange(e.target.value)}
         />
       </label>
       <div className='flex flex-wrap items-center gap-3'>
@@ -171,7 +172,7 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>('jd')
   const [jobDescription, setJobDescription] = useState('')
   const [cleanedJobDescription, setCleanedJobDescription] = useState<string | null>(null)
-  const [companyContext, setCompanyContext] = useState('')
+  const [additionalContext, setAdditionalContext] = useState('')
   const [loadedApplication, setLoadedApplication] = useState<{ id: string; name: string } | null>(
     null,
   )
@@ -239,7 +240,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           job_description: jobDescription,
-          company_context: companyContext || undefined,
+          additional_context: additionalContext || undefined,
           type: kind,
         }),
       })
@@ -356,6 +357,7 @@ export default function Home() {
         body: JSON.stringify({
           selected_ids: Array.from(selectedIds),
           instruction,
+          job_description: cleanedJobDescription || jobDescription,
           ...(tab === 'resume' && resumeState.state === 'success'
             ? { resume: resumeState.resume }
             : coverLetterState.state === 'success'
@@ -420,7 +422,7 @@ export default function Home() {
     setLoadedApplication(null)
     setJobDescription('')
     setCleanedJobDescription(null)
-    setCompanyContext('')
+    setAdditionalContext('')
     setResumeState({ state: 'idle' })
     setCoverLetterState({ state: 'idle' })
     setResumeSelectedIds(new Set())
@@ -527,8 +529,8 @@ export default function Home() {
                   <GenerateForm
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
-                    companyContext={companyContext}
-                    onCompanyContextChange={setCompanyContext}
+                    additionalContext={additionalContext}
+                    onAdditionalContextChange={setAdditionalContext}
                     showResumeButton={!resumeReady}
                     showCoverLetterButton={!coverLetterReady}
                     resumeGenerating={resumeGenerating}
@@ -602,8 +604,8 @@ export default function Home() {
                   <GenerateForm
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
-                    companyContext={companyContext}
-                    onCompanyContextChange={setCompanyContext}
+                    additionalContext={additionalContext}
+                    onAdditionalContextChange={setAdditionalContext}
                     showResumeButton={!resumeReady}
                     showCoverLetterButton={!coverLetterReady}
                     resumeGenerating={resumeGenerating}
@@ -672,8 +674,8 @@ export default function Home() {
                   <GenerateForm
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
-                    companyContext={companyContext}
-                    onCompanyContextChange={setCompanyContext}
+                    additionalContext={additionalContext}
+                    onAdditionalContextChange={setAdditionalContext}
                     showResumeButton={!resumeReady}
                     showCoverLetterButton={!coverLetterReady}
                     resumeGenerating={resumeGenerating}

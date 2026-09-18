@@ -1086,3 +1086,58 @@ created and the existing one now reflects the change.
   existing record was updated in place, not replaced or duplicated.
 - Cleanup: `PUT` the record back with the original name restored; re-verified via
   `GET` that the content was restored and still exactly one record exists.
+
+## Feature: JD context for /revise, additional_context rename, skill-group deletion (2026-09-18)
+
+Three small backend-driven contract changes, bundled together since all three landed
+in one backend delivery.
+
+- **`/revise` now always sends `job_description`**: `handleRevise` in `app/page.tsx`
+  sends `cleanedJobDescription || jobDescription` as a sibling field alongside
+  `selected_ids`/`instruction`/`resume`/`cover_letter`, in both the resume and
+  cover-letter branches (one shared request body, no branch duplication needed). Fixes
+  a real bug: revise instructions referencing the job description (e.g. "remove skill
+  groups not relevant to this role") previously 502'd since `/revise` never had JD
+  context to work with.
+- **`company_context` → `additional_context` rename**: request field to `/generate`,
+  local state (`companyContext`/`setCompanyContext` → `additionalContext`/
+  `setAdditionalContext`), and `GenerateForm`'s props/JSX all renamed consistently, no
+  back-compat kept (backend no longer accepts the old name either). UI label changed
+  from "Company context (optional)" to "Additional context (optional)", with a new
+  placeholder describing the broader scope (company relationship, extra qualifications
+  not in the profile, other free-form context) — reflects that the field was never
+  just about the company.
+- **Empty-text skill-group update means delete that group**: `applyRevisionUpdates` in
+  `app/lib/resume.ts` — when a skill-group id's incoming `/revise` update has empty
+  text (after trim), that group is now filtered out of `section.groups` entirely
+  instead of being rewritten into an empty `items: []`. No separate handling needed in
+  Save/Update — a group removed this way is simply absent from the next save/update's
+  payload, since Save/Update already just packages up whatever currently exists in
+  session state.
+- `tsc --noEmit` and `eslint` both clean.
+
+### Verification (real browser + direct `fetch`/curl checks, not just code review)
+
+- Confirmed the "Additional context" label/placeholder render correctly on the
+  Generate form, then ran a real `/generate` call with it filled in — succeeded with
+  no 422, confirming the renamed field lands correctly on both sides.
+- Selected a skill group ("Mobile: React Native (Expo)") and submitted a revise
+  instruction telling the model to delete it outright. First attempt with a vaguer
+  instruction ("this isn't relevant to the job description, remove it") returned
+  `{"updates": []}` — a no-op, the model's judgment call on an ambiguous instruction,
+  not a bug. A more direct instruction ("delete this entire skill group") got back
+  `{"id": "skill_mobile", "text": ""}`, and the pill disappeared entirely from the
+  rendered UI — confirmed via the Raw JSON panel that the group is fully gone from
+  `sections[].groups`, not merely emptied.
+- Selected the "Frontend" skill group and asked to "keep only the skills mentioned in
+  the job description in this group" — correctly filtered down to just "React" (the
+  only frontend skill the test JD mentioned), proving `job_description` is reaching
+  `/revise` and actually being used. All 5 `/revise` calls made during this
+  verification (2 direct `fetch` calls from the browser console plus 3 through the
+  real UI) returned 200 — no 502s, including the JD-referencing ones that would have
+  failed before this fix.
+- Regression-checked plain bullet-level revise afterward ("make this more concise, one
+  sentence") — still works correctly, only the targeted bullet changed.
+- No test data was saved to `/applications` during this verification (Save was never
+  clicked) — confirmed via `GET /applications` that only the pre-existing fixture
+  remained, nothing to clean up.

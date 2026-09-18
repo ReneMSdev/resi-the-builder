@@ -22,42 +22,6 @@ into a STATUS doc as completed work.
   Deferred as low priority since section headings ("Experience", "Skills") rarely need
   editing. Revisit if section-title editing is ever wanted.
 
-## Planned feature (design confirmed — ready to build)
-
-- **Auto Apply prompt generator** — a "Prepare Application" flow that turns a saved
-  `/applications` package into a ready-to-use instruction prompt for a separate
-  Claude Code + Claude-in-Chrome session to drive the actual job-application form.
-  **Frontend-only, no backend changes needed** — pure text templating from data the
-  frontend can already fetch via the existing `GET /applications/{id}`, no LLM call
-  involved. See the memory note on the Chrome-automation plan for the standing hard
-  rule this must always restate: never auto-submit, fill only.
-  - **Entry point**: each card in the Saved tab gets a new **"Auto Apply"** button
-    (alongside the existing JD/Resume/CL pills and Delete). Clicking it selects that
-    application and opens a popup.
-  - **Popup fields**: a required **URL** text input (the actual application form's
-    URL — deliberately *not* auto-filled or persisted from any stored data, since the
-    JD's source page and the real application form are often different pages, and
-    some applications sit behind a login/account-creation flow with no stable,
-    bookmarkable URL until you're mid-session — so this is always entered fresh at
-    prepare-time, the only point it's reliably known). An optional **"extra
-    instructions for this application"** free-text box (e.g. a custom screening
-    question to answer a specific way) — same open-ended-context idea as
-    `additional_context` on the generate form, but scoped to this one automation run,
-    not saved anywhere.
-  - **"Prepare Application" button**: fetches the full package (`GET
-    /applications/{id}`, if not already loaded) and assembles a complete prompt from:
-    the JD (raw + cleaned), resume/cover-letter content including `meta`
-    name/email/phone/links, the rendered docx file paths already on disk
-    (`backend/app/data/applications/{id}/resume.docx` /
-    `cover_letter.docx`), the package name, the entered URL, the entered extra
-    instructions (if any), plus constant boilerplate: the backend base URL, explicit
-    fetch/file-path instructions for the session to follow, and the restated
-    never-submit safety rule. Displays the generated prompt in the popup with a Copy
-    button.
-  - **Popup has an X button** to close/cancel at any point — before generating (plain
-    cancel) or after the prompt's been copied (done, no separate "close" vs "cancel"
-    distinction needed).
-
 ## Queued, small
 
 - **Consider migrating `profile.json`'s on-disk key/section order** to physically match

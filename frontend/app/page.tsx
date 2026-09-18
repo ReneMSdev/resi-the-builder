@@ -11,6 +11,8 @@ import { SavedTab } from './components/SavedTab'
 import { ToastContainer } from './components/Toast'
 import { HamburgerMenu } from './components/HamburgerMenu'
 import { ProfileView } from './components/ProfileView'
+import { DEMO_MODE, demoApplication, demoDelay, demoProfile } from './lib/demo'
+import { demoResumeSuggestions, demoCoverLetterSuggestions } from './lib/demoFixtures/revisions'
 import {
   applyRevisionUpdates,
   applyCoverLetterUpdates,
@@ -200,11 +202,12 @@ export default function Home() {
   })
   const [resumeHistory, setResumeHistory] = useState<Resume[]>([])
   const [clHistory, setClHistory] = useState<CoverLetter[]>([])
-  const [profileState, setProfileState] = useState<ProfileLoadState>(() =>
-    process.env.NEXT_PUBLIC_API_URL
+  const [profileState, setProfileState] = useState<ProfileLoadState>(() => {
+    if (DEMO_MODE) return { state: 'success', profile: demoProfile }
+    return process.env.NEXT_PUBLIC_API_URL
       ? { state: 'idle' }
-      : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' },
-  )
+      : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' }
+  })
   const [profilePreviewMode, setProfilePreviewMode] = useState<PreviewMode>('select')
   const [profileSelectedIds, setProfileSelectedIds] = useState<Set<string>>(new Set())
   const [profileReviseState, setProfileReviseState] = useState<ReviseState>({ state: 'idle' })
@@ -218,6 +221,11 @@ export default function Home() {
   const history = tab === 'resume' ? resumeHistory : clHistory
 
   useEffect(() => {
+    // Demo mode never reaches this — profileState is initialized straight to
+    // 'success' with the demo fixture, so it's never 'idle' here. Guarded
+    // explicitly anyway as a second line of defense against ever firing a
+    // real network call in demo mode.
+    if (DEMO_MODE) return
     if (tab !== 'profile' || profileState.state !== 'idle') return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     // profileState can only be 'idle' here if the initializer already found
@@ -241,6 +249,9 @@ export default function Home() {
   }, [tab, profileState.state])
 
   useEffect(() => {
+    // Demo mode replaces this entire connectivity check with a static banner
+    // in the top bar (see the JSX below) — no /health call ever fires.
+    if (DEMO_MODE) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) return
 
@@ -258,7 +269,40 @@ export default function Home() {
       })
   }, [])
 
+  useEffect(() => {
+    // Auto-load the demo package on mount so a portfolio visitor lands on a
+    // fully populated, tailored resume immediately rather than a blank JD
+    // form — the same hydration handleLoadApplication already does for a
+    // real Saved-tab click, just triggered once automatically in demo mode.
+    if (!DEMO_MODE) return
+    handleLoadApplication(demoApplication, 'resume')
+  }, [])
+
   async function handleGenerate(kind: 'resume' | 'cover_letter') {
+    if (kind === 'resume') {
+      setResumeState({ state: 'loading' })
+      setResumeSelectedIds(new Set())
+    } else {
+      setCoverLetterState({ state: 'loading' })
+      setClSelectedIds(new Set())
+    }
+
+    if (DEMO_MODE) {
+      // No LLM call in demo mode — always returns the same pre-baked
+      // resume/cover-letter fixture regardless of what's typed above,
+      // after an artificial delay so the loading state still reads as real.
+      await demoDelay()
+      if (demoApplication.job_description.cleaned) {
+        setCleanedJobDescription(demoApplication.job_description.cleaned)
+      }
+      if (kind === 'resume' && demoApplication.resume) {
+        setResumeState({ state: 'success', resume: demoApplication.resume })
+      } else if (kind === 'cover_letter' && demoApplication.cover_letter) {
+        setCoverLetterState({ state: 'success', coverLetter: demoApplication.cover_letter })
+      }
+      return
+    }
+
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       if (kind === 'resume') {
@@ -267,14 +311,6 @@ export default function Home() {
         setCoverLetterState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
       }
       return
-    }
-
-    if (kind === 'resume') {
-      setResumeState({ state: 'loading' })
-      setResumeSelectedIds(new Set())
-    } else {
-      setCoverLetterState({ state: 'loading' })
-      setClSelectedIds(new Set())
     }
 
     try {
@@ -402,8 +438,43 @@ export default function Home() {
   const handleEditLink = (linkId: string, label: string, url: string) =>
     updateResume((resume) => editLink(resume, linkId, label, url))
 
+  function handleDemoSuggestion(suggestionId: string) {
+    // Applies a pre-scripted before/after diff via the same
+    // applyRevisionUpdates/applyCoverLetterUpdates + history path a real
+    // /revise response already uses — only the source of `updates` differs.
+    const suggestions = tab === 'resume' ? demoResumeSuggestions : demoCoverLetterSuggestions
+    const suggestion = suggestions.find((s) => s.id === suggestionId)
+    if (!suggestion) return
+
+    if (tab === 'resume' && resumeState.state === 'success') {
+      pushResumeHistory(resumeState.resume)
+      setResumeState({
+        state: 'success',
+        resume: applyRevisionUpdates(resumeState.resume, suggestion.updates),
+      })
+    } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
+      pushClHistory(coverLetterState.coverLetter)
+      setCoverLetterState({
+        state: 'success',
+        coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, suggestion.updates),
+      })
+    }
+    setReviseState({ state: 'idle' })
+  }
+
   async function handleRevise(instruction: string) {
     if (tab === 'resume' ? resumeState.state !== 'success' : coverLetterState.state !== 'success') {
+      return
+    }
+
+    if (DEMO_MODE) {
+      // Free-typed instructions never reach a real model in demo mode — the
+      // suggestion chips (handleDemoSuggestion) are the only way to produce
+      // a real diff. This never calls fetch, only sets an inline message.
+      setReviseState({
+        state: 'error',
+        message: "This demo can't run arbitrary instructions — try one of the suggestions above.",
+      })
       return
     }
 
@@ -543,16 +614,24 @@ export default function Home() {
             Resume Builder
           </span>
         </div>
-        {status.state === 'loading' && (
-          <p className='text-sm text-(--muted)'>Checking backend...</p>
-        )}
-        {status.state === 'ok' && (
-          <p className='text-sm font-medium text-(--success-on-dark)'>Backend: ok</p>
-        )}
-        {status.state === 'error' && (
-          <p className='text-sm font-medium text-(--danger)'>
-            Backend unreachable: {status.message}
+        {DEMO_MODE ? (
+          <p className='text-sm font-medium text-(--success-on-dark)'>
+            Demo Mode — sample data only, no live backend
           </p>
+        ) : (
+          <>
+            {status.state === 'loading' && (
+              <p className='text-sm text-(--muted)'>Checking backend...</p>
+            )}
+            {status.state === 'ok' && (
+              <p className='text-sm font-medium text-(--success-on-dark)'>Backend: ok</p>
+            )}
+            {status.state === 'error' && (
+              <p className='text-sm font-medium text-(--danger)'>
+                Backend unreachable: {status.message}
+              </p>
+            )}
+          </>
         )}
         <div className='flex items-center gap-3'>
           {loadedApplication && (
@@ -719,6 +798,8 @@ export default function Home() {
                       onSubmit={handleRevise}
                       canRevert={history.length > 0}
                       onRevert={handleRevert}
+                      demoSuggestions={DEMO_MODE ? demoResumeSuggestions : undefined}
+                      onDemoSuggestionClick={DEMO_MODE ? handleDemoSuggestion : undefined}
                     />
                   </div>
                 ) : (
@@ -791,6 +872,8 @@ export default function Home() {
                       onSubmit={handleRevise}
                       canRevert={history.length > 0}
                       onRevert={handleRevert}
+                      demoSuggestions={DEMO_MODE ? demoCoverLetterSuggestions : undefined}
+                      onDemoSuggestionClick={DEMO_MODE ? handleDemoSuggestion : undefined}
                     />
                   </div>
                 ) : (

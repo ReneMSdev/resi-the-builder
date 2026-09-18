@@ -18,6 +18,8 @@ export function RevisionChat({
   onSubmit,
   canRevert,
   onRevert,
+  demoSuggestions,
+  onDemoSuggestionClick,
 }: {
   selectionSummary: string;
   selectionCount: number;
@@ -26,6 +28,8 @@ export function RevisionChat({
   onSubmit: (instruction: string) => void;
   canRevert: boolean;
   onRevert: () => void;
+  demoSuggestions?: { id: string; label: string }[];
+  onDemoSuggestionClick?: (id: string) => void;
 }) {
   const [instruction, setInstruction] = useState("");
   const disabled = selectionCount === 0;
@@ -55,6 +59,21 @@ export function RevisionChat({
 
   return (
     <div className="sticky bottom-0 z-10 -mx-16 mt-4 border-t border-[var(--border)] bg-[var(--background)] px-16 py-3">
+      {demoSuggestions && demoSuggestions.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {demoSuggestions.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onDemoSuggestionClick?.(s.id)}
+              disabled={loading}
+              className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--foreground)] transition-colors hover:cursor-pointer hover:bg-[var(--accent)] hover:text-[var(--surface)] disabled:opacity-50"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="mb-1 text-xs text-[var(--muted)]">
         {disabled
           ? "Select an item above to start editing."

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CoverLetter, Resume } from '../types'
 import { DownloadIcon } from './icons'
+import { DEMO_MODE } from '../lib/demo'
 
 type DownloadState =
   | { state: 'idle' }
@@ -19,38 +20,47 @@ export function DownloadButtons({
   })
 
   async function handleDownload(format: 'docx' | 'pdf') {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
-    if (!apiUrl) {
-      setDownloadState({
-        state: 'error',
-        message: 'NEXT_PUBLIC_API_URL is not set.',
-      })
-      return
-    }
-
     setDownloadState({ state: 'loading', format })
 
     try {
-      const res = await fetch(`${apiUrl}/render`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          'resume' in doc
-            ? { resume: doc.resume, format }
-            : { cover_letter: doc.coverLetter, format },
-        ),
-      })
+      let res: Response
+      let filename: string
 
-      if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`${res.status}: ${body}`)
+      if (DEMO_MODE) {
+        // Static assets served by Next.js itself (same origin, /public), not
+        // the backend — real pre-rendered files, never a /render POST.
+        const kind = 'resume' in doc ? 'resume' : 'cover_letter'
+        res = await fetch(`/demo/${kind}.${format}`)
+        if (!res.ok) {
+          throw new Error(`${res.status}: could not load demo ${kind}.${format}`)
+        }
+        filename = `${kind}.${format}`
+      } else {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL
+        if (!apiUrl) {
+          throw new Error('NEXT_PUBLIC_API_URL is not set.')
+        }
+        res = await fetch(`${apiUrl}/render`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            'resume' in doc
+              ? { resume: doc.resume, format }
+              : { cover_letter: doc.coverLetter, format },
+          ),
+        })
+
+        if (!res.ok) {
+          const body = await res.text()
+          throw new Error(`${res.status}: ${body}`)
+        }
+
+        const disposition = res.headers.get('Content-Disposition') ?? ''
+        const match = disposition.match(/filename="?([^";]+)"?/)
+        filename = match ? match[1] : `document.${format}`
       }
 
       const blob = await res.blob()
-      const disposition = res.headers.get('Content-Disposition') ?? ''
-      const match = disposition.match(/filename="?([^";]+)"?/)
-      const filename = match ? match[1] : `document.${format}`
-
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

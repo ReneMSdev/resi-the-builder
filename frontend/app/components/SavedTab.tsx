@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Application, ApplicationSummary } from '../types'
 import { buildAutoApplyPrompt } from '../lib/autoApplyPrompt'
+import { DEMO_MODE, demoApplication, demoApplications } from '../lib/demo'
+import { showToast } from './Toast'
 
 type ListState =
   | { state: 'loading' }
@@ -33,11 +35,12 @@ const pillClass =
   'rounded-full border border-(--border) bg-(--accent-soft) px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent) hover:text-(--surface)'
 
 export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: Tab) => void }) {
-  const [listState, setListState] = useState<ListState>(() =>
-    process.env.NEXT_PUBLIC_API_URL
+  const [listState, setListState] = useState<ListState>(() => {
+    if (DEMO_MODE) return { state: 'success', items: demoApplications }
+    return process.env.NEXT_PUBLIC_API_URL
       ? { state: 'loading' }
-      : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' },
-  )
+      : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' }
+  })
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
@@ -65,6 +68,9 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   useEffect(() => {
+    // Demo mode initializes listState straight to 'success' with the fixture
+    // data, so it's never 'loading' here — guarded explicitly anyway.
+    if (DEMO_MODE) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) return
     runFetch(apiUrl)
@@ -82,6 +88,10 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }, [autoApplyId])
 
   function handleRetry() {
+    // Defense in depth: listState is initialized straight to 'success' in
+    // demo mode and never transitions to 'error', so the Retry button that
+    // calls this is never actually rendered there.
+    if (DEMO_MODE) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setListState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -92,6 +102,10 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   async function handleOpen(id: string, tab: Tab) {
+    if (DEMO_MODE) {
+      onLoad(demoApplication, tab)
+      return
+    }
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl || pendingId) return
 
@@ -113,6 +127,8 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   async function handleDelete(id: string) {
+    // Defense in depth: the Delete button itself isn't rendered in demo mode.
+    if (DEMO_MODE) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) return
 
@@ -138,6 +154,10 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   function openAutoApply(id: string) {
+    if (DEMO_MODE) {
+      showToast('Auto Apply is out of scope for this demo')
+      return
+    }
     setAutoApplyId(id)
     setAutoApplyUrl('')
     setAutoApplyInstructions('')
@@ -150,6 +170,9 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   }
 
   async function handlePrepareApplication(id: string) {
+    // Defense in depth: openAutoApply already blocks the popover with a
+    // toast in demo mode, so this should be unreachable there.
+    if (DEMO_MODE) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setAutoApplyState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -380,36 +403,37 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
                 )}
               </div>
 
-              {confirmingId === item.id ? (
-                <>
-                  <span className='self-center text-xs text-(--muted)'>Delete this item?</span>
+              {!DEMO_MODE &&
+                (confirmingId === item.id ? (
+                  <>
+                    <span className='self-center text-xs text-(--muted)'>Delete this item?</span>
+                    <button
+                      type='button'
+                      onClick={() => handleDelete(item.id)}
+                      disabled={isPending}
+                      className='rounded border border-(--danger) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => setConfirmingId(null)}
+                      disabled={isPending}
+                      className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
                   <button
                     type='button'
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => setConfirmingId(item.id)}
                     disabled={isPending}
-                    className='rounded border border-(--danger) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                    className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
                   >
-                    Confirm
+                    Delete
                   </button>
-                  <button
-                    type='button'
-                    onClick={() => setConfirmingId(null)}
-                    disabled={isPending}
-                    className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  type='button'
-                  onClick={() => setConfirmingId(item.id)}
-                  disabled={isPending}
-                  className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-(--danger) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
-                >
-                  Delete
-                </button>
-              )}
+                ))}
             </div>
           </div>
         )

@@ -1789,3 +1789,200 @@ already available via `GET /applications/{id}`.
   `application.cover_letter` being present, so a package missing one simply
   omits that section rather than emitting a broken reference.
 - `tsc --noEmit` and `eslint` clean.
+
+## Feature: Demo mode for a standalone Vercel portfolio deployment (2026-09-18)
+
+Frontend-only, per the confirmed design — a `NEXT_PUBLIC_DEMO_MODE` env var (set
+only in Vercel's project settings for that deployment; local `.env.local` is
+untouched and still points at `localhost:8000`) that makes the entire frontend
+run with **zero backend network calls**, using static fixtures instead, so a
+public demo deployment can never cost anything or expose the API key.
+
+### Fixture data
+
+Real content, not an invented persona, per the user's own decision (a demo
+visitor almost certainly arrived via a link from the resume/portfolio itself).
+Sourced directly from the real "Justworks — Software Engineer" saved package
+and the real `profile.json`:
+- `app/lib/demoFixtures/application.json` — the real `GET /applications/{id}`
+  response. One cleanup made to the source data before freezing it as a
+  fixture: the resume summary had a leftover "This is a test line..." artifact
+  from earlier testing sessions in this project — stripped it, since shipping
+  that string in a public demo would look broken, not like a bug in the demo-
+  mode code itself.
+  `app/lib/demoFixtures/applications.json` — the corresponding `GET
+  /applications` list (one entry).
+- `app/lib/demoFixtures/profile.json` — the real `GET /profile` response,
+  checked for the same kind of artifact and found clean.
+- `public/demo/{resume,cover_letter}.{docx,pdf}` — real rendered files, not
+  regenerated at runtime. The `.docx` files already existed on disk for this
+  package; the `.pdf` files didn't (only `/render` generates PDFs, on demand,
+  and nothing persists them), so both were generated once via a real `POST
+  /render` call against the live backend as a one-time content-prep step —
+  this is backend usage during *building* the demo fixtures, not something
+  demo mode itself ever does at runtime.
+- Skipped the optional second "Technician" track fixture (profile has one) to
+  manage scope — one fixture is enough to prove the mechanism end-to-end; the
+  Technician content is real and already sitting in `profile.json` if this
+  gets revisited later.
+
+### Mechanism: `app/lib/demo.ts`
+
+`DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'`, plus typed
+re-exports of the three fixtures and a `demoDelay()` helper (artificial
+~700ms delay so demo Generate/chip-revise actions still show their loading
+state instead of resolving instantly, which would read as broken rather than
+fast).
+
+**How the "no silent fallback" hard requirement was actually enforced**, not
+just asserted: grepped every `fetch(` call site in `app/` after finishing
+(13 total) and confirmed each one is either the intended demo path (a static
+`/demo/...` or `/_next/...` asset, same-origin, never `NEXT_PUBLIC_API_URL`)
+or sits behind an explicit `if (DEMO_MODE) return`/`if (DEMO_MODE) { ...
+return }` guard before the real fetch line. Several of those guards are
+technically unreachable defense-in-depth (e.g. `SaveButton`'s `handleConfirm`
+can only run after its own trigger button already blocked demo mode with a
+toast) — added anyway so the guarantee doesn't rely on exactly one code path
+per feature being correct, matching how seriously the "never a silent
+fallback" instruction was stated. Verified for real afterward in the browser
+(see Verification below), not just by code review.
+
+### Per-feature behavior in demo mode
+
+- **Health check** (`page.tsx`): the `/health` effect never fires; the top bar
+  shows a static "Demo Mode — sample data only, no live backend" banner in
+  its place.
+- **Profile fetch, Saved-tab list fetch**: both state initializers branch on
+  `DEMO_MODE` to start directly at `{state: 'success', ...fixture}` instead of
+  `'idle'`/`'loading'`, so the effects that would normally fetch never even
+  see a triggering state.
+- **Auto-load on mount** (`page.tsx`, new effect): calls the existing
+  `handleLoadApplication(demoApplication, 'resume')` once, so a portfolio
+  visitor lands on a fully populated, tailored resume immediately instead of
+  a blank JD form — reuses the exact hydration a real Saved-tab click already
+  does, no new state-management path. `handleGenerateForNewJob` is untouched
+  and still resets to a genuinely blank JD form in demo mode too (matching
+  real product behavior); Generate afterward still works (see below), so a
+  visitor can experience that flow as well, not just the pre-populated view.
+- **`/generate`** (`page.tsx`): after the artificial delay, always sets
+  `resumeState`/`coverLetterState` to the fixture's resume/cover-letter
+  regardless of what's typed in the JD/additional-context fields — no
+  tailoring happens, but the loading→success UX is otherwise identical to the
+  real flow.
+- **`/revise` chat + suggestion chips** (`RevisionChat.tsx`, `page.tsx`,
+  `app/lib/demoFixtures/revisions.ts`): `RevisionChat` gained optional
+  `demoSuggestions`/`onDemoSuggestionClick` props — a row of chips rendered
+  above the textarea (always enabled regardless of current selection, since
+  each chip specifies its own target id(s) rather than depending on
+  `selectedIds`). Three chips for Resume ("Make this bullet punchier" →
+  `b_salo_4`, "Add more cloud experience" → the `skill_cloud` group,
+  "Emphasize leadership" → the summary), two for Cover Letter (concise
+  opening → `p1`, more enthusiasm → `p3`). Clicking one calls a new
+  `handleDemoSuggestion` in `page.tsx` that runs the *exact same*
+  `applyRevisionUpdates`/`applyCoverLetterUpdates` + history-push path a real
+  `/revise` response already uses — only the source of the `updates` array
+  differs (a hardcoded fixture instead of a fetch response), so undo/redo,
+  history capping, and rendering all fall out for free with no new state
+  machinery. Free-typed instructions still reach `onSubmit` as always, but
+  `handleRevise`'s demo branch never calls fetch — it immediately sets an
+  inline error-style message ("This demo can't run arbitrary instructions —
+  try one of the suggestions above"), using the same `errorMessage` display
+  `RevisionChat` already had, no new UI needed for the graceful-failure case.
+- **Profile view-only** (`ProfileView.tsx`): adopted the simpler option the
+  manager floated, to keep scope contained. In demo mode: the Select/Edit
+  `ModeToggle` isn't rendered at all (so `previewMode` never leaves its
+  default `'select'`, which also means `ProfilePreview`'s existing
+  `mode !== 'edit'` branches naturally make every field read-only — no new
+  prop needed there); "Apply to Profile" shows a toast ("Profile editing
+  isn't available in this demo") instead of opening the confirm popover;
+  `RevisionChat` isn't rendered at all for Profile in demo mode, replaced by
+  a one-line sticky note ("Profile is view-only in this demo — chat-scoped
+  editing isn't available here"). Click-to-select/highlight still works
+  (harmless, no network, demonstrates the interaction model), just doesn't
+  lead anywhere.
+- **`/render` downloads** (`DownloadButtons.tsx`): demo branch fetches
+  `/demo/{resume,cover_letter}.{docx,pdf}` — a same-origin static asset
+  served by Next.js itself, not the backend — into the exact same
+  blob-download-trigger code the real path already uses, so the two branches
+  only differ in *where the blob comes from*, not in how the download itself
+  fires.
+- **Save/Update** (`SaveButton.tsx`): the trigger button's `onClick` shows a
+  toast ("Saving isn't available in this demo") instead of opening the name
+  popover, in demo mode — not explicitly named in the original 7-item list,
+  but a clear and necessary extension of "zero backend dependency, no silent
+  fallback" once you consider that Save writes to `/applications` just like
+  everything else. Same reasoning applied to:
+  - **Auto Apply** (`SavedTab.tsx`): toast ("Auto Apply is out of scope for
+    this demo") instead of opening the popover — this one *was* explicitly
+    named in the spec.
+  - **Delete** (`SavedTab.tsx`): hidden entirely rather than toasted, since
+    there's only one demo package and deleting it would break the demo with
+    no real backend to restore it from — a toast telling someone "no" to an
+    action that would genuinely break the page felt worse than just not
+    offering it.
+  - **Retry** (`SavedTab.tsx`, error-state fallback): guarded too, though
+    unreachable in practice since `listState` never becomes `'error'` in
+    demo mode.
+
+### Verification (real browser, this is functional/state logic, not a visual tweak)
+
+Getting a second `next dev` instance running against the same project
+directory to test demo mode without disturbing the real running dev server
+(or `.env.local`, which must stay untouched) doesn't work — Next 16 refuses a
+second dev server against the same project dir even on a different port.
+Used a production build instead, which is actually more representative of
+the real deployment anyway (`NEXT_PUBLIC_*` vars are baked in at build time
+either way): `NEXT_PUBLIC_DEMO_MODE=true npx next build`, then `next start -p
+3001` alongside the untouched real dev server on 3000. Confirmed both
+`.env.local` and the real dev server were unaffected before and after.
+
+- **Network panel, the core requirement**: called `read_network_requests`
+  early and again after a full pass through every feature below (chips,
+  free-text, Save, Download docx+pdf, Auto Apply, Delete-hidden check,
+  Profile, Generate) — zero requests to port 8000 or any `NEXT_PUBLIC_API_URL`
+  origin at any point; every request was same-origin (`localhost:3001`) static
+  assets (`_next/*`, `/demo/*.docx`, `/demo/*.pdf`).
+- Landed on the auto-populated Resume tab on load, with the "Current
+  Application" button present and the cleaned summary showing no leftover
+  test-artifact text.
+- Clicked all 3 Resume chips in sequence — each applied its exact scripted
+  diff (verified the rendered text matched, not just that *something*
+  changed): punchier bullet, appended cloud skills, leadership-emphasized
+  summary. Reverted with Undo — confirmed LIFO, one diff peeled off per
+  click, each intermediate state matching what preceded that specific chip
+  click (not just "back to original").
+- Typed free text with a section selected, hit Enter — got the graceful
+  inline message, confirmed via `read_network_requests` no request fired at
+  all for that submission.
+- Switched to Cover Letter tab, clicked "Make the opening more concise" —
+  applied correctly, independent state from the Resume tab's chip clicks.
+- Clicked Save/Update — toast fired, no popover opened, no network call.
+- Downloaded both `.docx` and `.pdf` for the resume — confirmed via
+  `read_network_requests` that `/demo/resume.docx` and `/demo/resume.pdf`
+  both returned real 200s with real file bytes (didn't verify the browser's
+  own save-to-Downloads step, since this sandboxed environment doesn't
+  surface that, but the fetch+blob+`<a download>` trigger is the exact same
+  code the already-working real path uses).
+- Saved tab: confirmed Delete is completely absent from the DOM (not just
+  visually hidden) for the one demo package; clicked Auto Apply and got the
+  toast, no popover.
+- Profile tab: confirmed no Select/Edit toggle renders, clicking a section
+  still shows the selection highlight (proving Select-mode interactivity
+  survives), and "Apply to Profile" produces the toast instead of the
+  confirm popover.
+- Clicked "Generate for new job" — reset to a genuinely blank JD form
+  (Current Application button gone too), then typed a JD and clicked
+  Generate Resume for real — "Generating..." showed for the artificial
+  delay, then landed on the same fixture resume, this time with the Save
+  button reading "Save" rather than "Update" (correctly reflecting that this
+  wasn't loaded from a package) — confirms the manual Generate path and the
+  auto-load-on-mount path are both independently correct, not one propping
+  up the other.
+- `tsc --noEmit` and `eslint` clean across the whole `app/` directory, not
+  just the touched files.
+
+### Not done / explicitly out of scope for this pass
+
+- The optional second "Technician" fixture, per the reasoning above.
+- Actual Vercel project setup (Root Directory, env var in the dashboard) —
+  confirmed out of scope for this task, a separate manual step.

@@ -5,6 +5,7 @@ import { Profile } from '../types'
 import { ProfilePreview } from './ProfilePreview'
 import { RevisionChat } from './RevisionChat'
 import { showToast } from './Toast'
+import { DEMO_MODE } from '../lib/demo'
 import {
   applyProfileRevisionUpdates,
   describeProfileSelection,
@@ -164,6 +165,9 @@ export function ProfileView({
     updateProfile((p) => removeSummaryItem(p, groupId, itemId))
 
   async function handleRevise(instruction: string) {
+    // Defense in depth: demo mode doesn't render RevisionChat for Profile at
+    // all (view-only there), so this should be unreachable.
+    if (DEMO_MODE) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setReviseState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -202,6 +206,9 @@ export function ProfileView({
   }
 
   async function handleApplyConfirm() {
+    // Defense in depth: the Apply button itself short-circuits before the
+    // confirm popover ever opens in demo mode.
+    if (DEMO_MODE) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setApplyState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -244,13 +251,21 @@ export function ProfileView({
               : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
         </p>
         <div className='relative flex items-center gap-2'>
-          <ModeToggle
-            mode={previewMode}
-            onChange={setPreviewMode}
-          />
+          {!DEMO_MODE && (
+            <ModeToggle
+              mode={previewMode}
+              onChange={setPreviewMode}
+            />
+          )}
           <button
             type='button'
-            onClick={() => setApplyState({ state: 'confirming' })}
+            onClick={() => {
+              if (DEMO_MODE) {
+                showToast("Profile editing isn't available in this demo")
+                return
+              }
+              setApplyState({ state: 'confirming' })
+            }}
             className='rounded bg-(--accent) px-3 py-1.5 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover)'
           >
             Apply to Profile
@@ -260,7 +275,7 @@ export function ProfileView({
               Error applying: {applyState.message}
             </span>
           )}
-          {isApplyOpen && (
+          {!DEMO_MODE && isApplyOpen && (
             <div className='absolute right-0 top-full z-20 mt-2 flex w-72 flex-col gap-2 rounded border border-(--border) bg-(--surface) p-3 shadow-lg'>
               <p className='text-sm text-foreground'>
                 Overwrite your master profile with these changes?
@@ -315,15 +330,21 @@ export function ProfileView({
         </pre>
       </details>
 
-      <RevisionChat
-        selectionSummary={describeProfileSelection(profile, selectedIds)}
-        selectionCount={selectedIds.size}
-        loading={reviseState.state === 'loading'}
-        errorMessage={reviseState.state === 'error' ? reviseState.message : null}
-        onSubmit={handleRevise}
-        canRevert={history.length > 0}
-        onRevert={handleRevert}
-      />
+      {DEMO_MODE ? (
+        <p className='sticky bottom-0 z-10 -mx-16 border-t border-(--border) bg-background px-16 py-3 text-xs text-(--muted)'>
+          Profile is view-only in this demo — chat-scoped editing isn&apos;t available here.
+        </p>
+      ) : (
+        <RevisionChat
+          selectionSummary={describeProfileSelection(profile, selectedIds)}
+          selectionCount={selectedIds.size}
+          loading={reviseState.state === 'loading'}
+          errorMessage={reviseState.state === 'error' ? reviseState.message : null}
+          onSubmit={handleRevise}
+          canRevert={history.length > 0}
+          onRevert={handleRevert}
+        />
+      )}
     </div>
   )
 }

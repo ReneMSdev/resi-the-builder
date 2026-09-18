@@ -172,6 +172,9 @@ export default function Home() {
   const [jobDescription, setJobDescription] = useState('')
   const [cleanedJobDescription, setCleanedJobDescription] = useState<string | null>(null)
   const [companyContext, setCompanyContext] = useState('')
+  const [loadedApplication, setLoadedApplication] = useState<{ id: string; name: string } | null>(
+    null,
+  )
   const [resumeState, setResumeState] = useState<ResumeGenerateState>({
     state: 'idle',
   })
@@ -389,7 +392,12 @@ export default function Home() {
     }
   }
 
+  function handleSaved(application: Application) {
+    setLoadedApplication({ id: application.id, name: application.name })
+  }
+
   function handleLoadApplication(application: Application, targetTab: Tab) {
+    setLoadedApplication({ id: application.id, name: application.name })
     setJobDescription(application.job_description.raw)
     setCleanedJobDescription(application.job_description.cleaned)
     setResumeState(
@@ -409,6 +417,7 @@ export default function Home() {
   }
 
   function handleGenerateForNewJob() {
+    setLoadedApplication(null)
     setJobDescription('')
     setCleanedJobDescription(null)
     setCompanyContext('')
@@ -553,6 +562,9 @@ export default function Home() {
                           jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
                           resume={resumeState.resume}
                           coverLetter={coverLetterState.state === 'success' ? coverLetterState.coverLetter : null}
+                          applicationId={loadedApplication?.id ?? null}
+                          initialName={loadedApplication?.name ?? ''}
+                          onSaved={handleSaved}
                         />
                         <DownloadButtons document={{ resume: resumeState.resume }} />
                       </div>
@@ -625,6 +637,9 @@ export default function Home() {
                           jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
                           resume={resumeState.state === 'success' ? resumeState.resume : null}
                           coverLetter={coverLetterState.coverLetter}
+                          applicationId={loadedApplication?.id ?? null}
+                          initialName={loadedApplication?.name ?? ''}
+                          onSaved={handleSaved}
                         />
                         <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
                       </div>

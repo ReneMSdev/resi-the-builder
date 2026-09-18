@@ -1034,3 +1034,55 @@ so its own internal padding provides the flush-to-edge breathing room instead.
 - `tsc --noEmit` and `eslint` (full project) clean.
 
 Committed as `c57fdca` on `redesign/application-workspace`. Not merged to `main`.
+
+## Feature: Save updates the loaded package in place instead of always creating a new one (2026-09-17)
+
+Backend added `PUT /applications/{id}` (same body shape as `POST`, returns the full
+updated `Application`, 404 if missing, `null` resume/cover_letter deletes that content
+server-side including its docx snapshot, `updated_at` bumped while `created_at` is
+preserved). Frontend wired this in so re-saving an already-loaded package updates it
+instead of creating a duplicate — previously every Save was an unconditional `POST`.
+
+- **`app/types.ts`**: added `updated_at: string` to `Application`, since the backend
+  now always includes it.
+- **`app/page.tsx`**: new `loadedApplication: {id, name} | null` state tracks which
+  package (if any) is currently checked out. Set by `handleLoadApplication` (first
+  statement, before the existing per-tab hydration), cleared by
+  `handleGenerateForNewJob` (first statement, before the existing resets). New
+  `handleSaved(application)` handler sets it from whatever `SaveButton` just
+  saved/updated, passed to `SaveButton` as its `onSaved` prop at both call sites
+  (Resume tab, Cover Letter tab) alongside `applicationId={loadedApplication?.id ??
+  null}` and `initialName={loadedApplication?.name ?? ''}`.
+- **`SaveButton.tsx`**: new `applicationId`/`initialName`/`onSaved` props. `isUpdate =
+  applicationId !== null` drives everything: `PUT /applications/{id}` vs
+  `POST /applications` (identical body either way — the same full-session payload
+  already being sent), the trigger button's label ("Update" vs "Save"), the popover's
+  name input pre-filling from `initialName` instead of always starting blank, the
+  confirm button's loading label ("Updating..." vs "Saving..."), and the toast text
+  ("Updated!" vs "Saved!"). On success, `onSaved(application)` is called with the
+  parsed response — this is what makes a *second* save in the same session (including
+  right after a fresh POST-created save, with no reload or navigation) correctly PUT
+  the just-created package instead of creating a duplicate, since the returned id/name
+  flow straight back into `loadedApplication`.
+- `tsc --noEmit` and `eslint` both clean.
+
+### Verification (real browser + direct API checks)
+
+Requested explicitly since this is update-vs-create logic, not a visual tweak: load a
+package, edit something, save, confirm via `GET /applications` that no duplicate was
+created and the existing one now reflects the change.
+
+- Pre-state: `GET /applications` showed exactly one record (the "Justworks — Software
+  Engineer" fixture).
+- Loaded it via the Saved tab's Resume pill — Save button correctly read "Update"
+  (screenshot-confirmed), validating `applicationId` flows through the load path.
+- Switched to Edit mode, appended " PUT-TEST" to the resume name field, committed it.
+- Clicked "Update" — popover pre-filled with "Justworks — Software Engineer" (not
+  blank, per the pre-fill requirement). Confirmed. Toast read "Updated!".
+- `GET /applications` afterward: still exactly one record, same id — no duplicate
+  created.
+- `GET /applications/{id}`: `created_at` unchanged, `updated_at` bumped to a later
+  timestamp, resume name field now read "Rene Maxey-Salomone PUT-TEST" — confirms the
+  existing record was updated in place, not replaced or duplicated.
+- Cleanup: `PUT` the record back with the original name restored; re-verified via
+  `GET` that the content was restored and still exactly one record exists.

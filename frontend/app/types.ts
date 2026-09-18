@@ -70,6 +70,7 @@ export type Application = {
   id: string;
   name: string;
   created_at: string;
+  updated_at: string;
   job_description: JobDescription;
   resume: Resume | null;
   cover_letter: CoverLetter | null;

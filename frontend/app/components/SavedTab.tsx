@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Application, ApplicationSummary } from '../types'
+import { buildAutoApplyPrompt } from '../lib/autoApplyPrompt'
 
 type ListState =
   | { state: 'loading' }
@@ -9,6 +10,12 @@ type ListState =
   | { state: 'error'; message: string }
 
 type Tab = 'jd' | 'resume' | 'cover_letter'
+
+type AutoApplyState =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | { state: 'ready'; prompt: string }
+  | { state: 'error'; message: string }
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -34,6 +41,13 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
+  const [autoApplyId, setAutoApplyId] = useState<string | null>(null)
+  const [autoApplyUrl, setAutoApplyUrl] = useState('')
+  const [autoApplyInstructions, setAutoApplyInstructions] = useState('')
+  const [autoApplyState, setAutoApplyState] = useState<AutoApplyState>({ state: 'idle' })
+  const [copied, setCopied] = useState(false)
+  const autoApplyPopoverRef = useRef<HTMLDivElement>(null)
+
   function runFetch(apiUrl: string) {
     fetch(`${apiUrl}/applications`)
       .then(async (res) => {
@@ -55,6 +69,17 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     if (!apiUrl) return
     runFetch(apiUrl)
   }, [])
+
+  useEffect(() => {
+    if (!autoApplyId) return
+    function handleClickOutside(e: MouseEvent) {
+      if (autoApplyPopoverRef.current && !autoApplyPopoverRef.current.contains(e.target as Node)) {
+        closeAutoApply()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [autoApplyId])
 
   function handleRetry() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -112,6 +137,59 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     }
   }
 
+  function openAutoApply(id: string) {
+    setAutoApplyId(id)
+    setAutoApplyUrl('')
+    setAutoApplyInstructions('')
+    setAutoApplyState({ state: 'idle' })
+    setCopied(false)
+  }
+
+  function closeAutoApply() {
+    setAutoApplyId(null)
+  }
+
+  async function handlePrepareApplication(id: string) {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+    if (!apiUrl) {
+      setAutoApplyState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
+      return
+    }
+    if (!autoApplyUrl.trim()) return
+
+    setAutoApplyState({ state: 'loading' })
+    try {
+      const res = await fetch(`${apiUrl}/applications/${id}`)
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(`${res.status}: ${body}`)
+      }
+      const application: Application = await res.json()
+      const prompt = buildAutoApplyPrompt({
+        application,
+        url: autoApplyUrl.trim(),
+        extraInstructions: autoApplyInstructions,
+        apiUrl,
+      })
+      setAutoApplyState({ state: 'ready', prompt })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      setAutoApplyState({ state: 'error', message })
+    }
+  }
+
+  async function handleCopy() {
+    if (autoApplyState.state !== 'ready') return
+    try {
+      await navigator.clipboard.writeText(autoApplyState.prompt)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      setAutoApplyState({ state: 'error', message: `Failed to copy: ${message}` })
+    }
+  }
+
   if (listState.state === 'loading') {
     return <p className='text-sm text-(--muted)'>Loading saved applications...</p>
   }
@@ -141,6 +219,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     <div className='flex flex-col gap-2'>
       {listState.items.map((item) => {
         const isPending = pendingId === item.id
+        const isAutoApplyOpen = autoApplyId === item.id
         return (
           <div
             key={item.id}
@@ -190,9 +269,117 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
               <span className='text-xs text-(--muted)'>{formatDate(item.created_at)}</span>
             </div>
             <div
-              className='flex gap-2'
+              className='flex items-center gap-2'
               onClick={(e) => e.stopPropagation()}
             >
+              <div className='relative'>
+                <button
+                  type='button'
+                  onClick={() => openAutoApply(item.id)}
+                  disabled={isPending}
+                  className='rounded border border-(--accent) px-3 py-1.5 text-sm font-medium text-(--accent) transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                >
+                  Auto Apply
+                </button>
+                {isAutoApplyOpen && (
+                  <div
+                    ref={autoApplyPopoverRef}
+                    className='absolute right-0 top-full z-20 mt-2 flex w-[32rem] max-w-[90vw] flex-col gap-3 rounded border border-(--border) bg-(--surface) p-4 shadow-lg'
+                  >
+                    <div className='flex items-center justify-between gap-2'>
+                      <span className='text-sm font-semibold text-foreground'>
+                        Auto Apply — {item.name}
+                      </span>
+                      <button
+                        type='button'
+                        onClick={closeAutoApply}
+                        aria-label='Close'
+                        className='text-(--muted) hover:cursor-pointer hover:text-foreground'
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {autoApplyState.state === 'ready' ? (
+                      <>
+                        <p className='text-xs text-(--muted)'>
+                          Paste this into a separate Claude Code + Claude-in-Chrome session to fill
+                          out the application. It will never auto-submit.
+                        </p>
+                        <textarea
+                          readOnly
+                          value={autoApplyState.prompt}
+                          rows={12}
+                          className='w-full resize-y rounded border border-(--border) bg-background p-2 font-mono text-xs text-foreground'
+                          onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                        />
+                        <div className='flex justify-end'>
+                          <button
+                            type='button'
+                            onClick={handleCopy}
+                            className='rounded bg-(--accent) px-3 py-1.5 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover)'
+                          >
+                            {copied ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <label className='flex flex-col gap-1'>
+                          <span className='text-xs font-medium text-foreground'>
+                            Application form URL
+                          </span>
+                          <input
+                            type='text'
+                            value={autoApplyUrl}
+                            onChange={(e) => setAutoApplyUrl(e.target.value)}
+                            placeholder='https://...'
+                            disabled={autoApplyState.state === 'loading'}
+                            className='rounded border border-(--border) bg-background px-2 py-1 text-sm text-foreground'
+                          />
+                        </label>
+                        <label className='flex flex-col gap-1'>
+                          <span className='text-xs font-medium text-foreground'>
+                            Extra instructions for this application (optional)
+                          </span>
+                          <textarea
+                            value={autoApplyInstructions}
+                            onChange={(e) => setAutoApplyInstructions(e.target.value)}
+                            rows={3}
+                            disabled={autoApplyState.state === 'loading'}
+                            placeholder='e.g. answer the "why this company" question by mentioning...'
+                            className='resize-none rounded border border-(--border) bg-background p-2 text-sm text-foreground'
+                          />
+                        </label>
+                        {autoApplyState.state === 'error' && (
+                          <p className='text-xs font-medium text-(--danger)'>
+                            {autoApplyState.message}
+                          </p>
+                        )}
+                        <div className='flex justify-end gap-2'>
+                          <button
+                            type='button'
+                            onClick={closeAutoApply}
+                            disabled={autoApplyState.state === 'loading'}
+                            className='rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft) disabled:opacity-50'
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type='button'
+                            onClick={() => handlePrepareApplication(item.id)}
+                            disabled={!autoApplyUrl.trim() || autoApplyState.state === 'loading'}
+                            className='rounded bg-(--accent) px-3 py-1.5 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover) disabled:opacity-50'
+                          >
+                            {autoApplyState.state === 'loading' ? 'Preparing...' : 'Prepare Application'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {confirmingId === item.id ? (
                 <>
                   <span className='self-center text-xs text-(--muted)'>Delete this item?</span>

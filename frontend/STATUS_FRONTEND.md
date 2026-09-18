@@ -1692,3 +1692,100 @@ accent — `hover:border-b-2 hover:border-(--accent-hover)/60` (2px bottom
 border only, in `--accent-hover` at 60% opacity, no `bg-(--accent-soft)`
 class at all anymore). Committed as-is; no further investigation needed since
 this was a deliberate manual design iteration, not a bug.
+
+## Feature: Auto Apply prompt generator (2026-09-18)
+
+Full design in `TODO.md`'s "Auto Apply prompt generator" entry. Frontend-only,
+as specified — no backend changes, no LLM call, pure text templating from data
+already available via `GET /applications/{id}`.
+
+- **New `app/lib/autoApplyPrompt.ts`**: `buildAutoApplyPrompt({application, url,
+  extraInstructions, apiUrl})` assembles the full prompt text as a single
+  string. Includes: the restated **never-submit safety rule** as the very
+  first thing in the prompt (bolded, "does not get relaxed for any reason")
+  and again in the numbered Steps section at the end, so it's stated
+  unambiguously both up front and right where the actual fill-in actions are
+  described; the entered URL and extra instructions (only included if
+  non-empty); contact info (name/email/phone/links) pulled from whichever of
+  `resume.meta`/`cover_letter.meta` exists (links only come from `resume.meta`
+  specifically, since `CoverLetterMeta` has no `links` field — a
+  `Meta | CoverLetterMeta` union naturally doesn't type-check `.links` on the
+  narrower type, caught by `tsc`); which docx file(s) actually exist on disk
+  for this package (`resume.docx`/`cover_letter.docx` under
+  `backend/app/data/applications/{id}/`, only referencing whichever the
+  package actually has); the full resume/cover-letter text content
+  (formatted as readable prose/bullets, not raw JSON — so a screening
+  question can be answered using this context without needing to parse a
+  docx file) via two small local formatters (`formatResumeBody`/
+  `formatCoverLetterBody`); the job description (raw and cleaned, both, since
+  cleaned can be null/missing on older data); and a backend-reference section
+  with the live `NEXT_PUBLIC_API_URL` and the exact `GET` URL to re-fetch the
+  package if the automation session needs to.
+- **`SavedTab.tsx`**: new "Auto Apply" button per card, styled as a bordered
+  `--accent`-colored button (distinct from the pills and from Delete's danger
+  styling). Clicking it opens an anchored popover — same absolutely-positioned,
+  click-outside-to-close pattern `SaveButton.tsx` already uses, including the
+  `containerRef` + `mousedown`-listener approach, just applied per-card via a
+  single `autoApplyId: string | null` state slot (only one card's popover can
+  ever be open at once, by construction, so one ref/one listener suffices
+  rather than needing per-item hooks inside the `.map()`).
+  - **Deliberately not routed through `handleLoadApplication`/`loadedApplication`**,
+    per the manager's explicit recommendation, which I'm adopting as the final
+    design: fetches `GET /applications/{id}` directly into local popup state
+    (`autoApplyState`), the same pattern `SavedTab.tsx` already uses for pill
+    clicks. This keeps Auto Apply a pure side-action with zero effect on the
+    main workspace — no risk of clobbering unsaved JD/Resume/CoverLetter tab
+    state, and confirmed in testing that the "Current Application" top-bar
+    button (which only appears when `loadedApplication` is set) never appears
+    as a side effect of using Auto Apply.
+  - Popup fields: a required URL input (Prepare Application stays disabled
+    until non-empty, never pre-filled from any stored data, entered fresh
+    every time per spec) and an optional extra-instructions textarea, neither
+    persisted anywhere. "Prepare Application" fetches the package, assembles
+    the prompt, and swaps the popup into a read-only textarea + Copy button
+    view. The X button closes at any stage (before or after generating); the
+    click-outside handler does too since Cancel and X are functionally
+    identical, matching the spec's "no separate close-vs-cancel distinction."
+  - Copy uses `navigator.clipboard.writeText`, flips the button to "Copied!"
+    for 2 seconds via `setTimeout`, and surfaces a failure inline (caught,
+    shown as an error message) rather than failing silently.
+
+### Verification (real browser + direct backend checks — functional/state logic, not a visual tweak)
+
+- Opened Auto Apply on the real "Justworks — Software Engineer" saved
+  package, entered a URL and extra instructions, clicked "Prepare
+  Application" — the generated prompt (read via the textarea's actual DOM
+  value, not just eyeballed) correctly included: the safety rule as the
+  first paragraph, the exact URL and extra-instructions text entered,
+  correct name/email/phone/all three links, both `resume.docx` and
+  `cover_letter.docx` paths with the correct application id, full resume
+  and cover-letter body content, both raw and cleaned job description text,
+  the correct live backend URL and a working `GET .../applications/{id}`
+  reference, and the never-submit rule restated a second time inside the
+  numbered Steps section.
+- Clicked Copy — button flipped to "Copied!" and reverted to "Copy" after
+  ~2s on its own (confirms the timeout-based reset works, not just the
+  initial click). Did not attempt to verify clipboard contents via
+  `navigator.clipboard.readText()` — that call hung the tab for the full
+  45s CDP timeout, almost certainly a blocked permissions prompt in the
+  automated browser context; recovered fine afterward with no lasting
+  effect on the page, but noting this as a dead end rather than a real
+  bug, since the write side already showed correct success/error handling.
+- Verified the X button closes the popup after a prompt was already
+  generated (not just at the initial-fields stage), and that click-outside
+  also closes it before generating. Confirmed clicking the "Auto Apply"
+  button, and interacting inside the popover, never triggers the card's own
+  `onClick` (which normally navigates to the Job Description tab) —
+  `stopPropagation` on the actions wrapper handles this correctly.
+- Confirmed no "Current Application" button ever appeared in the top bar
+  during any of this — the main workspace's `loadedApplication` state was
+  never touched, confirming the popup truly is self-contained.
+- Confirmed via `curl GET /applications` that the applications list was
+  unchanged (still exactly 2, the same ones from before this pass) — Auto
+  Apply never writes anything, so no cleanup was needed.
+- Did not test the resume-only/cover-letter-only branch (both existing saved
+  packages have both) — confirmed by code review instead: `buildAutoApplyPrompt`
+  guards each files/content section independently on `application.resume`/
+  `application.cover_letter` being present, so a package missing one simply
+  omits that section rather than emitting a broken reference.
+- `tsc --noEmit` and `eslint` clean.

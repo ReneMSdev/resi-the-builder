@@ -25,11 +25,7 @@ function formatDate(iso: string) {
 const pillClass =
   'rounded-full border border-(--border) bg-(--accent-soft) px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent) hover:text-(--surface)'
 
-export function SavedTab({
-  onLoad,
-}: {
-  onLoad: (application: Application, tab: Tab) => void
-}) {
+export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: Tab) => void }) {
   const [listState, setListState] = useState<ListState>(() =>
     process.env.NEXT_PUBLIC_API_URL
       ? { state: 'loading' }
@@ -123,7 +119,9 @@ export function SavedTab({
   if (listState.state === 'error') {
     return (
       <div className='flex flex-col gap-2'>
-        <p className='font-medium text-(--danger)'>Error loading saved applications: {listState.message}</p>
+        <p className='font-medium text-(--danger)'>
+          Error loading saved applications: {listState.message}
+        </p>
         <button
           type='button'
           onClick={handleRetry}
@@ -147,7 +145,7 @@ export function SavedTab({
           <div
             key={item.id}
             onClick={() => handleOpen(item.id, 'jd')}
-            className={`flex items-center justify-between gap-2 rounded border border-(--border) bg-(--surface) p-3 transition-colors hover:cursor-pointer hover:bg-(--accent-soft) ${
+            className={`flex items-center justify-between gap-2 rounded border border-(--border) bg-(--surface) p-3 transition-colors hover:cursor-pointer hover:border-b-2 hover:border-(--accent-hover)/60 ${
               isPending ? 'pointer-events-none opacity-50' : ''
             }`}
           >

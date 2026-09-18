@@ -1626,3 +1626,69 @@ Two small follow-ups.
   is based on the same structural facts (main's isolation from the top bar)
   already verified with DOM measurements in the original restructure's own
   entry.
+
+## Fix: Saved-tab card hover uses a coral border instead of a full-card tint (2026-09-18)
+
+`SavedTab.tsx`'s card hover was `hover:bg-(--accent-soft)` (a full-card
+background tint), swapped for `hover:border-(--accent)` — the card already has
+a `border border-(--border)` base, so hover now just recolors that border
+coral instead of tinting the whole card. Pure CSS, reasoned through rather than
+browser-verified per the user's own stated preference for this kind of change.
+The pill buttons (Job Description/Resume/Cover Letter) and the Delete/Confirm/
+Cancel buttons keep their own separate hover treatments unchanged — only the
+outer card's hover state was in scope. `tsc --noEmit` and `eslint` clean.
+
+**Follow-up**: bumped the hover border from 1px to 2px (`hover:border-2
+hover:border-(--accent)`), per a direct follow-up request, so the coral hover
+state reads a bit more clearly. Note: since the card's box-sizing is
+`border-box`, growing the border by 1px on hover shrinks the interior by 1px
+each side rather than growing the card outward — a common, generally
+imperceptible tradeoff for border-based hover effects, not something this
+pass tried to fully eliminate (would require a constant-width
+transparent-to-colored border trick instead, not what was asked for). Pure
+CSS, reasoned through, not browser-verified.
+
+**Second follow-up**: added a very slight background tint back alongside the
+border, per a direct follow-up request — `hover:bg-(--accent-soft)/40` (the
+same `--accent-soft` token from the original full-tint hover, at 40% opacity
+via Tailwind's slash-opacity modifier, already used elsewhere in this codebase
+for `hover:bg-white/10`). The border stays the primary hover signal; the tint
+is a faint addition, not a return to the original full-intensity look. Pure
+CSS, reasoned through, not browser-verified.
+
+**Third follow-up — investigation, not a guess**: the user manually edited the
+card's hover styling directly (kept the border at 1px — `hover:border-1` — and
+tried the background tint at `hover:bg-(--accent-soft)/10`), and reported it
+rendered as visually identical to the page background, no tint at all, even
+though the border still worked. Investigated rather than just picking a bigger
+number:
+- `--accent-soft` in `globals.css` is a plain solid hex (`#fbe1d2`), not
+  already an rgba/semi-transparent value, ruling out the "compounding
+  opacity" theory.
+- Fetched the actual compiled Tailwind output from the dev server and
+  confirmed `hover:bg-(--accent-soft)/10` genuinely compiles to
+  `background-color: color-mix(in oklab, var(--accent-soft) 10%, transparent)`
+  inside an `@supports (color: color-mix(...))` block — the opacity-modifier
+  mechanism itself works correctly, this isn't a Tailwind/CSS bug.
+- The real cause: `color-mix(...)` composites the translucent peach against
+  whatever's *behind* the card (the page's own `--background`, `#f6ecdb`),
+  and `--accent-soft` (`#fbe1d2`) is tonally very close to that background —
+  both light, warm, low-saturation creams. At 10% alpha the blend is close
+  enough to `#f6ecdb` to read as visually identical, confirmed by rendering
+  swatches at 10/20/30/40/60/80/100% directly against the real page
+  background in the browser and comparing them side by side: 10–20% were
+  genuinely too close to the background to register, 30% was the first level
+  that read as a clear, gentle wash while still looking subtle, 60%+ started
+  looking like a solid highlight again (closer to the original full-tint
+  look this whole change was meant to move away from).
+- Landed on `hover:bg-(--accent-soft)/30`, kept `hover:border-1` exactly as
+  the user left it. Verified on the real card (not just swatches): hovering
+  now shows a clearly-present but still light warm tint alongside the coral
+  border, no longer indistinguishable from the page background.
+
+**Final state, after further manual tweaks (user happy with this one)**: the
+background-tint approach was dropped entirely in favor of a bottom-border
+accent — `hover:border-b-2 hover:border-(--accent-hover)/60` (2px bottom
+border only, in `--accent-hover` at 60% opacity, no `bg-(--accent-soft)`
+class at all anymore). Committed as-is; no further investigation needed since
+this was a deliberate manual design iteration, not a bug.

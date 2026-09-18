@@ -193,6 +193,14 @@ export default function Home() {
   const [loadedApplication, setLoadedApplication] = useState<{ id: string; name: string } | null>(
     null,
   )
+  // Deliberately separate from loadedApplication rather than reusing it for
+  // this: loadedApplication also drives SaveButton's Save-vs-Update label
+  // (isUpdate = applicationId !== null), and a freshly generated-but-never-
+  // saved resume is supposed to still say "Save" — matching what the real
+  // (non-demo) Generate flow already does. Reusing loadedApplication here
+  // would make demo mode's Generate diverge from that established, already
+  // regression-tested distinction just to also drive this button.
+  const [demoHasGenerated, setDemoHasGenerated] = useState(false)
   const [resumeState, setResumeState] = useState<ResumeGenerateState>({
     state: 'idle',
   })
@@ -313,6 +321,7 @@ export default function Home() {
       // leaving them on the JD tab to go find it — generating the other type
       // is untouched, so it still lands on its own tab independently.
       setTab(kind === 'resume' ? 'resume' : 'cover_letter')
+      setDemoHasGenerated(true)
       return
     }
 
@@ -582,6 +591,7 @@ export default function Home() {
 
   function handleGenerateForNewJob() {
     setLoadedApplication(null)
+    setDemoHasGenerated(false)
     // Re-populate the canned JD rather than resetting to blank in demo mode —
     // otherwise resetting would reintroduce the empty-textarea friction the
     // pre-filled landing state was added to avoid. Canned Generate ignores
@@ -663,7 +673,7 @@ export default function Home() {
           </>
         )}
         <div className='flex items-center gap-3'>
-          {loadedApplication && (
+          {(loadedApplication || demoHasGenerated) && (
             <button
               type='button'
               onClick={() => setTab('jd')}

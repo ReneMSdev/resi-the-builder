@@ -2393,3 +2393,47 @@ toast, left the popup open in its form state (no spurious loading/ready
 transition), and fired zero network requests (`read_network_requests`
 confirmed no port-8000 calls); Cancel still closes the popup normally.
 `tsc --noEmit` and `eslint app/` clean.
+
+---
+
+## Feature: "Current Application" button appears after a demo Generate (2026-09-18)
+
+Ask: once either Generate button succeeds in demo mode, show the existing
+"Current Application" top-bar button (already present for a truly loaded
+saved package), so a visitor can navigate away and jump straight back to
+what they generated.
+
+**Deviated from the suggested implementation, and why**: the suggestion was
+to reuse `loadedApplication` (set it after a demo generate, same as a real
+load does) rather than add a new render condition. Traced through the
+existing code first rather than assuming that round-trips cleanly:
+`loadedApplication` also drives `SaveButton`'s Save-vs-Update label
+(`isUpdate = applicationId !== null`), and the real (non-demo) `handleGenerate`
+deliberately never sets `loadedApplication` — a freshly generated,
+never-saved resume already says "Save," not "Update," and this exact
+distinction was called out and regression-checked in an earlier
+`STATUS_FRONTEND.md` entry ("landed on the same fixture resume ... with the
+Save button reading 'Save' rather than 'Update'"). Reusing `loadedApplication`
+for this would make demo mode's Generate diverge from that established,
+already-tested real-app behavior just to also drive this one button.
+
+Used a separate `demoHasGenerated` boolean instead: set `true` in
+`handleGenerate`'s demo branch after either type succeeds, reset to `false`
+in `handleGenerateForNewJob` (alongside the existing `setLoadedApplication(null)`).
+The top-bar button's render check became
+`{(loadedApplication || demoHasGenerated) && (...)}` — everything else about
+the button (label, `onClick={() => setTab('jd')}`) is unchanged and doesn't
+need to know which of the two conditions triggered it. `handleLoadApplication`
+(the Saved-tab explicit-load path) needed no changes — it already sets
+`loadedApplication`, which independently satisfies the same render check.
+
+**Verification**: traced the full path by hand rather than a full browser
+pass, per the updated verification-scope guidance — this is a single
+boolean gating one render condition, with no new async/effect logic and no
+interaction with anything except the two touch points above. Fresh load:
+both flags false, button hidden (matches the landing-flow entry above).
+Generate Resume only: `demoHasGenerated` true, button shows, persists across
+tab navigation (plain component state, unaffected by `tab`). "Current
+Application" click: unchanged `setTab('jd')`, independent of which flag is
+set. "Generate for new job": both flags reset to their initial values,
+button hidden again. `tsc --noEmit` and `eslint app/` clean.

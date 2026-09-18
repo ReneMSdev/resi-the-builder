@@ -468,210 +468,212 @@ export default function Home() {
         </button>
       </div>
 
-      <main
-        className={`flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-8 overflow-y-auto px-16 pt-8 ${
-          showingRevisionChat ? '' : 'pb-8'
-        }`}
-      >
-        <div className='w-full border-b border-(--border) pb-6'>
-          <div className='flex gap-2 justify-center'>
-            <button
-              type='button'
-              onClick={() => setTab('jd')}
-              className={tabClass('jd')}
-            >
-              Job Description
-            </button>
-            <button
-              type='button'
-              onClick={() => setTab('resume')}
-              className={tabClass('resume')}
-            >
-              Resume
-            </button>
-            <button
-              type='button'
-              onClick={() => setTab('cover_letter')}
-              className={tabClass('cover_letter')}
-            >
-              Cover Letter
-            </button>
+      <main className='app-scrollbar min-h-0 w-full flex-1 overflow-y-auto'>
+        <div
+          className={`mx-auto flex w-full max-w-3xl flex-col gap-8 px-16 pt-8 ${
+            showingRevisionChat ? '' : 'pb-8'
+          }`}
+        >
+          <div className='w-full border-b border-(--border) pb-6'>
+            <div className='flex gap-2 justify-center'>
+              <button
+                type='button'
+                onClick={() => setTab('jd')}
+                className={tabClass('jd')}
+              >
+                Job Description
+              </button>
+              <button
+                type='button'
+                onClick={() => setTab('resume')}
+                className={tabClass('resume')}
+              >
+                Resume
+              </button>
+              <button
+                type='button'
+                onClick={() => setTab('cover_letter')}
+                className={tabClass('cover_letter')}
+              >
+                Cover Letter
+              </button>
+            </div>
           </div>
+
+          {tab === 'saved' && <SavedTab onLoad={handleLoadApplication} />}
+
+          {tab === 'profile' && <ProfileView />}
+
+          {tab !== 'saved' && tab !== 'profile' && (
+            <>
+              {tab === 'jd' &&
+                (resumeReady && coverLetterReady ? (
+                  <div className='flex flex-col gap-2'>
+                    <p className='text-xs text-(--muted)'>Job description (reference)</p>
+                    <div className='whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 text-sm text-foreground'>
+                      {cleanedJobDescription || jobDescription}
+                    </div>
+                  </div>
+                ) : (
+                  <GenerateForm
+                    jobDescription={jobDescription}
+                    onJobDescriptionChange={setJobDescription}
+                    companyContext={companyContext}
+                    onCompanyContextChange={setCompanyContext}
+                    showResumeButton={!resumeReady}
+                    showCoverLetterButton={!coverLetterReady}
+                    resumeGenerating={resumeGenerating}
+                    coverLetterGenerating={coverLetterGenerating}
+                    resumeError={resumeState.state === 'error' ? resumeState.message : null}
+                    coverLetterError={
+                      coverLetterState.state === 'error' ? coverLetterState.message : null
+                    }
+                    onGenerateResume={() => handleGenerate('resume')}
+                    onGenerateCoverLetter={() => handleGenerate('cover_letter')}
+                  />
+                ))}
+
+              {tab === 'resume' &&
+                (resumeState.state === 'success' ? (
+                  <div className='flex flex-col gap-2'>
+                    <div className='flex items-center justify-between gap-2'>
+                      <p className='text-xs text-(--muted)'>
+                        {previewMode === 'edit'
+                          ? 'Edit mode: click any field to edit it.'
+                          : selectedIds.size === 0
+                            ? 'Click a bullet, entry, or section to select it.'
+                            : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+                      </p>
+                      <div className='flex items-center gap-2'>
+                        <ModeToggle
+                          mode={previewMode}
+                          onChange={setPreviewMode}
+                        />
+                        <SaveButton
+                          jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
+                          resume={resumeState.resume}
+                          coverLetter={coverLetterState.state === 'success' ? coverLetterState.coverLetter : null}
+                        />
+                        <DownloadButtons document={{ resume: resumeState.resume }} />
+                      </div>
+                    </div>
+                    <ResumePreview
+                      resume={resumeState.resume}
+                      selectedIds={selectedIds}
+                      onToggle={toggleSelected}
+                      mode={previewMode}
+                      onEditField={handleEditField}
+                      onAddBullet={handleAddBullet}
+                      onRemoveBullet={handleRemoveBullet}
+                      onAddSkillItem={handleAddSkillItem}
+                      onRemoveSkillItem={handleRemoveSkillItem}
+                      onEditSkillItem={handleEditSkillItem}
+                      onAddLink={handleAddLink}
+                      onRemoveLink={handleRemoveLink}
+                      onEditLink={handleEditLink}
+                    />
+                    <details className='text-xs text-(--muted)'>
+                      <summary className='cursor-pointer select-none'>Raw JSON</summary>
+                      <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
+                        {JSON.stringify(resumeState.resume, null, 2)}
+                      </pre>
+                    </details>
+                    <RevisionChat
+                      selectionSummary={describeSelection(resumeState.resume, selectedIds)}
+                      selectionCount={selectedIds.size}
+                      loading={reviseState.state === 'loading'}
+                      errorMessage={reviseState.state === 'error' ? reviseState.message : null}
+                      onSubmit={handleRevise}
+                    />
+                  </div>
+                ) : (
+                  <GenerateForm
+                    jobDescription={jobDescription}
+                    onJobDescriptionChange={setJobDescription}
+                    companyContext={companyContext}
+                    onCompanyContextChange={setCompanyContext}
+                    showResumeButton={!resumeReady}
+                    showCoverLetterButton={!coverLetterReady}
+                    resumeGenerating={resumeGenerating}
+                    coverLetterGenerating={coverLetterGenerating}
+                    resumeError={resumeState.state === 'error' ? resumeState.message : null}
+                    coverLetterError={
+                      coverLetterState.state === 'error' ? coverLetterState.message : null
+                    }
+                    onGenerateResume={() => handleGenerate('resume')}
+                    onGenerateCoverLetter={() => handleGenerate('cover_letter')}
+                  />
+                ))}
+
+              {tab === 'cover_letter' &&
+                (coverLetterState.state === 'success' ? (
+                  <div className='flex flex-col gap-2'>
+                    <div className='flex items-center justify-between gap-2'>
+                      <p className='text-xs text-(--muted)'>
+                        {previewMode === 'edit'
+                          ? 'Edit mode: click any field to edit it.'
+                          : selectedIds.size === 0
+                            ? 'Click a paragraph to select it.'
+                            : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+                      </p>
+                      <div className='flex items-center gap-2'>
+                        <ModeToggle
+                          mode={previewMode}
+                          onChange={setPreviewMode}
+                        />
+                        <SaveButton
+                          jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
+                          resume={resumeState.state === 'success' ? resumeState.resume : null}
+                          coverLetter={coverLetterState.coverLetter}
+                        />
+                        <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
+                      </div>
+                    </div>
+                    <CoverLetterPreview
+                      coverLetter={coverLetterState.coverLetter}
+                      selectedIds={selectedIds}
+                      onToggle={toggleSelected}
+                      mode={previewMode}
+                      onEditField={handleEditField}
+                    />
+                    <details className='text-xs text-(--muted)'>
+                      <summary className='cursor-pointer select-none'>Raw JSON</summary>
+                      <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
+                        {JSON.stringify(coverLetterState.coverLetter, null, 2)}
+                      </pre>
+                    </details>
+                    <RevisionChat
+                      selectionSummary={describeCoverLetterSelection(
+                        coverLetterState.coverLetter,
+                        selectedIds,
+                      )}
+                      selectionCount={selectedIds.size}
+                      loading={reviseState.state === 'loading'}
+                      errorMessage={reviseState.state === 'error' ? reviseState.message : null}
+                      onSubmit={handleRevise}
+                    />
+                  </div>
+                ) : (
+                  <GenerateForm
+                    jobDescription={jobDescription}
+                    onJobDescriptionChange={setJobDescription}
+                    companyContext={companyContext}
+                    onCompanyContextChange={setCompanyContext}
+                    showResumeButton={!resumeReady}
+                    showCoverLetterButton={!coverLetterReady}
+                    resumeGenerating={resumeGenerating}
+                    coverLetterGenerating={coverLetterGenerating}
+                    resumeError={resumeState.state === 'error' ? resumeState.message : null}
+                    coverLetterError={
+                      coverLetterState.state === 'error' ? coverLetterState.message : null
+                    }
+                    onGenerateResume={() => handleGenerate('resume')}
+                    onGenerateCoverLetter={() => handleGenerate('cover_letter')}
+                  />
+                ))}
+            </>
+          )}
         </div>
-
-        {tab === 'saved' && <SavedTab onLoad={handleLoadApplication} />}
-
-        {tab === 'profile' && <ProfileView />}
-
-        {tab !== 'saved' && tab !== 'profile' && (
-          <>
-            {tab === 'jd' &&
-              (resumeReady && coverLetterReady ? (
-                <div className='flex flex-col gap-2'>
-                  <p className='text-xs text-(--muted)'>Job description (reference)</p>
-                  <div className='whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 text-sm text-foreground'>
-                    {cleanedJobDescription || jobDescription}
-                  </div>
-                </div>
-              ) : (
-                <GenerateForm
-                  jobDescription={jobDescription}
-                  onJobDescriptionChange={setJobDescription}
-                  companyContext={companyContext}
-                  onCompanyContextChange={setCompanyContext}
-                  showResumeButton={!resumeReady}
-                  showCoverLetterButton={!coverLetterReady}
-                  resumeGenerating={resumeGenerating}
-                  coverLetterGenerating={coverLetterGenerating}
-                  resumeError={resumeState.state === 'error' ? resumeState.message : null}
-                  coverLetterError={
-                    coverLetterState.state === 'error' ? coverLetterState.message : null
-                  }
-                  onGenerateResume={() => handleGenerate('resume')}
-                  onGenerateCoverLetter={() => handleGenerate('cover_letter')}
-                />
-              ))}
-
-            {tab === 'resume' &&
-              (resumeState.state === 'success' ? (
-                <div className='flex flex-col gap-2'>
-                  <div className='flex items-center justify-between gap-2'>
-                    <p className='text-xs text-(--muted)'>
-                      {previewMode === 'edit'
-                        ? 'Edit mode: click any field to edit it.'
-                        : selectedIds.size === 0
-                          ? 'Click a bullet, entry, or section to select it.'
-                          : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
-                    </p>
-                    <div className='flex items-center gap-2'>
-                      <ModeToggle
-                        mode={previewMode}
-                        onChange={setPreviewMode}
-                      />
-                      <SaveButton
-                        jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
-                        resume={resumeState.resume}
-                        coverLetter={coverLetterState.state === 'success' ? coverLetterState.coverLetter : null}
-                      />
-                      <DownloadButtons document={{ resume: resumeState.resume }} />
-                    </div>
-                  </div>
-                  <ResumePreview
-                    resume={resumeState.resume}
-                    selectedIds={selectedIds}
-                    onToggle={toggleSelected}
-                    mode={previewMode}
-                    onEditField={handleEditField}
-                    onAddBullet={handleAddBullet}
-                    onRemoveBullet={handleRemoveBullet}
-                    onAddSkillItem={handleAddSkillItem}
-                    onRemoveSkillItem={handleRemoveSkillItem}
-                    onEditSkillItem={handleEditSkillItem}
-                    onAddLink={handleAddLink}
-                    onRemoveLink={handleRemoveLink}
-                    onEditLink={handleEditLink}
-                  />
-                  <details className='text-xs text-(--muted)'>
-                    <summary className='cursor-pointer select-none'>Raw JSON</summary>
-                    <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
-                      {JSON.stringify(resumeState.resume, null, 2)}
-                    </pre>
-                  </details>
-                  <RevisionChat
-                    selectionSummary={describeSelection(resumeState.resume, selectedIds)}
-                    selectionCount={selectedIds.size}
-                    loading={reviseState.state === 'loading'}
-                    errorMessage={reviseState.state === 'error' ? reviseState.message : null}
-                    onSubmit={handleRevise}
-                  />
-                </div>
-              ) : (
-                <GenerateForm
-                  jobDescription={jobDescription}
-                  onJobDescriptionChange={setJobDescription}
-                  companyContext={companyContext}
-                  onCompanyContextChange={setCompanyContext}
-                  showResumeButton={!resumeReady}
-                  showCoverLetterButton={!coverLetterReady}
-                  resumeGenerating={resumeGenerating}
-                  coverLetterGenerating={coverLetterGenerating}
-                  resumeError={resumeState.state === 'error' ? resumeState.message : null}
-                  coverLetterError={
-                    coverLetterState.state === 'error' ? coverLetterState.message : null
-                  }
-                  onGenerateResume={() => handleGenerate('resume')}
-                  onGenerateCoverLetter={() => handleGenerate('cover_letter')}
-                />
-              ))}
-
-            {tab === 'cover_letter' &&
-              (coverLetterState.state === 'success' ? (
-                <div className='flex flex-col gap-2'>
-                  <div className='flex items-center justify-between gap-2'>
-                    <p className='text-xs text-(--muted)'>
-                      {previewMode === 'edit'
-                        ? 'Edit mode: click any field to edit it.'
-                        : selectedIds.size === 0
-                          ? 'Click a paragraph to select it.'
-                          : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
-                    </p>
-                    <div className='flex items-center gap-2'>
-                      <ModeToggle
-                        mode={previewMode}
-                        onChange={setPreviewMode}
-                      />
-                      <SaveButton
-                        jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
-                        resume={resumeState.state === 'success' ? resumeState.resume : null}
-                        coverLetter={coverLetterState.coverLetter}
-                      />
-                      <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
-                    </div>
-                  </div>
-                  <CoverLetterPreview
-                    coverLetter={coverLetterState.coverLetter}
-                    selectedIds={selectedIds}
-                    onToggle={toggleSelected}
-                    mode={previewMode}
-                    onEditField={handleEditField}
-                  />
-                  <details className='text-xs text-(--muted)'>
-                    <summary className='cursor-pointer select-none'>Raw JSON</summary>
-                    <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
-                      {JSON.stringify(coverLetterState.coverLetter, null, 2)}
-                    </pre>
-                  </details>
-                  <RevisionChat
-                    selectionSummary={describeCoverLetterSelection(
-                      coverLetterState.coverLetter,
-                      selectedIds,
-                    )}
-                    selectionCount={selectedIds.size}
-                    loading={reviseState.state === 'loading'}
-                    errorMessage={reviseState.state === 'error' ? reviseState.message : null}
-                    onSubmit={handleRevise}
-                  />
-                </div>
-              ) : (
-                <GenerateForm
-                  jobDescription={jobDescription}
-                  onJobDescriptionChange={setJobDescription}
-                  companyContext={companyContext}
-                  onCompanyContextChange={setCompanyContext}
-                  showResumeButton={!resumeReady}
-                  showCoverLetterButton={!coverLetterReady}
-                  resumeGenerating={resumeGenerating}
-                  coverLetterGenerating={coverLetterGenerating}
-                  resumeError={resumeState.state === 'error' ? resumeState.message : null}
-                  coverLetterError={
-                    coverLetterState.state === 'error' ? coverLetterState.message : null
-                  }
-                  onGenerateResume={() => handleGenerate('resume')}
-                  onGenerateCoverLetter={() => handleGenerate('cover_letter')}
-                />
-              ))}
-          </>
-        )}
       </main>
       <ToastContainer />
     </div>

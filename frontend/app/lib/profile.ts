@@ -1,5 +1,31 @@
 import { IdText, Profile } from "../types";
 
+// Meta/Links and Summary Pool have no backing id of their own in the Profile
+// schema (unlike a real Section), so these synthetic ids stand in for "select
+// everything in this group" client-side. expandSelectedIds turns either into
+// the real ids the backend actually recognizes before a /revise call goes out.
+export const META_SECTION_ID = "__meta__";
+export const SUMMARY_POOL_SECTION_ID = "__summary_pool__";
+
+export function expandSelectedIds(profile: Profile, selectedIds: Set<string>): string[] {
+  const result: string[] = [];
+  for (const id of selectedIds) {
+    if (id === META_SECTION_ID) {
+      result.push(profile.meta.name.id, profile.meta.email.id, profile.meta.phone.id);
+      for (const link of profile.meta.links ?? []) {
+        result.push(link.id);
+      }
+    } else if (id === SUMMARY_POOL_SECTION_ID) {
+      for (const group of profile.summary_pool) {
+        result.push(group.id);
+      }
+    } else {
+      result.push(id);
+    }
+  }
+  return result;
+}
+
 function patchIdText(field: IdText, updateMap: Map<string, string>): IdText {
   return updateMap.has(field.id)
     ? { ...field, text: updateMap.get(field.id)! }
@@ -18,6 +44,9 @@ export function applyProfileRevisionUpdates(
     name: patchIdText(profile.meta.name, updateMap),
     email: patchIdText(profile.meta.email, updateMap),
     phone: patchIdText(profile.meta.phone, updateMap),
+    links: (profile.meta.links ?? []).map((link) =>
+      updateMap.has(link.id) ? { ...link, label: updateMap.get(link.id)! } : link
+    ),
   };
 
   const newSections = profile.sections.map((section) => {
@@ -96,6 +125,12 @@ export function describeProfileSelection(
   }
 
   const parts: string[] = [];
+  if (selectedIds.has(META_SECTION_ID)) {
+    parts.push("Meta/Links");
+  }
+  if (selectedIds.has(SUMMARY_POOL_SECTION_ID)) {
+    parts.push("Summary Pool");
+  }
   if (summaryItemCount > 0) {
     parts.push(`${summaryItemCount} summary item${summaryItemCount === 1 ? "" : "s"}`);
   }

@@ -1494,3 +1494,89 @@ Measured every top-level section's chevron `<svg>` via
 Summary Pool, Experience, Projects, Education, Certifications, Skills) now
 report the exact same x-coordinate — pixel-aligned, not just visually close.
 `tsc --noEmit` and `eslint` both clean.
+
+## Fix: Section-header hover/selected styling, and whole-section select/revise for Meta/Links and Summary Pool (2026-09-18)
+
+Two related pieces from the same batch.
+
+- **Underline styling for the 7 top-level section headers**: `Selectable.tsx`
+  gained a `variant?: "background" | "underline"` prop (default `"background"`,
+  so every existing call site — bullets, entries, skill items, summary items,
+  links, nested entry/role-type-group headers — keeps its current look with
+  zero changes). `variant="underline"` renders an accent-colored underline
+  (`decoration-(--accent) decoration-2 underline-offset-4`) instead of a
+  background tint, shown on hover (transient, `select` mode only) and kept
+  persistently once selected — same persistent-vs-transient convention already
+  used everywhere else, just a different visual treatment. Passed
+  `variant="underline"` only at `ProfilePreview.tsx`'s **7 top-level** header
+  call sites (Meta/Links, Summary Pool, and each of the 5 real sections); the
+  nested Entry headers (within Experience/Projects) and role-type-group headers
+  (within Summary Pool) were left on the default background variant, since the
+  ask was specifically about the top-level section headers, not every
+  collapsible header in the tree. Added a `wrapperClassName` prop to
+  `CollapsibleSelectableHeader` (`pb-1` at the 7 top-level call sites) so the
+  underline has breathing room from the content below it.
+- **Bug: Meta/Links and Summary Pool couldn't be selected as whole sections**.
+  These two only just got wrapped in a real container `<div>` for the alignment
+  fix above, but they were still rendered via the old plain, non-selectable
+  `CollapsibleHeader` (removed entirely now) rather than
+  `CollapsibleSelectableHeader` (used by the other 5 sections). Fixed by
+  switching both to `CollapsibleSelectableHeader`, using two new synthetic ids
+  (`META_SECTION_ID` / `SUMMARY_POOL_SECTION_ID`, exported from
+  `app/lib/profile.ts`) — neither has a real backing id in the `Profile` schema
+  the way a `Section` does, unlike Experience/Projects/etc.
+  - Since the backend's `/revise` has no concept of these synthetic ids, added
+    `expandSelectedIds(profile, selectedIds)` in `lib/profile.ts`: before a
+    revise request goes out, `META_SECTION_ID` expands to
+    `[name.id, email.id, phone.id, ...link ids]` and `SUMMARY_POOL_SECTION_ID`
+    expands to every role-type group's own id (letting the backend's existing
+    group→per-item expansion take over from there, the same as selecting a
+    group directly already does). `ProfileView.tsx`'s `handleRevise` now sends
+    `expandSelectedIds(profile, selectedIds)` instead of `Array.from(selectedIds)`
+    directly.
+  - **Second bug found while verifying the first fix**: even with the right ids
+    reaching the backend, a link-id update never actually applied — testing a
+    real revise call directly against the backend confirmed it returns
+    `{"id": "link_website", "text": "Personal Site"}` correctly (the backend's
+    prompt treats a link id's `"text"` as the **label**, confirmed by reading
+    `services/llm.py`'s revise system prompt), but
+    `applyProfileRevisionUpdates` never had a code path patching `Link` objects
+    at all — only `IdText`-shaped fields (meta name/email/phone, entry fields,
+    bullets, summary items) were ever patched. Fixed by patching
+    `profile.meta.links` in `applyProfileRevisionUpdates`, setting `label` from
+    the update's `text` when a link's id matches. Note: `lib/resume.ts`'s
+    equivalent `applyRevisionUpdates` has the same latent gap for Resume, but
+    it's currently unreachable there since `ResumePreview.tsx` has never made
+    links individually selectable in the first place (only Profile does, per
+    the original "meta-field level" selection ask) — left unfixed since nothing
+    in the Resume UI can trigger it, but worth knowing about if that ever
+    changes.
+
+### Verification (real browser + direct backend checks — this is a functional bug fix)
+
+- Selected "Meta / Links" by clicking its title text (not the chevron) —
+  showed the new persistent accent underline, "Selected: 1 item", and
+  "Editing: Meta/Links" in the chat bar.
+- Direct `fetch` to `/revise` with the manually-expanded real ids (bypassing
+  the frontend) confirmed the backend correctly returns a link-label update
+  for "add the label 'Personal Site' to the website link" — but the *displayed*
+  link didn't change, which is what led to finding the missing `Link`-patching
+  code path above.
+- After fixing `applyProfileRevisionUpdates`, re-ran the identical instruction
+  through the real UI (select "Meta / Links" → type the instruction → Revise):
+  the Website pill correctly updated to "Personal Site: renemsdev.com".
+  Reverted afterward — pill back to "Website: renemsdev.com".
+- Selected both "Meta / Links" and "Summary Pool" together — "Selected: 2
+  items", "Editing: Meta/Links, Summary Pool", confirming
+  `describeProfileSelection` labels the two synthetic sections correctly, not
+  just silently omitting them from the count as it did before.
+- Deselected Meta/Links, kept only Summary Pool selected, submitted "rewrite
+  the DevOps summary to be one sentence" — the DevOps role-type group's first
+  summary was rewritten into a single sentence, confirming
+  `SUMMARY_POOL_SECTION_ID`'s expansion to per-group ids (and the backend's
+  existing group→item expansion) works end-to-end through the real UI.
+  Reverted afterward — confirmed via a direct `curl GET /profile` that the
+  reverted text matches the on-disk original exactly (Apply was never clicked
+  during any of this, so disk was never at risk regardless).
+- `tsc --noEmit` and `eslint` both clean. Final `curl GET /profile` confirms no
+  residual test data (links and summary text both match the original).

@@ -10,6 +10,7 @@ export function Selectable({
   className = "",
   children,
   as: Tag = "div",
+  variant = "background",
 }: {
   id: string;
   selectedIds: Set<string>;
@@ -20,9 +21,11 @@ export function Selectable({
   className?: string;
   children: React.ReactNode;
   as?: "div" | "li";
+  variant?: "background" | "underline";
 }) {
   const isSelected = selectedIds.has(id);
   const isHovered = mode === "select" && hoveredId === id;
+  const showAccent = isSelected || isHovered;
 
   return (
     <Tag
@@ -39,18 +42,20 @@ export function Selectable({
         onHover(null);
       }}
       style={
-        isSelected
-          ? undefined
-          : isHovered
-            ? { backgroundColor: "var(--accent-soft)" }
-            : undefined
+        variant === "background" && isHovered && !isSelected
+          ? { backgroundColor: "var(--accent-soft)" }
+          : undefined
       }
       className={`rounded transition-colors ${
         mode === "select" ? "cursor-pointer" : "cursor-default"
       } ${
-        isSelected
-          ? "bg-(--accent-soft) ring-1 ring-inset ring-(--accent)"
-          : ""
+        variant === "background"
+          ? isSelected
+            ? "bg-(--accent-soft) ring-1 ring-inset ring-(--accent)"
+            : ""
+          : showAccent
+            ? "underline decoration-(--accent) decoration-2 underline-offset-4"
+            : ""
       } ${className}`}
     >
       {children}

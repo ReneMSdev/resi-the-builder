@@ -8,6 +8,7 @@ import { showToast } from './Toast'
 import {
   applyProfileRevisionUpdates,
   describeProfileSelection,
+  expandSelectedIds,
   addBullet,
   removeBullet,
   addSkillItem,
@@ -176,7 +177,7 @@ export function ProfileView({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          selected_ids: Array.from(selectedIds),
+          selected_ids: expandSelectedIds(profile, selectedIds),
           instruction,
           profile,
         }),

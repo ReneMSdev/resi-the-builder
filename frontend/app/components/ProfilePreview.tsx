@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Profile } from "../types";
 import { Selectable } from "./Selectable";
+import { META_SECTION_ID, SUMMARY_POOL_SECTION_ID } from "../lib/profile";
 import {
   AddGhostRow,
   AddLinkPill,
@@ -15,37 +16,11 @@ import {
   TextPill,
 } from "./InlineEdit";
 
-const META_ID = "__meta__";
-const SUMMARY_POOL_ID = "__summary_pool__";
-
 function Chevron({ open }: { open: boolean }) {
   return (
     <ChevronRight
       className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
     />
-  );
-}
-
-function CollapsibleHeader({
-  id,
-  title,
-  open,
-  onToggleOpen,
-}: {
-  id: string;
-  title: string;
-  open: boolean;
-  onToggleOpen: (id: string) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onToggleOpen(id)}
-      className="flex w-full items-center gap-1 rounded text-left text-sm font-bold uppercase tracking-wide transition-colors hover:cursor-pointer hover:bg-(--accent-soft)"
-    >
-      <Chevron open={open} />
-      {title}
-    </button>
   );
 }
 
@@ -59,6 +34,8 @@ function CollapsibleSelectableHeader({
   hoveredId,
   onHover,
   className = "",
+  wrapperClassName = "",
+  variant = "background",
   children,
 }: {
   id: string;
@@ -70,10 +47,12 @@ function CollapsibleSelectableHeader({
   hoveredId: string | null;
   onHover: (id: string | null) => void;
   className?: string;
+  wrapperClassName?: string;
+  variant?: "background" | "underline";
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-1">
+    <div className={`flex items-start gap-1 ${wrapperClassName}`}>
       <button
         type="button"
         onClick={(e) => {
@@ -92,6 +71,7 @@ function CollapsibleSelectableHeader({
         mode={mode}
         hoveredId={hoveredId}
         onHover={onHover}
+        variant={variant}
         className={`flex-1 ${className}`}
       >
         {children}
@@ -147,13 +127,22 @@ export function ProfilePreview({
     >
       {/* Meta / Links */}
       <div>
-        <CollapsibleHeader
-          id={META_ID}
-          title="Meta / Links"
-          open={openIds.has(META_ID)}
+        <CollapsibleSelectableHeader
+          id={META_SECTION_ID}
+          open={openIds.has(META_SECTION_ID)}
           onToggleOpen={onToggleOpen}
-        />
-        {openIds.has(META_ID) && (
+          selectedIds={selectedIds}
+          onToggle={onToggle}
+          mode={mode}
+          hoveredId={hoveredId}
+          onHover={setHoveredId}
+          variant="underline"
+          className="text-sm font-bold uppercase tracking-wide"
+          wrapperClassName="pb-1"
+        >
+          Meta / Links
+        </CollapsibleSelectableHeader>
+        {openIds.has(META_SECTION_ID) && (
           <div className="flex flex-col gap-2 py-2 pl-5">
             <Selectable
               id={profile.meta.name.id}
@@ -238,13 +227,22 @@ export function ProfilePreview({
 
       {/* Summary Pool */}
       <div>
-        <CollapsibleHeader
-          id={SUMMARY_POOL_ID}
-          title="Summary Pool"
-          open={openIds.has(SUMMARY_POOL_ID)}
+        <CollapsibleSelectableHeader
+          id={SUMMARY_POOL_SECTION_ID}
+          open={openIds.has(SUMMARY_POOL_SECTION_ID)}
           onToggleOpen={onToggleOpen}
-        />
-        {openIds.has(SUMMARY_POOL_ID) && (
+          selectedIds={selectedIds}
+          onToggle={onToggle}
+          mode={mode}
+          hoveredId={hoveredId}
+          onHover={setHoveredId}
+          variant="underline"
+          className="text-sm font-bold uppercase tracking-wide"
+          wrapperClassName="pb-1"
+        >
+          Summary Pool
+        </CollapsibleSelectableHeader>
+        {openIds.has(SUMMARY_POOL_SECTION_ID) && (
           <div className="flex flex-col gap-1 py-2 pl-5">
             {profile.summary_pool.map((group) => (
               <div
@@ -335,7 +333,9 @@ export function ProfilePreview({
               mode={mode}
               hoveredId={hoveredId}
               onHover={setHoveredId}
+              variant="underline"
               className="text-sm font-bold uppercase tracking-wide"
+              wrapperClassName="pb-1"
             >
               {section.title}
             </CollapsibleSelectableHeader>

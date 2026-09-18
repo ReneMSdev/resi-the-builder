@@ -41,7 +41,7 @@ function CollapsibleHeader({
     <button
       type="button"
       onClick={() => onToggleOpen(id)}
-      className="flex w-full items-center gap-1 rounded p-1 text-left text-sm font-bold uppercase tracking-wide transition-colors hover:cursor-pointer hover:bg-(--accent-soft)"
+      className="flex w-full items-center gap-1 rounded text-left text-sm font-bold uppercase tracking-wide transition-colors hover:cursor-pointer hover:bg-(--accent-soft)"
     >
       <Chevron open={open} />
       {title}
@@ -146,172 +146,176 @@ export function ProfilePreview({
       }`}
     >
       {/* Meta / Links */}
-      <CollapsibleHeader
-        id={META_ID}
-        title="Meta / Links"
-        open={openIds.has(META_ID)}
-        onToggleOpen={onToggleOpen}
-      />
-      {openIds.has(META_ID) && (
-        <div className="flex flex-col gap-2 py-2 pl-5">
-          <Selectable
-            id={profile.meta.name.id}
-            selectedIds={selectedIds}
-            onToggle={onToggle}
-            mode={mode}
-            hoveredId={hoveredId}
-            onHover={setHoveredId}
-            className="p-1 text-lg font-bold"
-          >
-            <EditableText
+      <div>
+        <CollapsibleHeader
+          id={META_ID}
+          title="Meta / Links"
+          open={openIds.has(META_ID)}
+          onToggleOpen={onToggleOpen}
+        />
+        {openIds.has(META_ID) && (
+          <div className="flex flex-col gap-2 py-2 pl-5">
+            <Selectable
               id={profile.meta.name.id}
-              text={profile.meta.name.text}
-              onSave={onEditField}
-              mode={mode}
-              placeholder="Name"
-            />
-          </Selectable>
-          <div className="flex flex-wrap items-center gap-1 text-xs text-(--muted)">
-            <Selectable
-              id={profile.meta.email.id}
               selectedIds={selectedIds}
               onToggle={onToggle}
               mode={mode}
               hoveredId={hoveredId}
               onHover={setHoveredId}
-              className="p-1"
+              className="p-1 text-lg font-bold"
             >
               <EditableText
-                id={profile.meta.email.id}
-                text={profile.meta.email.text}
+                id={profile.meta.name.id}
+                text={profile.meta.name.text}
                 onSave={onEditField}
                 mode={mode}
-                placeholder="Email"
+                placeholder="Name"
               />
             </Selectable>
-            <span>|</span>
-            <Selectable
-              id={profile.meta.phone.id}
-              selectedIds={selectedIds}
-              onToggle={onToggle}
-              mode={mode}
-              hoveredId={hoveredId}
-              onHover={setHoveredId}
-              className="p-1"
-            >
-              <EditableText
-                id={profile.meta.phone.id}
-                text={profile.meta.phone.text}
-                onSave={onEditField}
-                mode={mode}
-                placeholder="Phone"
-              />
-            </Selectable>
-          </div>
-          <div className="flex flex-wrap items-center gap-1">
-            {(profile.meta.links ?? []).map((link) => (
+            <div className="flex flex-wrap items-center gap-1 text-xs text-(--muted)">
               <Selectable
-                key={link.id}
-                id={link.id}
+                id={profile.meta.email.id}
                 selectedIds={selectedIds}
                 onToggle={onToggle}
                 mode={mode}
                 hoveredId={hoveredId}
                 onHover={setHoveredId}
-                className="p-0"
+                className="p-1"
               >
-                <LinkPill
-                  id={link.id}
-                  label={link.label}
-                  url={link.url}
-                  onEdit={onEditLink}
-                  onRemove={onRemoveLink}
+                <EditableText
+                  id={profile.meta.email.id}
+                  text={profile.meta.email.text}
+                  onSave={onEditField}
+                  mode={mode}
+                  placeholder="Email"
                 />
               </Selectable>
-            ))}
-            {mode === "edit" && <AddLinkPill onAdd={onAddLink} />}
-          </div>
-        </div>
-      )}
-
-      {/* Summary Pool */}
-      <CollapsibleHeader
-        id={SUMMARY_POOL_ID}
-        title="Summary Pool"
-        open={openIds.has(SUMMARY_POOL_ID)}
-        onToggleOpen={onToggleOpen}
-      />
-      {openIds.has(SUMMARY_POOL_ID) && (
-        <div className="flex flex-col gap-1 py-2 pl-5">
-          {profile.summary_pool.map((group) => (
-            <div
-              key={group.id}
-              className="flex flex-col gap-1"
-            >
-              <CollapsibleSelectableHeader
-                id={group.id}
-                open={openIds.has(group.id)}
-                onToggleOpen={onToggleOpen}
+              <span>|</span>
+              <Selectable
+                id={profile.meta.phone.id}
                 selectedIds={selectedIds}
                 onToggle={onToggle}
                 mode={mode}
                 hoveredId={hoveredId}
                 onHover={setHoveredId}
-                className="text-sm font-bold"
+                className="p-1"
               >
-                {group.role_type}
-              </CollapsibleSelectableHeader>
-              {openIds.has(group.id) && (
-                <div className="flex flex-col gap-2 pl-5">
-                  {group.summaries.map((item) => (
-                    <Selectable
-                      key={item.id}
-                      id={item.id}
-                      selectedIds={selectedIds}
-                      onToggle={onToggle}
-                      mode={mode}
-                      hoveredId={hoveredId}
-                      onHover={setHoveredId}
-                      className="p-1 text-sm"
-                    >
-                      <span className="flex items-start justify-between gap-1">
-                        <EditableText
-                          id={item.id}
-                          text={item.text}
-                          onSave={onEditField}
-                          mode={mode}
-                          multiline
-                          className="flex-1"
-                        />
-                        {mode === "edit" && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRemoveSummaryItem(group.id, item.id);
-                            }}
-                            aria-label="Remove summary item"
-                            className="shrink-0 text-(--danger) hover:cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </span>
-                    </Selectable>
-                  ))}
-                  {mode === "edit" && (
-                    <AddGhostRow
-                      placeholder="+ Add phrasing"
-                      multiline
-                      onAdd={(text) => onAddSummaryItem(group.id, text)}
-                    />
-                  )}
-                </div>
-              )}
+                <EditableText
+                  id={profile.meta.phone.id}
+                  text={profile.meta.phone.text}
+                  onSave={onEditField}
+                  mode={mode}
+                  placeholder="Phone"
+                />
+              </Selectable>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="flex flex-wrap items-center gap-1">
+              {(profile.meta.links ?? []).map((link) => (
+                <Selectable
+                  key={link.id}
+                  id={link.id}
+                  selectedIds={selectedIds}
+                  onToggle={onToggle}
+                  mode={mode}
+                  hoveredId={hoveredId}
+                  onHover={setHoveredId}
+                  className="p-0"
+                >
+                  <LinkPill
+                    id={link.id}
+                    label={link.label}
+                    url={link.url}
+                    onEdit={onEditLink}
+                    onRemove={onRemoveLink}
+                  />
+                </Selectable>
+              ))}
+              {mode === "edit" && <AddLinkPill onAdd={onAddLink} />}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Summary Pool */}
+      <div>
+        <CollapsibleHeader
+          id={SUMMARY_POOL_ID}
+          title="Summary Pool"
+          open={openIds.has(SUMMARY_POOL_ID)}
+          onToggleOpen={onToggleOpen}
+        />
+        {openIds.has(SUMMARY_POOL_ID) && (
+          <div className="flex flex-col gap-1 py-2 pl-5">
+            {profile.summary_pool.map((group) => (
+              <div
+                key={group.id}
+                className="flex flex-col gap-1"
+              >
+                <CollapsibleSelectableHeader
+                  id={group.id}
+                  open={openIds.has(group.id)}
+                  onToggleOpen={onToggleOpen}
+                  selectedIds={selectedIds}
+                  onToggle={onToggle}
+                  mode={mode}
+                  hoveredId={hoveredId}
+                  onHover={setHoveredId}
+                  className="text-sm font-bold"
+                >
+                  {group.role_type}
+                </CollapsibleSelectableHeader>
+                {openIds.has(group.id) && (
+                  <div className="flex flex-col gap-2 pl-5">
+                    {group.summaries.map((item) => (
+                      <Selectable
+                        key={item.id}
+                        id={item.id}
+                        selectedIds={selectedIds}
+                        onToggle={onToggle}
+                        mode={mode}
+                        hoveredId={hoveredId}
+                        onHover={setHoveredId}
+                        className="p-1 text-sm"
+                      >
+                        <span className="flex items-start justify-between gap-1">
+                          <EditableText
+                            id={item.id}
+                            text={item.text}
+                            onSave={onEditField}
+                            mode={mode}
+                            multiline
+                            className="flex-1"
+                          />
+                          {mode === "edit" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveSummaryItem(group.id, item.id);
+                              }}
+                              aria-label="Remove summary item"
+                              className="shrink-0 text-(--danger) hover:cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </span>
+                      </Selectable>
+                    ))}
+                    {mode === "edit" && (
+                      <AddGhostRow
+                        placeholder="+ Add phrasing"
+                        multiline
+                        onAdd={(text) => onAddSummaryItem(group.id, text)}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Sections: Experience, Projects, Education, Certifications, Skills */}
       {profile.sections

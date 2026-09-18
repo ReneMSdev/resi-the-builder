@@ -1470,3 +1470,27 @@ pattern.
   fetch had occurred (unedited `meta.name`), not just an in-memory reset.
 - `tsc --noEmit` and `eslint` both clean. `curl GET /profile` after all testing
   confirms no residual test data on disk.
+
+## Fix: Meta/Links and Summary Pool misaligned relative to the other 5 sections (2026-09-18)
+
+User found via DevTools that Meta/Links and Summary Pool weren't wrapped in a
+container `<div>` the way Experience/Projects/Education/Certifications/Skills
+are — `ProfilePreview.tsx` had `<CollapsibleHeader .../>` and its conditional
+content `<div>` sitting as bare siblings directly inside the outer preview card,
+while the other 5 sections wrap both pieces in `<div key={section.id}>`. Fixed
+by wrapping Meta/Links and Summary Pool in the same plain `<div>` (no className,
+matching the other 5 exactly).
+
+While verifying, found the wrapper fix closed most but not all of the visual gap
+— a `p-1` on `CollapsibleHeader`'s button (used only by Meta/Links and Summary
+Pool) was offsetting its chevron ~4px right of `CollapsibleSelectableHeader`'s
+chevron (used by the other 5 sections, which has no padding on its own button).
+Removed that `p-1` so both header types' chevrons sit at the same x-position.
+
+### Verification
+
+Measured every top-level section's chevron `<svg>` via
+`getBoundingClientRect().left` in the browser console: all 7 (Meta/Links,
+Summary Pool, Experience, Projects, Education, Certifications, Skills) now
+report the exact same x-coordinate — pixel-aligned, not just visually close.
+`tsc --noEmit` and `eslint` both clean.

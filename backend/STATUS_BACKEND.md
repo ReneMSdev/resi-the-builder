@@ -1069,6 +1069,47 @@ route reads that directory anymore, and it stays gitignored) and deleting them w
 necessary to ship this, so it seemed better to leave that as an explicit manual cleanup
 step for whoever wants it gone rather than a silent side effect of this pass.
 
+## Backend Part 8 — `PUT /applications/{id}`, update a package in place (2026-09-17)
+
+**Why**: the Save button needs to update the currently-loaded package rather than always
+creating a new one — e.g. revise a bullet, then re-save into the same package instead of
+spawning a duplicate.
+
+**Contract**: same request body as `POST /applications`
+(`{name?, job_description: {raw, cleaned?}, resume?, cover_letter?}`). Overwrites
+`job_description.txt`/`job_description_cleaned.txt`, `resume.json`/`cover_letter.json`,
+and re-renders whichever `.docx` snapshot(s) are present, in place. `created_at` is
+preserved from the original package; added a new `updated_at` field to the `Application`
+model (always present — set equal to `created_at` on `POST`, bumped on every `PUT`) so
+the frontend can tell a package has been touched since creation. **A `null` field is
+treated as "this no longer exists in the session" and deletes the corresponding
+file(s)** (e.g. omitting `cover_letter` on a package that has one removes
+`cover_letter.json`/`cover_letter.docx`) — the frontend always sends full current session
+state, so `null` is a real signal, not "leave unchanged." 404 if the id doesn't exist.
+Not atomic (a failure partway through can leave some files updated and others not) —
+acceptable for a local single-user tool; unlike `POST`, a failed `PUT` does **not**
+delete the folder, since that would destroy the previous good state rather than just
+failing to apply the new one.
+
+**Test coverage** (`tests/test_applications.py`, +3 tests, 13 total in this file):
+content replacement reflected in both the response and on-disk files (job description
+text, resume JSON, and the re-rendered docx — checked by extracting text via
+`python-docx` and confirming the *old* bullet text is gone, not just that the new text is
+present), `created_at` preserved / `updated_at` changed, a subsequent `GET` matching the
+`PUT` response exactly, a `null` field deleting the corresponding JSON+docx files, and a
+404 on a nonexistent id. Full suite: 37 passed (was 34).
+
+**Manually verified against the live server** on the real "Justworks — Software
+Engineer" package from the Phase 3 dogfooding pass (left in place, not a throwaway):
+pulled its current resume, ran a real `/revise` call on the first bullet ("make this
+punchier and quantify impact"), applied the returned text, and `PUT` the updated resume
+back into the same package. Confirmed: `created_at` unchanged, `updated_at` changed,
+`GET /applications/{id}` afterward matched the `PUT` response exactly, and — opened
+directly with `python-docx` — `resume.docx` on disk contains the new bullet text and no
+longer contains the old bullet text. Backward-compat check: the pre-existing package
+(created before this change, so its `meta.json` had no `updated_at` key) correctly fell
+back to `updated_at == created_at` on `GET` rather than erroring.
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

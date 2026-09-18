@@ -143,6 +143,7 @@ class Application(BaseModel):
     id: str
     name: str
     created_at: str
+    updated_at: str
     job_description: JobDescription
     resume: Optional[Resume] = None
     cover_letter: Optional[CoverLetter] = None

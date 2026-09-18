@@ -176,3 +176,93 @@ def test_delete_missing_application_returns_404(client, tmp_applications):
     resp = client.delete("/applications/does-not-exist")
 
     assert resp.status_code == 404
+
+
+def test_update_application_replaces_content_and_reflects_in_get(
+    client, tmp_applications, minimal_resume, minimal_cover_letter
+):
+    created = client.post(
+        "/applications",
+        json={"job_description": {"raw": "Original JD."}, "resume": minimal_resume},
+    ).json()
+
+    updated_resume = {**minimal_resume}
+    updated_resume["sections"] = [
+        {
+            **minimal_resume["sections"][0],
+            "entries": [
+                {
+                    **minimal_resume["sections"][0]["entries"][0],
+                    "bullets": [
+                        {"id": "b_1", "text": "Rewrote this bullet entirely.", "tags": []},
+                    ],
+                }
+            ],
+        }
+    ] + minimal_resume["sections"][1:]
+
+    put_resp = client.put(
+        f"/applications/{created['id']}",
+        json={
+            "job_description": {"raw": "Updated JD.", "cleaned": "Updated cleaned JD."},
+            "resume": updated_resume,
+            "cover_letter": minimal_cover_letter,
+        },
+    )
+
+    assert put_resp.status_code == 200
+    body = put_resp.json()
+    assert body["id"] == created["id"]
+    assert body["created_at"] == created["created_at"]
+    assert body["updated_at"]
+    assert body["job_description"] == {"raw": "Updated JD.", "cleaned": "Updated cleaned JD."}
+    assert body["cover_letter"] is not None
+    assert body["resume"]["sections"][0]["entries"][0]["bullets"][0]["text"] == (
+        "Rewrote this bullet entirely."
+    )
+
+    folder = tmp_applications / created["id"]
+    assert (folder / "job_description.txt").read_text() == "Updated JD."
+    assert (folder / "job_description_cleaned.txt").read_text() == "Updated cleaned JD."
+    assert (folder / "cover_letter.json").exists()
+    resume_docx_text = _extract_text(folder / "resume.docx")
+    assert "Rewrote this bullet entirely." in resume_docx_text
+    assert "Built things." not in resume_docx_text
+
+    get_resp = client.get(f"/applications/{created['id']}")
+    assert get_resp.json() == body
+
+
+def test_update_application_with_null_field_deletes_that_content(
+    client, tmp_applications, minimal_resume, minimal_cover_letter
+):
+    created = client.post(
+        "/applications",
+        json={
+            "job_description": {"raw": "JD."},
+            "resume": minimal_resume,
+            "cover_letter": minimal_cover_letter,
+        },
+    ).json()
+    folder = tmp_applications / created["id"]
+    assert (folder / "cover_letter.json").exists()
+    assert (folder / "cover_letter.docx").exists()
+
+    put_resp = client.put(
+        f"/applications/{created['id']}",
+        json={"job_description": {"raw": "JD."}, "resume": minimal_resume},
+    )
+
+    assert put_resp.status_code == 200
+    assert put_resp.json()["cover_letter"] is None
+    assert not (folder / "cover_letter.json").exists()
+    assert not (folder / "cover_letter.docx").exists()
+
+
+def test_update_missing_application_returns_404(client, tmp_applications, minimal_resume):
+    resp = client.put(
+        "/applications/does-not-exist",
+        json={"job_description": {"raw": "JD."}, "resume": minimal_resume},
+    )
+
+    assert resp.status_code == 404

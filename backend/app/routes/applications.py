@@ -69,7 +69,10 @@ def create_application(req: CreateApplicationRequest):
             render_cover_letter_docx(cover_letter_dict, str(folder / "cover_letter.docx"))
 
         with open(folder / "meta.json", "w") as f:
-            json.dump({"id": item_id, "name": name, "created_at": created_at}, f, indent=2)
+            json.dump(
+                {"id": item_id, "name": name, "created_at": created_at, "updated_at": created_at},
+                f, indent=2,
+            )
     except Exception as e:
         shutil.rmtree(folder, ignore_errors=True)
         raise HTTPException(status_code=500, detail=f"Failed to create application: {e}")
@@ -78,6 +81,7 @@ def create_application(req: CreateApplicationRequest):
         "id": item_id,
         "name": name,
         "created_at": created_at,
+        "updated_at": created_at,
         "job_description": {"raw": req.job_description.raw, "cleaned": req.job_description.cleaned},
         "resume": resume_dict,
         "cover_letter": cover_letter_dict,
@@ -139,9 +143,87 @@ def get_application(item_id: str):
         "id": meta["id"],
         "name": meta["name"],
         "created_at": meta["created_at"],
+        "updated_at": meta.get("updated_at", meta["created_at"]),
         "job_description": {"raw": raw, "cleaned": cleaned},
         "resume": resume,
         "cover_letter": cover_letter,
+    }
+
+
+@router.put("/applications/{item_id}", response_model=Application)
+def update_application(item_id: str, req: CreateApplicationRequest):
+    folder = _dir_for(item_id)
+    meta_path = folder / "meta.json"
+    if not meta_path.exists():
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    with open(meta_path, "r") as f:
+        existing_meta = json.load(f)
+
+    resume_dict = req.resume.model_dump() if req.resume else None
+    cover_letter_dict = req.cover_letter.model_dump() if req.cover_letter else None
+
+    name = req.name.strip() if req.name else ""
+    if not name:
+        name = _default_name(cover_letter_dict, existing_meta["created_at"])
+
+    updated_at = datetime.utcnow().isoformat()
+
+    # Not atomic — a failure partway through can leave some files updated and others
+    # not. Acceptable for a local single-user tool; the folder is never deleted on
+    # failure here (unlike create), since that would destroy the previous good state.
+    try:
+        with open(folder / "job_description.txt", "w") as f:
+            f.write(req.job_description.raw)
+
+        cleaned_path = folder / "job_description_cleaned.txt"
+        if req.job_description.cleaned:
+            with open(cleaned_path, "w") as f:
+                f.write(req.job_description.cleaned)
+        else:
+            cleaned_path.unlink(missing_ok=True)
+
+        resume_path = folder / "resume.json"
+        resume_docx_path = folder / "resume.docx"
+        if resume_dict is not None:
+            with open(resume_path, "w") as f:
+                json.dump(resume_dict, f, indent=2)
+            render_resume_docx(resume_dict, str(resume_docx_path))
+        else:
+            resume_path.unlink(missing_ok=True)
+            resume_docx_path.unlink(missing_ok=True)
+
+        cl_path = folder / "cover_letter.json"
+        cl_docx_path = folder / "cover_letter.docx"
+        if cover_letter_dict is not None:
+            with open(cl_path, "w") as f:
+                json.dump(cover_letter_dict, f, indent=2)
+            render_cover_letter_docx(cover_letter_dict, str(cl_docx_path))
+        else:
+            cl_path.unlink(missing_ok=True)
+            cl_docx_path.unlink(missing_ok=True)
+
+        with open(meta_path, "w") as f:
+            json.dump(
+                {
+                    "id": item_id,
+                    "name": name,
+                    "created_at": existing_meta["created_at"],
+                    "updated_at": updated_at,
+                },
+                f, indent=2,
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update application: {e}")
+
+    return {
+        "id": item_id,
+        "name": name,
+        "created_at": existing_meta["created_at"],
+        "updated_at": updated_at,
+        "job_description": {"raw": req.job_description.raw, "cleaned": req.job_description.cleaned},
+        "resume": resume_dict,
+        "cover_letter": cover_letter_dict,
     }
 
 

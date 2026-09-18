@@ -2090,3 +2090,143 @@ check — explicitly requested as the final verification step — isn't possible
 until `main` is updated, which is out of scope for this session to do
 unilaterally (branch merges aren't a pathspec-scoped frontend change).
 Flagged to the manager; live spot-check pending that.
+
+---
+
+## Feature: Demo-mode UX iteration round — single-select+pill, generate-it-yourself landing, capability banners (2026-09-18)
+
+Three related, user-driven refinements to demo mode, done together for one
+review pass on `working` (deliberately not merged/pushed to `main` yet — the
+user wants to see this land before it reaches the live Vercel deploy). All
+frontend-only, no backend involvement.
+
+### 1. Single-select + suggested-edit pill (replaces free-text-triggered lookup)
+
+Goal: make it unambiguous what a canned edit would apply to, and stop
+implying the demo runs a real model on typed text.
+
+- **`toggleSelected` (`page.tsx`)** branches on `DEMO_MODE`: in demo mode,
+  clicking an unselected item replaces the whole selection (`new
+  Set([id])`) instead of adding to it; clicking the sole selected item still
+  toggles it off (`new Set()`). The real app's multi-select behavior is
+  completely unchanged — this only affects the mutation, not
+  `ResumePreview`/`CoverLetterPreview`'s click handlers, which still just
+  call `onToggle(id)` either way.
+- **`handleRevise`'s demo branch** is now just an early `return` — free text
+  has no trigger path in demo mode. The actual apply logic moved to a new
+  **`handleApplyDemoRefinement`**, called only by the new pill, which looks
+  up the single selected id in `demoResumeRefinements`/
+  `demoCoverLetterRefinements` and applies it through the same
+  `applyRevisionUpdates`/`applyCoverLetterUpdates` + history-push path as
+  before — undo/redo needed no changes.
+- **`RevisionChat.tsx`** gained `demoMode`, `demoPillAvailable`, and
+  `onApplyDemoRefinement` props (all optional, default off, so the real app's
+  usage is untouched). In demo mode: the textarea and Revise button render in
+  their normal shape but are permanently `disabled` (kept visible rather than
+  removed, so the layout doesn't shift between modes); a green
+  (`--success`) banner above the "Editing: ..." line explains this is
+  pre-scripted, not a live AI; and a single pill ("✨ Apply suggested edit")
+  appears only when exactly one item is selected and it has a mapped
+  refinement — otherwise, if something's selected but unmapped, a muted "No
+  suggested edit for this selection." note takes its place instead of a dead
+  gap.
+- Removed the "nothing to refine" error-message fallback from the old
+  multi-select mechanism entirely, since an unmapped selection can no longer
+  reach a submit action at all — the pill's absence already communicates
+  that.
+
+### 2. Generate-it-yourself landing flow (replaces mount-time auto-load)
+
+Goal, per direct user feedback: showing the "AI generation" step happen
+reads as a better demo than a visitor landing on an already-finished resume
+with nothing to do.
+
+- Removed the `useEffect` that called `handleLoadApplication(demoApplication,
+  'resume')` on mount. The JD tab (`tab`'s actual default state) is no longer
+  overridden, so a visitor now lands there.
+- `jobDescription`'s `useState` initializer now reads
+  `DEMO_MODE ? demoApplication.job_description.raw : ''` instead of always
+  `''`, so the textarea shows a realistic, ready-to-generate JD instead of an
+  empty box — no blank-page friction, no need for a visitor to have their own
+  JD handy.
+- `handleGenerate`'s demo branch now ends with
+  `setTab(kind === 'resume' ? 'resume' : 'cover_letter')` after setting that
+  type's state to `'success'`, so clicking Generate takes the visitor
+  straight to what they just "generated" instead of leaving them on the JD
+  tab. Generating the other type is completely untouched — each type's
+  `GenerateForm` fallback still renders independently keyed off its own
+  `resumeState`/`coverLetterState`, so generating only one never silently
+  populates the other (this fell out for free, no new logic needed).
+- **Judgment call, flagged per the ask rather than picked silently**:
+  `handleGenerateForNewJob`'s reset now also re-populates the canned JD
+  (`DEMO_MODE ? demoApplication.job_description.raw : ''`) instead of always
+  resetting to `''`. Reasoning: since the pre-filled landing state exists
+  specifically to remove empty-textarea friction, resetting to blank would
+  silently reintroduce that same friction the moment someone tries the reset
+  button — and since canned Generate ignores the textarea's actual content
+  either way, this only changes what the visitor sees, never what re-running
+  Generate produces.
+
+### 3. Per-tab demo-capability banners (portfolio framing, distinct from #1's how-to banner)
+
+Goal: the demo intentionally runs on canned data with no live AI, and
+visitors should read that as a demo constraint, not the real product's
+ceiling — distinct in purpose from RevisionChat's "how to use this demo"
+banner, so implemented as a separate, stacked element rather than merged into
+it.
+
+- New **`components/DemoCapabilityBanner.tsx`** — a small reusable
+  presentational component (`{ message: string }` prop, same green
+  `--success` treatment as the RevisionChat banner). It doesn't check
+  `DEMO_MODE` itself; each call site gates rendering with `{DEMO_MODE && ...}`,
+  so the component stays generically reusable.
+- Rendered once above each tab's actual content, all in `page.tsx`: Job
+  Description (above the JD reference view or `GenerateForm`), Resume (above
+  the `ResumePreview`/`GenerateForm` branch, stacked above RevisionChat's own
+  banner when both are visible), Cover Letter (same pattern), Profile (above
+  `ProfileView`/loading/error states), Saved (above `SavedTab`). Copy is
+  starter text from the user's own phrasing, lightly adapted; open to a
+  wording pass.
+
+### Verification (production build, functional/interaction change)
+
+Same method as prior passes: `NEXT_PUBLIC_DEMO_MODE=true npx next build` +
+`next start -p 3001` alongside the untouched real dev server on 3000;
+confirmed `.env.local` and the real server unaffected before and after,
+cleaned up the port-3001 process when done.
+
+- **Single-select**: clicking a second bullet while one was already selected
+  replaced the selection rather than adding to it (confirmed via the
+  highlight and "Selected: 1 item" count); clicking the same item again
+  cleared it back to empty.
+- **Pill mechanism**: selected `b1` (mapped) — pill appeared, clicking it
+  applied the exact canned refinement; selected the whole Experience entry
+  (unmapped) — pill was replaced by the "No suggested edit..." note, no dead
+  gap; repeated both checks on the Cover Letter tab's `p1` with its own
+  independent selection state.
+- **Undo regression check**: after applying `b1`'s refinement via the pill,
+  clicking Undo reverted it to the original bullet text exactly — confirms
+  the history/undo path is unaffected by the new trigger mechanism.
+- **Landing flow**: fresh load lands on the JD tab with the canned JD
+  already filled in (not blank, not auto-loaded to Resume); clicking
+  "Generate Resume" auto-switched to the Resume tab with the fixture
+  content; the untouched Cover Letter tab still showed its own
+  `GenerateForm` (not silently populated); generating the cover letter
+  next auto-switched to that tab too; "Generate for new job" reset landed
+  back on the JD tab with the canned JD re-populated, not blank.
+- **Capability banners**: confirmed all five (Job Description, Resume,
+  Cover Letter, Profile, Saved) render with the intended copy, in the right
+  position, only in demo mode.
+- **Network audit**: `read_network_requests` showed zero requests to port
+  8000 across the whole pass.
+- `tsc --noEmit` and `eslint app/` clean throughout.
+
+### Not done in this pass
+
+A fourth ask — a runtime Live/Demo toggle so demo mode can be previewed
+without a separate production build, and so a curious visitor can see what
+"Live" looks like — was paused by the user before implementation started
+(only `layout.tsx` was read for context, no code written). Constraint from
+the user once it's picked back up: the toggle must be completely absent from
+the public Vercel build, not just hidden, likely by gating its existence on
+the build-time `NEXT_PUBLIC_DEMO_MODE` value rather than on runtime state.

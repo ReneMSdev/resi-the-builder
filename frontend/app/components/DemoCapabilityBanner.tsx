@@ -1,0 +1,13 @@
+// Explains what the real (non-demo) app can do on this tab, since the demo
+// deliberately runs on canned data with no live AI — this is portfolio
+// framing ("here's the real ceiling"), distinct from RevisionChat's
+// how-to-use-this-demo banner. Rendered only when DEMO_MODE is true, by each
+// call site (this component doesn't check DEMO_MODE itself, so it stays
+// reusable if a non-demo caller ever wants the same treatment).
+export function DemoCapabilityBanner({ message }: { message: string }) {
+  return (
+    <div className="mb-3 rounded border border-[var(--success)] bg-[var(--success)]/10 px-3 py-2 text-xs text-[var(--success)]">
+      {message}
+    </div>
+  );
+}

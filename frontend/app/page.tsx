@@ -11,6 +11,7 @@ import { SavedTab } from './components/SavedTab'
 import { ToastContainer } from './components/Toast'
 import { HamburgerMenu } from './components/HamburgerMenu'
 import { ProfileView } from './components/ProfileView'
+import { DemoCapabilityBanner } from './components/DemoCapabilityBanner'
 import { DEMO_MODE, demoApplication, demoDelay, demoProfile } from './lib/demo'
 import { demoResumeRefinements, demoCoverLetterRefinements } from './lib/demoFixtures/refinements'
 import {
@@ -179,7 +180,12 @@ export default function Home() {
       : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' },
   )
   const [tab, setTab] = useState<Tab>('jd')
-  const [jobDescription, setJobDescription] = useState('')
+  // Pre-filled with the canned JD in demo mode so a visitor lands on a
+  // realistic, ready-to-generate textarea instead of an empty one — see the
+  // "Demo mode: generate-it-yourself landing flow" note in STATUS_FRONTEND.md.
+  const [jobDescription, setJobDescription] = useState(() =>
+    DEMO_MODE ? demoApplication.job_description.raw : '',
+  )
   const [cleanedJobDescription, setCleanedJobDescription] = useState<string | null>(null)
   const [additionalContext, setAdditionalContext] = useState('')
   const [loadedApplication, setLoadedApplication] = useState<{ id: string; name: string } | null>(
@@ -219,6 +225,10 @@ export default function Home() {
   const reviseState = tab === 'resume' ? resumeReviseState : clReviseState
   const setReviseState = tab === 'resume' ? setResumeReviseState : setClReviseState
   const history = tab === 'resume' ? resumeHistory : clHistory
+
+  const demoRefinements = tab === 'resume' ? demoResumeRefinements : demoCoverLetterRefinements
+  const demoSelectedId = selectedIds.size === 1 ? Array.from(selectedIds)[0] : undefined
+  const demoPillAvailable = DEMO_MODE && demoSelectedId !== undefined && demoSelectedId in demoRefinements
 
   useEffect(() => {
     // Demo mode never reaches this — profileState is initialized straight to
@@ -269,15 +279,6 @@ export default function Home() {
       })
   }, [])
 
-  useEffect(() => {
-    // Auto-load the demo package on mount so a portfolio visitor lands on a
-    // fully populated, tailored resume immediately rather than a blank JD
-    // form — the same hydration handleLoadApplication already does for a
-    // real Saved-tab click, just triggered once automatically in demo mode.
-    if (!DEMO_MODE) return
-    handleLoadApplication(demoApplication, 'resume')
-  }, [])
-
   async function handleGenerate(kind: 'resume' | 'cover_letter') {
     if (kind === 'resume') {
       setResumeState({ state: 'loading' })
@@ -300,6 +301,10 @@ export default function Home() {
       } else if (kind === 'cover_letter' && demoApplication.cover_letter) {
         setCoverLetterState({ state: 'success', coverLetter: demoApplication.cover_letter })
       }
+      // Take the visitor straight to what they just "generated" instead of
+      // leaving them on the JD tab to go find it — generating the other type
+      // is untouched, so it still lands on its own tab independently.
+      setTab(kind === 'resume' ? 'resume' : 'cover_letter')
       return
     }
 
@@ -362,6 +367,13 @@ export default function Home() {
 
   function toggleSelected(id: string) {
     setSelectedIds((prev) => {
+      if (DEMO_MODE) {
+        // Demo mode is single-select only, so a pill can unambiguously say
+        // what it edits: clicking the sole selected item deselects it,
+        // clicking anything else replaces the selection outright rather than
+        // adding to it.
+        return prev.has(id) ? new Set() : new Set([id])
+      }
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
@@ -444,45 +456,10 @@ export default function Home() {
     }
 
     if (DEMO_MODE) {
-      // Selection-driven, not instruction-driven: whatever text is typed is
-      // accepted, but the applied diff is always keyed by whatever's
-      // currently selected via a plain id -> refined-text lookup — the same
-      // selection+submit flow the real app already uses, just with a static
-      // lookup standing in for the model. An id with no canned refinement
-      // (skill items, links, whole sections/entries, or genuinely nothing
-      // selected) falls through to the graceful message below rather than
-      // silently doing nothing.
-      setReviseState({ state: 'loading' })
-      await demoDelay()
-
-      const refinements = tab === 'resume' ? demoResumeRefinements : demoCoverLetterRefinements
-      const updates = Array.from(selectedIds)
-        .filter((id) => id in refinements)
-        .map((id) => ({ id, text: refinements[id] }))
-
-      if (updates.length === 0) {
-        setReviseState({
-          state: 'error',
-          message:
-            'Nothing to refine for this selection in the demo — try selecting a bullet or the summary/paragraph.',
-        })
-        return
-      }
-
-      if (tab === 'resume' && resumeState.state === 'success') {
-        pushResumeHistory(resumeState.resume)
-        setResumeState({
-          state: 'success',
-          resume: applyRevisionUpdates(resumeState.resume, updates),
-        })
-      } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
-        pushClHistory(coverLetterState.coverLetter)
-        setCoverLetterState({
-          state: 'success',
-          coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, updates),
-        })
-      }
-      setReviseState({ state: 'idle' })
+      // Free-text revise has no trigger path in demo mode — RevisionChat's
+      // textarea/button are inert there, and the suggested-edit pill calls
+      // handleApplyDemoRefinement directly instead. Guarded here too as
+      // defense-in-depth in case onSubmit is ever reachable another way.
       return
     }
 
@@ -544,6 +521,31 @@ export default function Home() {
     }
   }
 
+  async function handleApplyDemoRefinement() {
+    if (!DEMO_MODE || !demoPillAvailable || demoSelectedId === undefined) return
+    const text = demoRefinements[demoSelectedId]
+
+    setReviseState({ state: 'loading' })
+    await demoDelay()
+
+    if (tab === 'resume' && resumeState.state === 'success') {
+      pushResumeHistory(resumeState.resume)
+      setResumeState({
+        state: 'success',
+        resume: applyRevisionUpdates(resumeState.resume, [{ id: demoSelectedId, text }]),
+      })
+    } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
+      pushClHistory(coverLetterState.coverLetter)
+      setCoverLetterState({
+        state: 'success',
+        coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, [
+          { id: demoSelectedId, text },
+        ]),
+      })
+    }
+    setReviseState({ state: 'idle' })
+  }
+
   function handleSaved(application: Application) {
     setLoadedApplication({ id: application.id, name: application.name })
   }
@@ -572,7 +574,12 @@ export default function Home() {
 
   function handleGenerateForNewJob() {
     setLoadedApplication(null)
-    setJobDescription('')
+    // Re-populate the canned JD rather than resetting to blank in demo mode —
+    // otherwise resetting would reintroduce the empty-textarea friction the
+    // pre-filled landing state was added to avoid. Canned Generate ignores
+    // the textarea's content either way, so this only affects what the
+    // visitor sees, not what running Generate again produces.
+    setJobDescription(DEMO_MODE ? demoApplication.job_description.raw : '')
     setCleanedJobDescription(null)
     setAdditionalContext('')
     setResumeState({ state: 'idle' })
@@ -701,10 +708,21 @@ export default function Home() {
             </div>
           )}
 
-          {tab === 'saved' && <SavedTab onLoad={handleLoadApplication} />}
+          {tab === 'saved' && (
+            <>
+              {DEMO_MODE && (
+                <DemoCapabilityBanner message="In the full app, save and manage multiple job-application packages, each bundling its job description, tailored resume, and cover letter for quick reuse." />
+              )}
+              <SavedTab onLoad={handleLoadApplication} />
+            </>
+          )}
 
-          {tab === 'profile' &&
-            (profileState.state === 'success' ? (
+          {tab === 'profile' && (
+            <>
+              {DEMO_MODE && (
+                <DemoCapabilityBanner message="This is a read-only demo of your master profile. In the full app, every field is editable — including AI-assisted revision — and changes here update the source data used for future generations." />
+              )}
+              {profileState.state === 'success' ? (
               <ProfileView
                 profile={profileState.profile}
                 onProfileChange={(profile) => setProfileState({ state: 'success', profile })}
@@ -719,47 +737,59 @@ export default function Home() {
                 openIds={profileOpenIds}
                 setOpenIds={setProfileOpenIds}
               />
-            ) : profileState.state === 'error' ? (
-              <p className='font-medium text-(--danger)'>
-                Error loading profile: {profileState.message}
-              </p>
-            ) : (
-              <p className='text-sm text-(--muted)'>Loading profile...</p>
-            ))}
+              ) : profileState.state === 'error' ? (
+                <p className='font-medium text-(--danger)'>
+                  Error loading profile: {profileState.message}
+                </p>
+              ) : (
+                <p className='text-sm text-(--muted)'>Loading profile...</p>
+              )}
+            </>
+          )}
 
           {isContentTab && (
             <>
-              {tab === 'jd' &&
-                (resumeReady && coverLetterReady ? (
-                  <div className='flex flex-col gap-2'>
-                    <p className='text-xs text-(--muted)'>Job description (reference)</p>
-                    <div className='whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 text-sm text-foreground'>
-                      {cleanedJobDescription || jobDescription}
+              {tab === 'jd' && (
+                <>
+                  {DEMO_MODE && (
+                    <DemoCapabilityBanner message="This demo uses a pre-written job description and pre-generated results. In the full app, Claude reads any real job posting and tailors your resume and cover letter to it automatically." />
+                  )}
+                  {resumeReady && coverLetterReady ? (
+                    <div className='flex flex-col gap-2'>
+                      <p className='text-xs text-(--muted)'>Job description (reference)</p>
+                      <div className='whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 text-sm text-foreground'>
+                        {cleanedJobDescription || jobDescription}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <GenerateForm
-                    jobDescription={jobDescription}
-                    onJobDescriptionChange={setJobDescription}
-                    additionalContext={additionalContext}
-                    onAdditionalContextChange={setAdditionalContext}
-                    showResumeButton={!resumeReady}
-                    showCoverLetterButton={!coverLetterReady}
-                    resumeGenerating={resumeGenerating}
-                    coverLetterGenerating={coverLetterGenerating}
-                    resumeError={resumeState.state === 'error' ? resumeState.message : null}
-                    coverLetterError={
-                      coverLetterState.state === 'error' ? coverLetterState.message : null
-                    }
-                    onGenerateResume={() => handleGenerate('resume')}
-                    onGenerateCoverLetter={() => handleGenerate('cover_letter')}
-                  />
-                ))}
+                  ) : (
+                    <GenerateForm
+                      jobDescription={jobDescription}
+                      onJobDescriptionChange={setJobDescription}
+                      additionalContext={additionalContext}
+                      onAdditionalContextChange={setAdditionalContext}
+                      showResumeButton={!resumeReady}
+                      showCoverLetterButton={!coverLetterReady}
+                      resumeGenerating={resumeGenerating}
+                      coverLetterGenerating={coverLetterGenerating}
+                      resumeError={resumeState.state === 'error' ? resumeState.message : null}
+                      coverLetterError={
+                        coverLetterState.state === 'error' ? coverLetterState.message : null
+                      }
+                      onGenerateResume={() => handleGenerate('resume')}
+                      onGenerateCoverLetter={() => handleGenerate('cover_letter')}
+                    />
+                  )}
+                </>
+              )}
 
-              {tab === 'resume' &&
-                (resumeState.state === 'success' ? (
-                  <div className='flex flex-col gap-2'>
-                    <div className='flex items-center justify-between gap-2'>
+              {tab === 'resume' && (
+                <>
+                  {DEMO_MODE && (
+                    <DemoCapabilityBanner message="In the full app, an AI model (Claude) generates every bullet, summary, and skill section tailored to the job, and revises them live via chat instructions." />
+                  )}
+                  {resumeState.state === 'success' ? (
+                    <div className='flex flex-col gap-2'>
+                      <div className='flex items-center justify-between gap-2'>
                       <p className='text-xs text-(--muted)'>
                         {previewMode === 'edit'
                           ? 'Edit mode: click any field to edit it.'
@@ -812,6 +842,9 @@ export default function Home() {
                       onSubmit={handleRevise}
                       canRevert={history.length > 0}
                       onRevert={handleRevert}
+                      demoMode={DEMO_MODE}
+                      demoPillAvailable={demoPillAvailable}
+                      onApplyDemoRefinement={handleApplyDemoRefinement}
                     />
                   </div>
                 ) : (
@@ -831,10 +864,16 @@ export default function Home() {
                     onGenerateResume={() => handleGenerate('resume')}
                     onGenerateCoverLetter={() => handleGenerate('cover_letter')}
                   />
-                ))}
+                )}
+                </>
+              )}
 
-              {tab === 'cover_letter' &&
-                (coverLetterState.state === 'success' ? (
+              {tab === 'cover_letter' && (
+                <>
+                  {DEMO_MODE && (
+                    <DemoCapabilityBanner message="In the full app, Claude writes a complete, tailored cover letter for each job, fully revisable via chat." />
+                  )}
+                  {coverLetterState.state === 'success' ? (
                   <div className='flex flex-col gap-2'>
                     <div className='flex items-center justify-between gap-2'>
                       <p className='text-xs text-(--muted)'>
@@ -884,6 +923,9 @@ export default function Home() {
                       onSubmit={handleRevise}
                       canRevert={history.length > 0}
                       onRevert={handleRevert}
+                      demoMode={DEMO_MODE}
+                      demoPillAvailable={demoPillAvailable}
+                      onApplyDemoRefinement={handleApplyDemoRefinement}
                     />
                   </div>
                 ) : (
@@ -903,7 +945,9 @@ export default function Home() {
                     onGenerateResume={() => handleGenerate('resume')}
                     onGenerateCoverLetter={() => handleGenerate('cover_letter')}
                   />
-                ))}
+                )}
+                </>
+              )}
             </>
           )}
         </div>

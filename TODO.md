@@ -22,13 +22,6 @@ into a STATUS doc as completed work.
   Deferred as low priority since section headings ("Experience", "Skills") rarely need
   editing. Revisit if section-title editing is ever wanted.
 
-## Queued, small
-
-- **Favicon**: minimal document icon — page silhouette with a folded top-right corner
-  and a couple of horizontal lines suggesting text/bullets, solid coral (`--accent`)
-  fill. Decided design (option 2 of 4 discussed); not built yet. Ready to start now
-  that the application-workspace redesign (below) is complete.
-
 ## Infrastructure, not yet started
 
 - **Cloudflare Tunnel** — stable hostname to expose the local backend so a Vercel-hosted

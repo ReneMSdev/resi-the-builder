@@ -15,17 +15,27 @@ via chat-scoped revision → downloads a formatted `.docx`/`.pdf`. See
 
 ## Complete, not yet merged: UI/storage redesign (branch `redesign/application-workspace`)
 
-All 5 phases done and verified, ready for merge review — not yet merged to `main`.
-Reworked the frontend into a two-bar flat layout (top bar: logo/backend-status/
-"generate for new job"; second bar: Job Description/Resume/Cover Letter/Saved as flat
-peer tabs), plus a top-bar polish round (stone background, Roboto Mono coral logo,
-contrast fixes, auto-growing chat input). Introduced a job-application "package"
-concept on the backend (`/applications`, replacing `/resumes` entirely) bundling JD +
-resume + cover letter together, with the Saved tab and Save button fully wired to it
-(per-package pills, one-click load hydrating all three tabs). See
-`backend/STATUS_BACKEND.md` ("Backend Part 6"/"Part 7") and
-`frontend/STATUS_FRONTEND.md` (the redesign + `/applications`-wiring sections) for full
-build/verification detail.
+Done and verified, ready for merge review — not yet merged to `main`. Reworked the
+frontend into a two-bar flat layout (top bar: logo/backend-status/"generate for new
+job"; second bar: Job Description/Resume/Cover Letter as flat peer tabs), plus a
+top-bar polish round (stone background, Roboto Mono coral logo, contrast fixes,
+auto-growing chat input). Introduced a job-application "package" concept on the
+backend (`/applications`, replacing `/resumes` entirely) bundling JD + resume + cover
+letter together, with the Save button and a Saved browsing view fully wired to it
+(per-package pills, one-click load hydrating all three content tabs).
+
+On top of that original scope, also shipped: a hamburger menu (Radix UI + Lucide
+icons, the project's first UI/icon dependencies) replacing the old "Saved" tab —
+Saved and a new minimal Profile view (raw `/profile` JSON) now live there instead of
+the flat tab row; a reusable toast notification system; a custom favicon; icons on
+the Save/Download buttons; an anchored Save popover instead of an inline layout-
+shifting swap; and a full restructure of page scrolling (html/body no longer scroll,
+an inner content container does) with custom scrollbar styling, fixing a scrollbar-
+gutter layout-shift bug along the way.
+
+See `backend/STATUS_BACKEND.md` ("Backend Part 6"/"Part 7") and
+`frontend/STATUS_FRONTEND.md` (the redesign, `/applications`-wiring, and
+toast/icons/hamburger-menu/scrollbar sections) for full build/verification detail.
 
 ## Overall state (on `main`): feature-complete, running locally only
 

@@ -483,6 +483,7 @@ export default function Home() {
   const coverLetterReady = coverLetterState.state === 'success'
   const showingRevisionChat =
     (tab === 'resume' && resumeReady) || (tab === 'cover_letter' && coverLetterReady)
+  const isContentTab = tab === 'jd' || tab === 'resume' || tab === 'cover_letter'
 
   return (
     <div className='flex h-full flex-col items-center overflow-hidden bg-background font-sans'>
@@ -507,13 +508,24 @@ export default function Home() {
             Backend unreachable: {status.message}
           </p>
         )}
-        <button
-          type='button'
-          onClick={handleGenerateForNewJob}
-          className='rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover)'
-        >
-          Generate for new job
-        </button>
+        <div className='flex items-center gap-3'>
+          {loadedApplication && (
+            <button
+              type='button'
+              onClick={() => setTab('jd')}
+              className='rounded border border-(--border) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-white/10'
+            >
+              Current Application
+            </button>
+          )}
+          <button
+            type='button'
+            onClick={handleGenerateForNewJob}
+            className='rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover)'
+          >
+            Generate for new job
+          </button>
+        </div>
       </div>
 
       <main className='app-scrollbar min-h-0 w-full flex-1 overflow-y-auto'>
@@ -522,37 +534,39 @@ export default function Home() {
             showingRevisionChat ? '' : 'pb-8'
           }`}
         >
-          <div className='w-full border-b border-(--border) pb-6'>
-            <div className='flex gap-2 justify-center'>
-              <button
-                type='button'
-                onClick={() => setTab('jd')}
-                className={tabClass('jd')}
-              >
-                Job Description
-              </button>
-              <button
-                type='button'
-                onClick={() => setTab('resume')}
-                className={tabClass('resume')}
-              >
-                Resume
-              </button>
-              <button
-                type='button'
-                onClick={() => setTab('cover_letter')}
-                className={tabClass('cover_letter')}
-              >
-                Cover Letter
-              </button>
+          {isContentTab && (
+            <div className='w-full border-b border-(--border) pb-6'>
+              <div className='flex gap-2 justify-center'>
+                <button
+                  type='button'
+                  onClick={() => setTab('jd')}
+                  className={tabClass('jd')}
+                >
+                  Job Description
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setTab('resume')}
+                  className={tabClass('resume')}
+                >
+                  Resume
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setTab('cover_letter')}
+                  className={tabClass('cover_letter')}
+                >
+                  Cover Letter
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {tab === 'saved' && <SavedTab onLoad={handleLoadApplication} />}
 
           {tab === 'profile' && <ProfileView />}
 
-          {tab !== 'saved' && tab !== 'profile' && (
+          {isContentTab && (
             <>
               {tab === 'jd' &&
                 (resumeReady && coverLetterReady ? (

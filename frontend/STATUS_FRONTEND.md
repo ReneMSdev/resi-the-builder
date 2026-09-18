@@ -1219,3 +1219,50 @@ gets applied before an explicit Save/Update, same as any other in-session state.
 - Cleanup: the one test edit that was actually persisted via Update mid-verification
   was saved back to its original value before finishing; `GET /applications`
   confirmed exactly one record remains with the original name intact.
+
+## Feature: "Current Application" top-bar button, hide second tab bar on Profile/Saved (2026-09-18)
+
+Two small layout/visibility changes to `app/page.tsx`.
+
+- **"Current Application" button**: sits left of "Generate for new job" in the top
+  bar's right-aligned button group (both now wrapped in one `flex items-center
+  gap-3` div, so the existing three-column `justify-between` layout — logo,
+  backend-status text, button group — stays intact rather than fighting a fourth
+  top-level flex child). Rendered only when `loadedApplication !== null` — the same
+  state already used to decide PUT vs POST in `SaveButton`. Label is the literal
+  text "Current Application", per the spec, not the loaded package's actual name.
+  Clicking it does `setTab('jd')`. Deliberately **not** re-fetching/re-hydrating via
+  `handleLoadApplication` the way a Saved-tab card click does — the application's
+  data is already the live session state (`jobDescription`/`resumeState`/
+  `coverLetterState` all reflect whatever's currently loaded, possibly including
+  unsaved edits or revisions), so re-fetching would silently clobber anything not
+  yet saved. Only the "land on the Job Description tab by default" convention was
+  reused, not the fetch-and-overwrite behavior — flagging this interpretation since
+  the request's wording could be read either way.
+- **Second tab bar (Job Description/Resume/Cover Letter) + its divider now hidden
+  entirely on Profile and Saved**: new `isContentTab = tab === 'jd' || tab ===
+  'resume' || tab === 'cover_letter'` derived value gates the tab-row `<div>` (was
+  previously always rendered). Also replaced the existing `tab !== 'saved' && tab
+  !== 'profile'` check further down (guarding the three tabs' actual content) with
+  the same `isContentTab`, removing a duplicated equivalent condition.
+
+### Verification (real browser + DOM inspection, not just visual)
+
+- Fresh session (no package loaded): confirmed "Current Application" does not
+  render at all.
+- Loaded the Justworks fixture via the Saved tab: button appeared immediately, and
+  stayed visible while navigating to Profile and Saved (since a package remains
+  loaded regardless of which view is active).
+- From Profile, clicked "Current Application" — landed on the Job Description tab
+  showing the loaded package's actual (cleaned) JD text, not a blank/default form.
+  Repeated from the Saved tab with the same result.
+- Clicked "Generate for new job" — button disappeared again, confirming it tracks
+  `loadedApplication` correctly in both directions.
+- Confirmed via `document.querySelectorAll('button')` that no "Job Description" /
+  "Cover Letter" tab button exists in the DOM at all while viewing Profile —
+  genuinely absent, not CSS-hidden. Visually confirmed the same for Saved, and
+  confirmed the tab row + divider are present and functional on all three content
+  tabs.
+- No test data touched `/applications` during this verification — confirmed via
+  `GET /applications` that only the original fixture remains.
+- `tsc --noEmit` and `eslint` both clean.

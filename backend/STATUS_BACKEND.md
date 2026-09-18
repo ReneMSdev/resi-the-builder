@@ -1271,6 +1271,68 @@ the same way; both confirmed programmatically to not exact-match any pool string
 `PUT /profile` round-trip confirmed byte-identical (fetched via `GET`, PUT'd back
 unchanged, re-fetched, compared).
 
+## Backend Part 11 — Prompt caching on `/generate`, and a finding that corrects the original cost-savings framing (2026-09-18)
+
+**What was built**: two ephemeral cache breakpoints in `generate_resume`/
+`generate_cover_letter` (`app/services/llm.py`), per Anthropic's prompt-caching docs
+(strict byte-for-byte prefix match, `cache_control: {"type": "ephemeral"}`, default 5m
+TTL, max 4 breakpoints/request — using 2). `/revise` deliberately left untouched (out of
+scope — resume/cover_letter revise never sends the full profile; profile-type revise
+sends the currently-edited profile, which could differ from the canonical file).
+
+1. `_cached_system(prompt)` — wraps `GENERATE_SYSTEM_PROMPT`/`COVER_LETTER_SYSTEM_PROMPT`
+   as a single cacheable system block. Highest-value target: identical on every call,
+   forever, for a given generation type.
+2. `_profile_and_job_blocks(profile, job_description, additional_context)` — splits
+   what used to be one combined string into two content blocks: a `PROFILE DATA:` block
+   (cache breakpoint here, since it's identical across calls in a session) followed by
+   an unmarked `JOB DESCRIPTION:`/`ADDITIONAL CONTEXT:` block (varies every call, must
+   come after the breakpoint or every request would write a new cache entry and never
+   read one back). Verified serialization is deterministic: `json.dumps(profile,
+   indent=2)` on the same freshly-loaded dict produces byte-identical text across calls
+   (unit-tested directly, not just assumed).
+
+**Real finding that corrects the task's original economic framing** — this is exactly
+why the verification step called for real API calls instead of mocks. The task assumed
+generating a resume then a cover letter in one sitting would share the profile+system-
+prompt cache, since both "share the same profile+system-prompt prefix." **That's not
+quite true in this codebase**: `GENERATE_SYSTEM_PROMPT` and `COVER_LETTER_SYSTEM_PROMPT`
+are two distinct prompt texts, and since the cached prefix for the profile-block
+breakpoint is cumulative (system block + profile block, in request order), a differing
+system prompt means the combined prefix differs by generation type — so a resume call
+and a cover-letter call do **not** share a cache entry with each other, even though the
+profile JSON itself is byte-identical.
+
+Confirmed with real calls, same profile, same job description, `claude-sonnet-4-6`:
+```
+Call 1 (resume):              input=37  cache_creation=0     cache_read=9957   (hit — warm from earlier session testing)
+Call 2 (cover letter):        input=37  cache_creation=9651  cache_read=0      (MISS — different system prompt)
+Call 3 (resume again):        input=37  cache_creation=0     cache_read=9957   (hit — Call 1's entry)
+Call 4 (cover letter again):  input=37  cache_creation=0     cache_read=9651   (hit — Call 2's entry)
+```
+So the ~9,650-9,960-token profile+system block **does** cache and get read back
+correctly — confirmed working exactly as designed — but the benefit is per generation
+type, not shared across a single resume+cover-letter session the way the task
+description assumed. It pays off clearly for: regenerating the same type after tweaking
+the JD/context within a session, or generating the same type back-to-back for multiple
+jobs in one sitting (both real workflows). It does **not** cut the cost of one
+resume+one-cover-letter pair for a single job the way "2-call break-even" implied.
+Getting the cross-type benefit too would require unifying the two system prompts to
+share a common leading block (type-specific instructions split into their own trailing,
+uncached block) — a real prompt-architecture change, not just adding cache_control
+markers, and risks disturbing two carefully-tuned prompts. Flagging as a possible
+follow-up rather than doing it silently in this pass.
+
+**Test coverage** (`tests/test_generate.py`, +3, mocked): asserts the system block
+carries exactly one cache_control breakpoint, the user content is split into exactly two
+blocks with the breakpoint on the profile block specifically (not the final block
+overall), for both resume and cover-letter generation; plus a unit test confirming
+`_profile_and_job_blocks` produces byte-identical profile-block text across two calls
+with the same dict but different job descriptions (the determinism the whole cache
+mechanism depends on). One pre-existing test updated for the new list-of-blocks content
+shape (`messages[0]["content"]` is no longer a plain string). Full suite: 57 passed (was
+54).
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

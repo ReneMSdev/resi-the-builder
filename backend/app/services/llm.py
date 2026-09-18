@@ -470,6 +470,36 @@ def _normalize_revise_result(result: dict) -> dict:
     return result
 
 
+def _cached_system(prompt: str) -> list[dict]:
+    """Wraps a static system prompt as a single cacheable block. Safe to reuse across
+    every call for a given prompt — the prompt text never changes, so this is the
+    highest-value cache breakpoint (shared system-wide, not just within one session)."""
+    return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
+
+
+def _profile_and_job_blocks(
+    profile: dict, job_description: str, additional_context: str | None
+) -> list[dict]:
+    """Two separate content blocks instead of one combined string, so the profile JSON
+    (identical on every call within a session) can be cached independently of the job
+    description/additional context (which vary every call). The cache_control
+    breakpoint goes on the profile block specifically — it must be the LAST block of
+    the stable prefix; putting it after the varying suffix would write a new cache
+    entry on every request and never read one back."""
+    profile_block = {
+        "type": "text",
+        "text": f"PROFILE DATA:\n{json.dumps(profile, indent=2)}\n\n",
+        "cache_control": {"type": "ephemeral"},
+    }
+
+    job_text = f"JOB DESCRIPTION:\n{job_description}\n"
+    if additional_context:
+        job_text += f"\nADDITIONAL CONTEXT:\n{additional_context}\n"
+    job_block = {"type": "text", "text": job_text}
+
+    return [profile_block, job_block]
+
+
 def generate_resume(profile: dict, job_description: str, additional_context: str | None = None) -> dict:
     if len(job_description) > MAX_INPUT_CHARS:
         raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
@@ -478,20 +508,16 @@ def generate_resume(profile: dict, job_description: str, additional_context: str
 
     check_and_increment()
 
-    user_content = f"""PROFILE DATA:
-{json.dumps(profile, indent=2)}
-
-JOB DESCRIPTION:
-{job_description}
-"""
-    if additional_context:
-        user_content += f"\nADDITIONAL CONTEXT:\n{additional_context}\n"
-
     response = client.messages.create(
         model=MODEL,
         max_tokens=8192,
-        system=GENERATE_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_content}],
+        system=_cached_system(GENERATE_SYSTEM_PROMPT),
+        messages=[
+            {
+                "role": "user",
+                "content": _profile_and_job_blocks(profile, job_description, additional_context),
+            }
+        ],
     )
 
     text = "".join(block.text for block in response.content if block.type == "text")
@@ -506,20 +532,16 @@ def generate_cover_letter(profile: dict, job_description: str, additional_contex
 
     check_and_increment()
 
-    user_content = f"""PROFILE DATA:
-{json.dumps(profile, indent=2)}
-
-JOB DESCRIPTION:
-{job_description}
-"""
-    if additional_context:
-        user_content += f"\nADDITIONAL CONTEXT:\n{additional_context}\n"
-
     response = client.messages.create(
         model=MODEL,
         max_tokens=8192,
-        system=COVER_LETTER_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_content}],
+        system=_cached_system(COVER_LETTER_SYSTEM_PROMPT),
+        messages=[
+            {
+                "role": "user",
+                "content": _profile_and_job_blocks(profile, job_description, additional_context),
+            }
+        ],
     )
 
     text = "".join(block.text for block in response.content if block.type == "text")

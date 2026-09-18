@@ -14,27 +14,51 @@
     },
     "links": [
       {
+        "id": "link_github",
         "label": "GitHub",
-        "url": "github.com/ReneMSdev",
-        "id": "link_github"
+        "url": "github.com/ReneMSdev"
       },
       {
+        "id": "link_linkedin",
         "label": "LinkedIn",
-        "url": "linkedin.com/in/renemsdev",
-        "id": "link_linkedin"
+        "url": "linkedin.com/in/renemsdev"
       },
       {
+        "id": "link_website",
         "label": "Website",
-        "url": "renemsdev.com",
-        "id": "link_website"
+        "url": "renemsdev.com"
       }
     ]
   },
   "summary_pool": [
-    "Software engineer with hands-on DevOps/cloud experience building and deploying production FastAPI services on GCP, backed by 8+ years of field telecom work.",
-    "Solo technical founder and backend engineer specializing in FastAPI, GCP Cloud Run, and CI/CD pipelines, transitioning from telecom field work into cloud/software engineering.",
-    "Low-voltage and fiber optic technician with 5+ years of experience supporting residential and commercial infrastructure projects, including fiber optic installation, structured cabling, and coax telecom systems, with a track record of meeting performance and safety standards in fast-paced field environments.",
-    "Field telecom technician and Apprentice Electrician with 8+ years of hands-on experience installing, testing, and troubleshooting fiber, coax, and low-voltage systems for providers including Google Fiber, AT&T, and Spectrum."
+    {
+      "id": "role_devops",
+      "role_type": "DevOps",
+      "summaries": [
+        {
+          "id": "summary_devops_1",
+          "text": "Software engineer with hands-on DevOps/cloud experience building and deploying production FastAPI services on GCP, backed by 8+ years of field telecom work."
+        },
+        {
+          "id": "summary_devops_2",
+          "text": "Solo technical founder and backend engineer specializing in FastAPI, GCP Cloud Run, and CI/CD pipelines, transitioning from telecom field work into cloud/software engineering."
+        }
+      ]
+    },
+    {
+      "id": "role_technician",
+      "role_type": "Technician",
+      "summaries": [
+        {
+          "id": "summary_technician_1",
+          "text": "Low-voltage and fiber optic technician with 5+ years of experience supporting residential and commercial infrastructure projects, including fiber optic installation, structured cabling, and coax telecom systems, with a track record of meeting performance and safety standards in fast-paced field environments."
+        },
+        {
+          "id": "summary_technician_2",
+          "text": "Field telecom technician and Apprentice Electrician with 8+ years of hands-on experience installing, testing, and troubleshooting fiber, coax, and low-voltage systems for providers including Google Fiber, AT&T, and Spectrum."
+        }
+      ]
+    }
   ],
   "sections": [
     {
@@ -394,7 +418,8 @@
             }
           ]
         }
-      ]
+      ],
+      "groups": []
     },
     {
       "id": "sec_projects",
@@ -605,7 +630,8 @@
             }
           ]
         }
-      ]
+      ],
+      "groups": []
     },
     {
       "id": "sec_education",
@@ -632,7 +658,8 @@
           },
           "bullets": []
         }
-      ]
+      ],
+      "groups": []
     },
     {
       "id": "sec_certifications",
@@ -759,7 +786,8 @@
           },
           "bullets": []
         }
-      ]
+      ],
+      "groups": []
     },
     {
       "id": "sec_skills",

@@ -9,7 +9,26 @@ def test_revise_requires_resume_or_cover_letter(client):
     resp = client.post("/revise", json={"selected_ids": ["b_1"], "instruction": "punchier"})
 
     assert resp.status_code == 400
-    assert "resume" in resp.json()["detail"] and "cover_letter" in resp.json()["detail"]
+    detail = resp.json()["detail"]
+    assert "resume" in detail and "cover_letter" in detail and "profile" in detail
+
+
+def test_revise_rejects_more_than_one_of_resume_cover_letter_profile(
+    client, minimal_resume, minimal_cover_letter
+):
+    resp = client.post(
+        "/revise",
+        json={
+            "resume": minimal_resume,
+            "cover_letter": minimal_cover_letter,
+            "selected_ids": ["b_1"],
+            "instruction": "punchier",
+        },
+    )
+
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert "resume" in detail and "cover_letter" in detail and "profile" in detail
 
 
 def test_revise_resume_success(client, mock_llm, minimal_resume):

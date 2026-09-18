@@ -74,7 +74,15 @@ def minimal_profile():
             "phone": {"id": "meta_phone", "text": "555-0100"},
             "links": [{"id": "link_github", "label": "GitHub", "url": "github.com/janedoe"}],
         },
-        "summary_pool": ["A software engineer."],
+        "summary_pool": [
+            {
+                "id": "role_backend",
+                "role_type": "Backend",
+                "summaries": [
+                    {"id": "summary_backend_1", "text": "A software engineer."},
+                ],
+            }
+        ],
         "sections": [
             {
                 "id": "sec_experience",

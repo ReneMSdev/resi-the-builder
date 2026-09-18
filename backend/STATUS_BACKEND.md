@@ -1185,6 +1185,92 @@ tests. Full suite: 47 passed (was 37).
   same context (plus "I know one of the founding engineers from a meetup") wove the
   relationship into the opening paragraph and the certification into a body paragraph.
 
+## Backend Part 10 — Profile editing: `summary_pool` migration, `/revise` gains `profile`, prompt clarification (2026-09-17)
+
+**Context**: backend half of the Profile editing UI feature (full design in `TODO.md`'s
+"Planned feature (design confirmed — ready to build)" section). Profile editing reuses
+Resume's existing selection/chat-revision/manual-edit patterns rather than building
+something new, since `profile.json` shares Resume's schema — this pass makes that
+actually true for `summary_pool`, which was the one field that didn't fit the pattern.
+
+**1. `summary_pool` migrated from `list[str]` to a grouped shape**, mirroring
+`SkillGroup`'s `{id, label, items}` exactly: new `SummaryItem(IdText): pass` and
+`SummaryGroup {id, role_type, summaries: list[SummaryItem]}` in `app/models.py`;
+`Profile.summary_pool: list[SummaryGroup]`. Id convention mirrors skill groups/items
+(`skill_<slug>` / `item_<group-slug>_<word>`) adapted for this domain: `role_<slug>` for
+the group, `summary_<group-slug>_<n>` for each item (paragraph-length text doesn't slug
+into a short word the way a skill name does, hence numbering instead).
+
+**Real `profile.json` migrated by reading the actual content**, not a mechanical
+id-only pass: the 4 existing plain strings split into two groups by actual subject
+matter — `role_devops` ("DevOps", 2 items: the FastAPI/GCP/cloud-engineering summaries)
+and `role_technician` ("Technician", 2 items: the fiber/low-voltage field-technician
+summaries). Verified: `Profile(**data)` validates cleanly against the new model.
+
+Grepped the whole backend for other `summary_pool` references before assuming nothing
+else touched it — confirmed `llm.py`/`render.py` never destructured it by name (both
+just pass/render the profile dict generically), so no code changes needed there beyond
+the deliberate prompt-text updates in #3 below. Updated the two other places that did
+reference the old flat-string shape: `tests/conftest.py`'s `minimal_profile` fixture and
+`tests/test_misc.py`'s `PUT /profile` round-trip test.
+
+**2. `/revise` extended to accept `profile: Optional[Profile]`**, alongside
+`resume`/`cover_letter` — now a strict three-way mutually-exclusive check (`app/routes/
+revise.py`): exactly one of the three must be present, or a 400 (tightened from the old
+"at least one of resume/cover_letter" check, which silently prioritized cover_letter if
+both happened to be sent — now any combination other than exactly one is rejected).
+
+New `PROFILE_REVISE_SYSTEM_PROMPT` (`app/services/llm.py`) — a distinct prompt, not a
+reuse of `REVISE_SYSTEM_PROMPT`, opening with an explicit "this is NOT about tailoring
+content to a specific job" framing (maintaining master data, not a job-tailored
+document). Mirrors the existing id-expansion rules (bullet/meta-field/entry-field/entry/
+skill-group/section/skills-section) and adds two new ones for the `SummaryGroup` shape:
+a summary item id revises that one paragraph directly (same as a bullet), and a
+role-type group id expands to one update per summary item in that group, each keyed by
+its own id — deliberately **not** the skill-group comma-joined-string convention, since
+summary items are standalone paragraphs, not short list values that make sense joined
+into one string.
+
+New `revise_profile(profile, selected_ids, instruction)` — note the signature has **no
+`job_description` parameter at all**, unlike `revise_resume`/`revise_cover_letter`. This
+is the defensive mechanism the task asked for: it's not that the route drops
+`job_description` before calling `revise_profile`, it's that there is no code path
+through which one could reach the prompt even if a caller sent one — verified via a
+mocked test that captures the actual prompt text sent to the model and asserts a
+deliberately-attached `job_description` value never appears in it.
+
+**3. `GENERATE_SYSTEM_PROMPT` (and `COVER_LETTER_SYSTEM_PROMPT`) clarified**: profile
+content, especially `summary_pool`, is raw material to adapt for the job, not a fixed
+menu to select verbatim. `GENERATE_SYSTEM_PROMPT` now names `summary_pool` explicitly
+for the first time (it never had before) with its shape spelled out, and instructs the
+model to pick the closest-matching `role_type` group as a starting point, then rewrite
+and blend across that group's summaries into the tailored `summary` field — not copy one
+unchanged. `COVER_LETTER_SYSTEM_PROMPT` gets a lighter touch, since cover letters were
+already framed as original prose with no verbatim-selection slot to begin with: a short
+note that `summary_pool` can inform tone/framing (which `role_type` best fits) without
+ever being reused as-is.
+
+**Test coverage**: `tests/test_revise_profile.py` (new, 6 tests) — success case,
+role-type-group expansion relay (pass-through contract, same pattern as resume's
+entry-expansion test — the model does the actual expansion), the `job_description`
+never-forwarded defensive check (captures the real prompt text sent to the mocked
+client), 502/429/oversized-instruction paths. `tests/test_revise.py` +1 (the three-way
+400 now also rejects more-than-one-provided, not just none). Full suite: 54 passed (was
+47).
+
+**Manually verified against the live server**, all four asks: `GET /profile` returns
+the migrated shape cleanly. A real `/revise` call against the real profile with
+`selected_ids: ["role_technician"]` and "quantify impact more, make these punchier" —
+200, both summary items rewritten independently (punchier phrasing, real quantified
+detail pulled from elsewhere in the profile's own experience section — not fabricated),
+group id correctly absent from the output, no em dashes. Two real `/generate` calls
+post-prompt-clarification — a fiber/low-voltage JD correctly selected and blended the
+`role_technician` group (mixing phrasing from both its summary items, not a verbatim
+copy of either), a Python/FastAPI/GCP JD correctly selected and blended `role_devops`
+the same way; both confirmed programmatically to not exact-match any pool string.
+`PUT /profile` round-trip confirmed byte-identical (fetched via `GET`, PUT'd back
+unchanged, re-fetched, compared).
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

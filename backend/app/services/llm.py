@@ -24,6 +24,17 @@ explicitly supplies via the additional context field is a fact they're directly 
 you, not something you're inferring or inventing, so it's fair game to use the same as
 profile content would be.
 
+Profile content is raw material to adapt for this job, not a fixed menu of exact text to
+select verbatim — this applies to prose fields generally, and especially to the
+"summary_pool" field: candidate summary paragraphs grouped by role type, shaped like
+`{ "id": "role_...", "role_type": "...", "summaries": [ { "id": "summary_..._1", "text":
+"..." } ] }`. Pick whichever role_type's summaries are the closest starting point for
+this job (usually the one whose framing best matches the job description), then rewrite
+and blend that starting point into the tailored "summary" field below — combining
+phrasing across multiple summaries in that role_type where it strengthens the fit, and
+adapting wording to this specific job the same way bullet text gets adapted. Don't just
+copy one summary variant unchanged unless it already happens to be a strong fit as-is.
+
 Additional context, if provided, is open-ended — it could be company information, the
 candidate's relationship to the company (e.g. knowing someone on the team, being a
 long-time user of their product), additional qualifications or experience relevant to
@@ -197,6 +208,101 @@ always include the "updates" key, even when it's an empty list.
 """
 
 
+PROFILE_REVISE_SYSTEM_PROMPT = """You are a profile-data-editing assistant. This is NOT
+about tailoring content to a specific job — there is no job description involved. Your
+job is to help maintain accurate, well-written master data: the full universe of a
+candidate's experience that tailored resumes and cover letters get generated from later.
+You will be given:
+1. The full current profile JSON (for context and consistency of tone/voice)
+2. A list of selected IDs the user wants revised
+3. A free-text instruction describing how to revise them (e.g. "make these punchier and
+   quantify impact", "shorten to one line", "emphasize leadership")
+
+Each selected ID refers to something in the profile JSON:
+- A bullet ID (e.g. "b_salo_2") — revise that single bullet's text per the instruction.
+- A summary item ID (e.g. "summary_devops_1") — revise that single summary variant's
+  text per the instruction, same as a bullet.
+- A meta field ID ("meta_name", "meta_email", "meta_phone") or a link ID (e.g.
+  "link_github") — revise that single field's "text" per the instruction, same as a
+  bullet. These are plain single-line strings, not lists — no comma-joining involved.
+- An entry field ID (e.g. "entry_salolabs_title", "entry_salolabs_org",
+  "entry_salolabs_location", "entry_salolabs_dates") — revise that single field's "text"
+  per the instruction, same as a meta field.
+- An entry ID (e.g. "entry_salolabs") — this means "revise this whole job/project block."
+  In this case, apply the instruction across ALL bullets currently under that entry, and
+  return one update per bullet using each bullet's OWN id (not the entry's id) — the
+  entry id itself is not a directly revisable field and must not appear in your output.
+  If the entry has no bullets (e.g. an education or certification entry with an empty
+  bullets list), there is nothing to revise — skip that id entirely, do not invent bullets.
+  (Note: this bullet-expansion behavior is unchanged — an entry ID never implicitly pulls
+  in that entry's title/organization/location/dates fields; those are only revised when
+  their own specific field ID is selected directly.)
+- A role-type group ID (e.g. "role_devops", from the top-level "summary_pool" array) —
+  this means "revise every summary variant currently in this role-type group." Apply the
+  instruction across ALL summary items in that group, and return one update per summary
+  item using each item's OWN id (not the group's id) — the group id itself is not a
+  directly revisable field and must not appear in your output. This mirrors how an entry
+  ID expands to its bullets, NOT a skill group's comma-joined convention below — each
+  summary variant is a standalone paragraph, not a short list value, so they are never
+  joined into one string. If the group has no summary items, skip that id entirely, do
+  not invent one.
+- A skill group ID (e.g. "skill_devops") — a group's current state is its "items" array;
+  read each item's "text" field, join them with ", " (comma + space) in their existing
+  order to form one string, then apply the instruction to that whole comma-separated
+  string as if it were a single line of text (e.g. adding a skill means appending it to
+  the list, removing one means dropping it from the list, rewording means rewording the
+  list as a whole). Return ONE update for the group, keyed by the group's OWN id, with
+  "text" set to the revised comma-separated string — do NOT return per-item ids or an
+  "items" array; the response shape is still the flat {id, text} pair used everywhere else.
+- A section ID (e.g. "sec_experience") — this means "revise every bullet in every entry
+  under this section." Apply the instruction across ALL bullets in ALL entries belonging
+  to that section, and return one update per bullet using each bullet's OWN id (not the
+  section's id, and not any entry id either) — the section id itself must not appear in
+  your output. If the section has no bullet-bearing entries (e.g. an "education"/
+  "certifications" section whose entries have no bullets), there is nothing to revise —
+  skip that id entirely, do not invent bullets.
+- A "skills"-type section ID (e.g. "sec_skills", identified by that section's "type"
+  field being "skills") — this means "revise every skill group in this section." Apply
+  the instruction across ALL groups belonging to that section, and return one update per
+  group using each group's OWN id, following the same comma-separated-string convention
+  described above for a single skill group ID. The section id itself must not appear in
+  your output.
+
+Rules:
+- Only touch the text of the exact IDs implied above. Never modify, rewrite, or return
+  anything for IDs that were not selected (directly or via an entry/group/section
+  expansion).
+- Do not fabricate new facts, numbers, skills, or experience not already present in the
+  profile JSON's existing content. Only rephrase/restructure what's already there — the
+  one exception is a skill group/section instruction that explicitly names a new skill to
+  add (e.g. "add Kubernetes to this list"), since the user is directly supplying that fact.
+- Preserve the existing tone/voice of the profile unless the instruction says otherwise.
+- Writing style: never use em dashes or en dashes as punctuation in revised text (use a
+  comma, period, or parentheses instead) — this doesn't affect the "dates" field's
+  existing plain hyphen-minus convention (e.g. "Jan 2026 - Present"), which was never an
+  em dash to begin with. For prose fields specifically (bullets and summary items), also
+  avoid overused AI-tell words and phrasing ("leverage," "seamlessly," "robust," "delve
+  into," etc.), rhetorical triplet lists, and overly symmetric sentence construction
+  repeated bullet after bullet — write like a person, not like an AI. Structural fields
+  (names, dates, organizations, links, entry titles) don't need this prose treatment,
+  just the em/en dash avoidance.
+
+Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
+
+{
+  "updates": [
+    { "id": "b_salo_2", "text": "revised text here" },
+    { "id": "summary_devops_1", "text": "revised summary variant here" },
+    { "id": "skill_devops", "text": "Docker, GitHub Actions CI/CD, Terraform, Linux, Kubernetes" }
+  ]
+}
+
+If none of the selected IDs have anything to revise (e.g. every selected id was an
+education/certifications section or entry with no bullets), return {"updates": []} —
+always include the "updates" key, even when it's an empty list.
+"""
+
+
 COVER_LETTER_SYSTEM_PROMPT = """You are a cover-letter-writing assistant. You will be given:
 1. A candidate's full profile data (all their jobs, projects, education, certifications, skills)
 2. A job description they are applying to
@@ -213,7 +319,10 @@ The letter should be 3-4 paragraphs: an opening stating the role and genuine int
 one or two body paragraphs connecting specific profile experience to the job's stated
 requirements, and a closing paragraph. Keep it concise professional business-letter tone,
 not generic filler — reference specific, real accomplishments from the profile data
-rather than vague claims.
+rather than vague claims. The profile's "summary_pool" field (candidate summary
+paragraphs grouped by role type) can inform tone and self-framing — which role_type best
+matches this job is a useful signal — but the letter's paragraphs are always original
+prose built for this specific job, never a summary variant reused or lightly edited.
 
 Additional context, if provided, is open-ended — it could be company information, the
 candidate's relationship to the company (e.g. knowing someone on the team, being a
@@ -476,6 +585,35 @@ INSTRUCTION:
         model=MODEL,
         max_tokens=2048,
         system=COVER_LETTER_REVISE_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_content}],
+    )
+
+    text = "".join(block.text for block in response.content if block.type == "text")
+    return _normalize_revise_result(_extract_json(text))
+
+
+def revise_profile(profile: dict, selected_ids: list[str], instruction: str) -> dict:
+    # No job_description parameter, deliberately — profile editing is never
+    # job-tailoring, so there's no code path for one to leak into this prompt.
+    if len(instruction) > MAX_INPUT_CHARS:
+        raise ValueError(f"instruction exceeds the {MAX_INPUT_CHARS}-character limit.")
+
+    check_and_increment()
+
+    user_content = f"""CURRENT PROFILE JSON:
+{json.dumps(profile, indent=2)}
+
+SELECTED IDS:
+{json.dumps(selected_ids)}
+
+INSTRUCTION:
+{instruction}
+"""
+
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=2048,
+        system=PROFILE_REVISE_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )
 

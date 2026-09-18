@@ -67,10 +67,23 @@ class Resume(BaseModel):
     sections: list[Section]
 
 
+class SummaryItem(IdText):
+    pass
+
+
+class SummaryGroup(BaseModel):
+    """A pool of candidate summary paragraphs for one role type (e.g. "DevOps",
+    "Technician") — mirrors SkillGroup's {id, label, items} shape exactly, just named
+    for its own domain (role_type instead of label, summaries instead of items)."""
+    id: str
+    role_type: str
+    summaries: list[SummaryItem]
+
+
 class Profile(BaseModel):
     """Master data — the full universe of the candidate's experience, not tailored to any JD."""
     meta: Meta
-    summary_pool: list[str] = []
+    summary_pool: list[SummaryGroup] = []
     sections: list[Section]
 
 
@@ -113,6 +126,7 @@ class ReviseRequest(BaseModel):
     instruction: str
     resume: Optional[Resume] = None
     cover_letter: Optional[CoverLetter] = None
+    profile: Optional[Profile] = None
     job_description: Optional[str] = None
 
 

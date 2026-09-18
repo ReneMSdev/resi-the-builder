@@ -1266,3 +1266,126 @@ Two small layout/visibility changes to `app/page.tsx`.
 - No test data touched `/applications` during this verification — confirmed via
   `GET /applications` that only the original fixture remains.
 - `tsc --noEmit` and `eslint` both clean.
+
+## Feature: Profile editing UI, replacing the raw JSON dump (2026-09-18)
+
+Full design in `TODO.md`'s "Profile editing UI" entry. Backend delivered
+`Profile.summary_pool: list[SummaryGroup]` (was a flat `list[str]`, migrated to
+`{id, role_type, summaries: [{id, text}]}`, mirroring `SkillGroup`'s shape) and
+`POST /revise` accepting `profile: Optional[Profile]` as a third mutually-exclusive
+option alongside `resume`/`cover_letter` (400 if not exactly one is present),
+never forwarding `job_description` for profile-type revises. `PUT /profile` is
+reused unchanged as the final write-to-disk step.
+
+- **`app/types.ts`**: added `SummaryItem` (= `IdText`), `SummaryGroup`
+  (`{id, role_type, summaries}`), and `Profile` (`{meta, summary_pool, sections}` —
+  no `type`/`summary` fields, unlike `Resume`).
+- **New `app/lib/profile.ts`**: a Profile-specific parallel to `app/lib/resume.ts`
+  rather than a generic refactor of it — kept separate deliberately so this
+  additive work couldn't risk regressing the already-verified Resume/CL revise
+  logic. `applyProfileRevisionUpdates` patches meta fields, section entries/
+  bullets/skill-groups exactly like Resume's version (including the
+  empty-text-deletes-the-group rule for skill groups, per the explicit instruction
+  that existing skill-group rules carry over unchanged), plus a new step patching
+  `summary_pool` group items directly by id — no comma-splitting and no
+  delete-on-empty for summary items, since each one is a full paragraph, not a
+  comma-separated skill list (matches the delivered contract: a role-type group id
+  expands server-side into one update per summary item, each still keyed by its
+  own item id, never a joined string). Also added `describeProfileSelection` and
+  Profile-typed versions of `addBullet`/`removeBullet`/`addSkillItem`/
+  `removeSkillItem`/`editSkillItem`/`addLink`/`removeLink`/`editLink`/
+  `addSummaryItem`/`removeSummaryItem` (a dedicated `editSummaryItem` was written
+  then removed — unused, since summary-item text edits go through the same
+  `onEditField` → `applyProfileRevisionUpdates` path bullets already use, no
+  separate handler needed).
+- **New `app/components/ProfilePreview.tsx`**: adapts `ResumePreview` for
+  `Profile`'s shape plus collapsible sections. Two small local header components:
+  `CollapsibleHeader` (chevron + title, toggles open/closed, used for the two
+  synthetic top-level groups — Meta/Links and Summary Pool — that have no real
+  backend id to select) and `CollapsibleSelectableHeader` (chevron for collapse,
+  wrapping the rest of the row in the existing `Selectable` so clicking the
+  title/content area still selects for chat-scoped revision — used for the five
+  real `Section`s, each Experience/Projects `Entry`, and each `SummaryGroup`,
+  since all of those do have selectable backend ids). Collapse state is a single
+  `openIds: Set<string>` covering every collapsible id (top-level sections,
+  nested entries, nested role-type groups) — synthetic ids `__meta__` and
+  `__summary_pool__` stand in for the two sections with no backend id of their
+  own. Education/Certifications/Skills render flat (no nesting), reusing
+  `ResumePreview`'s existing per-type blocks unchanged. Meta name/email/phone and
+  each link are now individually wrapped in `Selectable` — a widening beyond what
+  `ResumePreview` currently does (Resume's meta fields are edit-only, not
+  chat-selectable), done because the Profile spec explicitly asks for
+  "meta-field level" selection that Resume was never asked to support.
+- **Rewrote `app/components/ProfileView.tsx`**: was a raw `fetch` + `<pre>` JSON
+  dump; now a fully self-contained editing session — its own `profileState`
+  (loading/success/error), `previewMode` (select/edit), `selectedIds`,
+  `reviseState`, a 10-entry undo `history` stack (same push-before-mutate pattern
+  as Resume/CL's, but scoped entirely to this component), `openIds`, and
+  `applyState` (idle/confirming/applying/error). Deliberately **not** lifted into
+  `page.tsx` the way Resume/CL state is — Profile is reached only via the
+  hamburger menu, is never part of the JD/Resume/CoverLetter tab-switching flow,
+  and keeping its state local means unmounting (navigating to any other view)
+  cleanly discards unsaved edits with no extra logic, which is exactly the
+  "no draft persistence" behavior the spec asked for. One consequence worth
+  flagging: switching to another view and back to Profile re-fetches fresh from
+  `GET /profile` rather than preserving in-progress edits the way switching
+  between Resume/JD/Cover-Letter tabs does — not explicitly specified either way,
+  and arguably the more correct behavior for unapplied changes, but flagging the
+  interpretation.
+  - `handleRevise` posts `{selected_ids, instruction, profile}` — no
+    `job_description` key at all (not even as `undefined`), matching the backend
+    contract's requirement not to send it for profile-type revises.
+  - "Apply to Profile" button opens an anchored popover (same pattern as
+    `SaveButton`'s) with the exact confirmation copy from the spec ("Overwrite
+    your master profile with these changes?"). Confirming does `PUT /profile`
+    with the current in-session profile object; on success, clears the undo
+    `history` (per spec — once applied, prior undo history no longer applies)
+    and shows a toast ("Applied to profile!"). Uses the `--accent` styling like
+    other primary actions but distinct wording, per the "distinct from
+    Save/Update" instruction — no separate visual treatment beyond the wording
+    itself was requested.
+  - `RevisionChat`'s existing `canRevert`/`onRevert` props (already built for
+    Resume/CL) are reused as-is — no changes needed to that component.
+- `page.tsx`: `showingRevisionChat` (controls whether the content wrapper's
+  bottom padding is suppressed in favor of the sticky chat bar's own padding —
+  see the earlier "non-scrolling html/body" fix) now also covers `tab ===
+  'profile'`, since `ProfileView` renders its own `RevisionChat` once loaded.
+
+### Verification (real browser + direct API checks — state/logic correctness, not CSS)
+
+- Loaded the real profile via the hamburger menu: all seven sections rendered
+  collapsed by default in the confirmed order (Meta/Links, Summary Pool,
+  Experience, Projects, Education, Certifications, Skills).
+- Expanded Meta/Links — name/email/phone/links all rendered correctly. Expanded
+  Summary Pool — its two role-type headers ("DevOps", "Technician") appeared,
+  both collapsed. Clicked "Technician"'s title text: it **selected** the group
+  ("Editing: 1 role type") rather than expanding it, confirming the
+  chevron/select separation works as designed; clicking the chevron specifically
+  then expanded it, revealing both candidate paragraphs, group still selected.
+- With the Technician group selected, submitted "Rewrite both of these to start
+  with a strong action verb" — **both** summary paragraphs in the group updated
+  in one round trip (confirms the group-id → per-item-update expansion works).
+  Verified by code inspection (not network capture) that the request body never
+  includes a `job_description` key.
+- Clicked Revert: both paragraphs restored to their exact original text.
+- Manual edit: appended " Jr." to the name field in Edit mode, then Revert —
+  restored exactly. (One retry needed here — a browser viewport resize between
+  actions shifted the revert button's on-screen position and the first click
+  landed on the wrong element; not a bug, just stale coordinates from browser
+  automation, confirmed by re-screenshotting at the new size and clicking the
+  right spot.)
+- Apply flow: edited the name field, clicked "Apply to Profile" — confirmation
+  popover appeared with the exact spec copy. Confirmed via `curl GET /profile`
+  that the name was **still unchanged on disk** at this point (popover shown,
+  not yet confirmed). Clicked Confirm — toast read "Applied to profile!", the
+  revert button went disabled (history cleared, per spec), and a follow-up
+  `curl GET /profile` confirmed the edited name was now persisted via `PUT
+  /profile`. Cleaned up by editing back to the original name and applying again.
+- Navigate-away-without-applying: edited the name again (unsaved), clicked
+  "Generate for new job" (unmounts `ProfileView`) without applying, and
+  confirmed via `curl GET /profile` that the on-disk name was untouched — the
+  unsaved edit was discarded, no draft persisted.
+- Final integrity check: `curl GET /profile` after all testing confirms meta,
+  both summary-pool groups' text, all link/section/entry/group counts exactly
+  match the original pre-test data — nothing left behind from the test edits.
+- `tsc --noEmit` and `eslint` both clean throughout.

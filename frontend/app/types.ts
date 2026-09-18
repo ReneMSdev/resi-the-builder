@@ -37,6 +37,16 @@ export type Resume = {
   sections: Section[];
 };
 
+export type SummaryItem = IdText;
+
+export type SummaryGroup = { id: string; role_type: string; summaries: SummaryItem[] };
+
+export type Profile = {
+  meta: Meta;
+  summary_pool: SummaryGroup[];
+  sections: Section[];
+};
+
 export type CoverLetterMeta = {
   name: IdText;
   email: IdText;

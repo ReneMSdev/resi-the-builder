@@ -482,7 +482,9 @@ export default function Home() {
   const resumeReady = resumeState.state === 'success'
   const coverLetterReady = coverLetterState.state === 'success'
   const showingRevisionChat =
-    (tab === 'resume' && resumeReady) || (tab === 'cover_letter' && coverLetterReady)
+    (tab === 'resume' && resumeReady) ||
+    (tab === 'cover_letter' && coverLetterReady) ||
+    tab === 'profile'
   const isContentTab = tab === 'jd' || tab === 'resume' || tab === 'cover_letter'
 
   return (

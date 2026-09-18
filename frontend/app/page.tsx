@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Application, CoverLetter, Resume } from './types'
+import { Application, CoverLetter, Profile, Resume } from './types'
 import { ResumePreview } from './components/ResumePreview'
 import { CoverLetterPreview } from './components/CoverLetterPreview'
 import { RevisionChat } from './components/RevisionChat'
@@ -80,6 +80,11 @@ type CoverLetterGenerateState =
   | { state: 'error'; message: string }
 
 type ReviseState = { state: 'idle' } | { state: 'loading' } | { state: 'error'; message: string }
+
+type ProfileLoadState =
+  | { state: 'idle' }
+  | { state: 'success'; profile: Profile }
+  | { state: 'error'; message: string }
 
 const MAX_HISTORY = 10
 
@@ -195,12 +200,45 @@ export default function Home() {
   })
   const [resumeHistory, setResumeHistory] = useState<Resume[]>([])
   const [clHistory, setClHistory] = useState<CoverLetter[]>([])
+  const [profileState, setProfileState] = useState<ProfileLoadState>(() =>
+    process.env.NEXT_PUBLIC_API_URL
+      ? { state: 'idle' }
+      : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' },
+  )
+  const [profilePreviewMode, setProfilePreviewMode] = useState<PreviewMode>('select')
+  const [profileSelectedIds, setProfileSelectedIds] = useState<Set<string>>(new Set())
+  const [profileReviseState, setProfileReviseState] = useState<ReviseState>({ state: 'idle' })
+  const [profileHistory, setProfileHistory] = useState<Profile[]>([])
+  const [profileOpenIds, setProfileOpenIds] = useState<Set<string>>(new Set())
 
   const selectedIds = tab === 'resume' ? resumeSelectedIds : clSelectedIds
   const setSelectedIds = tab === 'resume' ? setResumeSelectedIds : setClSelectedIds
   const reviseState = tab === 'resume' ? resumeReviseState : clReviseState
   const setReviseState = tab === 'resume' ? setResumeReviseState : setClReviseState
   const history = tab === 'resume' ? resumeHistory : clHistory
+
+  useEffect(() => {
+    if (tab !== 'profile' || profileState.state !== 'idle') return
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+    // profileState can only be 'idle' here if the initializer already found
+    // NEXT_PUBLIC_API_URL set (otherwise it starts 'error') — this narrows the
+    // type for the fetch call below without a redundant setState.
+    if (!apiUrl) return
+
+    fetch(`${apiUrl}/profile`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.text()
+          throw new Error(`${res.status}: ${body}`)
+        }
+        return res.json()
+      })
+      .then((profile: Profile) => setProfileState({ state: 'success', profile }))
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        setProfileState({ state: 'error', message })
+      })
+  }, [tab, profileState.state])
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -466,6 +504,12 @@ export default function Home() {
     setClReviseState({ state: 'idle' })
     setResumeHistory([])
     setClHistory([])
+    setProfileState({ state: 'idle' })
+    setProfilePreviewMode('select')
+    setProfileSelectedIds(new Set())
+    setProfileReviseState({ state: 'idle' })
+    setProfileHistory([])
+    setProfileOpenIds(new Set())
     setPreviewMode('select')
     setTab('jd')
   }
@@ -484,7 +528,7 @@ export default function Home() {
   const showingRevisionChat =
     (tab === 'resume' && resumeReady) ||
     (tab === 'cover_letter' && coverLetterReady) ||
-    tab === 'profile'
+    (tab === 'profile' && profileState.state === 'success')
   const isContentTab = tab === 'jd' || tab === 'resume' || tab === 'cover_letter'
 
   return (
@@ -566,7 +610,29 @@ export default function Home() {
 
           {tab === 'saved' && <SavedTab onLoad={handleLoadApplication} />}
 
-          {tab === 'profile' && <ProfileView />}
+          {tab === 'profile' &&
+            (profileState.state === 'success' ? (
+              <ProfileView
+                profile={profileState.profile}
+                onProfileChange={(profile) => setProfileState({ state: 'success', profile })}
+                previewMode={profilePreviewMode}
+                setPreviewMode={setProfilePreviewMode}
+                selectedIds={profileSelectedIds}
+                setSelectedIds={setProfileSelectedIds}
+                reviseState={profileReviseState}
+                setReviseState={setProfileReviseState}
+                history={profileHistory}
+                setHistory={setProfileHistory}
+                openIds={profileOpenIds}
+                setOpenIds={setProfileOpenIds}
+              />
+            ) : profileState.state === 'error' ? (
+              <p className='font-medium text-(--danger)'>
+                Error loading profile: {profileState.message}
+              </p>
+            ) : (
+              <p className='text-sm text-(--muted)'>Loading profile...</p>
+            ))}
 
           {isContentTab && (
             <>

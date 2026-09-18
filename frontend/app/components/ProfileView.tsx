@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Dispatch, SetStateAction, useState } from 'react'
 import { Profile } from '../types'
 import { ProfilePreview } from './ProfilePreview'
 import { RevisionChat } from './RevisionChat'
@@ -21,11 +21,6 @@ import {
 } from '../lib/profile'
 
 type PreviewMode = 'select' | 'edit'
-
-type ProfileState =
-  | { state: 'loading' }
-  | { state: 'success'; profile: Profile }
-  | { state: 'error'; message: string }
 
 type ReviseState = { state: 'idle' } | { state: 'loading' } | { state: 'error'; message: string }
 
@@ -72,37 +67,34 @@ function ModeToggle({
   )
 }
 
-export function ProfileView() {
-  const [profileState, setProfileState] = useState<ProfileState>(() =>
-    process.env.NEXT_PUBLIC_API_URL
-      ? { state: 'loading' }
-      : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' },
-  )
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('select')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [reviseState, setReviseState] = useState<ReviseState>({ state: 'idle' })
-  const [history, setHistory] = useState<Profile[]>([])
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set())
+export function ProfileView({
+  profile,
+  onProfileChange,
+  previewMode,
+  setPreviewMode,
+  selectedIds,
+  setSelectedIds,
+  reviseState,
+  setReviseState,
+  history,
+  setHistory,
+  openIds,
+  setOpenIds,
+}: {
+  profile: Profile
+  onProfileChange: (profile: Profile) => void
+  previewMode: PreviewMode
+  setPreviewMode: Dispatch<SetStateAction<PreviewMode>>
+  selectedIds: Set<string>
+  setSelectedIds: Dispatch<SetStateAction<Set<string>>>
+  reviseState: ReviseState
+  setReviseState: Dispatch<SetStateAction<ReviseState>>
+  history: Profile[]
+  setHistory: Dispatch<SetStateAction<Profile[]>>
+  openIds: Set<string>
+  setOpenIds: Dispatch<SetStateAction<Set<string>>>
+}) {
   const [applyState, setApplyState] = useState<ApplyState>({ state: 'idle' })
-
-  useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
-    if (!apiUrl) return
-
-    fetch(`${apiUrl}/profile`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.text()
-          throw new Error(`${res.status}: ${body}`)
-        }
-        return res.json()
-      })
-      .then((profile: Profile) => setProfileState({ state: 'success', profile }))
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        setProfileState({ state: 'error', message })
-      })
-  }, [])
 
   function toggleSelected(id: string) {
     setSelectedIds((prev) => {
@@ -128,9 +120,9 @@ export function ProfileView() {
     })
   }
 
-  function pushHistory(profile: Profile) {
+  function pushHistory(prevProfile: Profile) {
     setHistory((prev) => {
-      const next = [...prev, profile]
+      const next = [...prev, prevProfile]
       return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next
     })
   }
@@ -139,48 +131,38 @@ export function ProfileView() {
     if (history.length === 0) return
     const last = history[history.length - 1]
     setHistory(history.slice(0, -1))
-    setProfileState({ state: 'success', profile: last })
+    onProfileChange(last)
   }
 
   function handleEditField(id: string, text: string) {
-    if (profileState.state !== 'success') return
-    pushHistory(profileState.profile)
-    setProfileState({
-      state: 'success',
-      profile: applyProfileRevisionUpdates(profileState.profile, [{ id, text }]),
-    })
+    pushHistory(profile)
+    onProfileChange(applyProfileRevisionUpdates(profile, [{ id, text }]))
   }
 
   function updateProfile(updater: (profile: Profile) => Profile) {
-    if (profileState.state !== 'success') return
-    pushHistory(profileState.profile)
-    setProfileState({ state: 'success', profile: updater(profileState.profile) })
+    pushHistory(profile)
+    onProfileChange(updater(profile))
   }
 
   const handleAddBullet = (entryId: string, text: string) =>
-    updateProfile((profile) => addBullet(profile, entryId, text))
-  const handleRemoveBullet = (bulletId: string) =>
-    updateProfile((profile) => removeBullet(profile, bulletId))
+    updateProfile((p) => addBullet(p, entryId, text))
+  const handleRemoveBullet = (bulletId: string) => updateProfile((p) => removeBullet(p, bulletId))
   const handleAddSkillItem = (groupId: string, text: string) =>
-    updateProfile((profile) => addSkillItem(profile, groupId, text))
+    updateProfile((p) => addSkillItem(p, groupId, text))
   const handleRemoveSkillItem = (groupId: string, itemId: string) =>
-    updateProfile((profile) => removeSkillItem(profile, groupId, itemId))
+    updateProfile((p) => removeSkillItem(p, groupId, itemId))
   const handleEditSkillItem = (groupId: string, itemId: string, text: string) =>
-    updateProfile((profile) => editSkillItem(profile, groupId, itemId, text))
-  const handleAddLink = (label: string, url: string) =>
-    updateProfile((profile) => addLink(profile, label, url))
-  const handleRemoveLink = (linkId: string) =>
-    updateProfile((profile) => removeLink(profile, linkId))
+    updateProfile((p) => editSkillItem(p, groupId, itemId, text))
+  const handleAddLink = (label: string, url: string) => updateProfile((p) => addLink(p, label, url))
+  const handleRemoveLink = (linkId: string) => updateProfile((p) => removeLink(p, linkId))
   const handleEditLink = (linkId: string, label: string, url: string) =>
-    updateProfile((profile) => editLink(profile, linkId, label, url))
+    updateProfile((p) => editLink(p, linkId, label, url))
   const handleAddSummaryItem = (groupId: string, text: string) =>
-    updateProfile((profile) => addSummaryItem(profile, groupId, text))
+    updateProfile((p) => addSummaryItem(p, groupId, text))
   const handleRemoveSummaryItem = (groupId: string, itemId: string) =>
-    updateProfile((profile) => removeSummaryItem(profile, groupId, itemId))
+    updateProfile((p) => removeSummaryItem(p, groupId, itemId))
 
   async function handleRevise(instruction: string) {
-    if (profileState.state !== 'success') return
-
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setReviseState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -196,7 +178,7 @@ export function ProfileView() {
         body: JSON.stringify({
           selected_ids: Array.from(selectedIds),
           instruction,
-          profile: profileState.profile,
+          profile,
         }),
       })
 
@@ -208,11 +190,8 @@ export function ProfileView() {
       const data: { updates: { id: string; text: string }[] } = await res.json()
 
       if (data.updates.length > 0) {
-        pushHistory(profileState.profile)
-        setProfileState({
-          state: 'success',
-          profile: applyProfileRevisionUpdates(profileState.profile, data.updates),
-        })
+        pushHistory(profile)
+        onProfileChange(applyProfileRevisionUpdates(profile, data.updates))
       }
       setReviseState({ state: 'idle' })
     } catch (err: unknown) {
@@ -222,8 +201,6 @@ export function ProfileView() {
   }
 
   async function handleApplyConfirm() {
-    if (profileState.state !== 'success') return
-
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setApplyState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -236,7 +213,7 @@ export function ProfileView() {
       const res = await fetch(`${apiUrl}/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileState.profile),
+        body: JSON.stringify(profile),
       })
 
       if (!res.ok) {
@@ -253,17 +230,6 @@ export function ProfileView() {
     }
   }
 
-  if (profileState.state === 'loading') {
-    return <p className='text-sm text-(--muted)'>Loading profile...</p>
-  }
-
-  if (profileState.state === 'error') {
-    return (
-      <p className='font-medium text-(--danger)'>Error loading profile: {profileState.message}</p>
-    )
-  }
-
-  const { profile } = profileState
   const isApplyOpen = applyState.state === 'confirming' || applyState.state === 'applying'
 
   return (

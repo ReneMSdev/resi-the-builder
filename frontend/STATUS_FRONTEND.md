@@ -1389,3 +1389,84 @@ reused unchanged as the final write-to-disk step.
   both summary-pool groups' text, all link/section/entry/group counts exactly
   match the original pre-test data — nothing left behind from the test edits.
 - `tsc --noEmit` and `eslint` both clean throughout.
+
+## Fix: Lift Profile editing state into page.tsx so it survives tab switches (2026-09-18)
+
+Follow-up to the previous entry's flagged tradeoff: `ProfileView` previously owned
+its loaded profile, selection, and undo history as local `useState`, so switching
+to another view and back unmounted/remounted it, discarding in-progress edits and
+re-fetching fresh — unlike Resume/Cover Letter, whose equivalent state lives in
+`page.tsx` and survives ordinary tab-switching. Brought Profile in line with that
+pattern.
+
+- **`app/page.tsx`**: new `profileState: ProfileLoadState` (`idle | success |
+  error` — no `loading` variant, see below), `profilePreviewMode`,
+  `profileSelectedIds`, `profileReviseState`, `profileHistory`, `profileOpenIds` —
+  mirroring the existing `resumeState`/`resumeSelectedIds`/etc. per-tab slot
+  pattern exactly. A new `useEffect` lazily fetches `GET /profile` the first time
+  `tab === 'profile'` while `profileState.state === 'idle'` — fires once per
+  session (successive tab visits see `profileState` already past `'idle'`, so the
+  effect's guard skips the fetch, which is what makes the persistence work).
+  `handleGenerateForNewJob` now also resets all six Profile slots, matching how it
+  already resets Resume/CL — explicitly requested, even though Profile itself
+  isn't job-specific, since "Generate for new job" resetting the whole workspace
+  is the existing convention this should match.
+  - **Lint note**: the effect's "no `NEXT_PUBLIC_API_URL`" branch can't call
+    `setProfileState` directly — `react-hooks/set-state-in-effect` (the same rule
+    noted in `SavedTab.tsx`'s original entry) flags a synchronous `setState` call
+    inside an effect body. Fixed the same way that earlier case was: the missing-
+    env-var **error** state comes from `profileState`'s `useState` lazy
+    initializer instead, so the type only needs `idle | success | error` (no
+    `loading` — the JSX shows "Loading profile..." for `idle` too, same one-line
+    fallback either way) and the effect's own body never calls `setState`
+    synchronously, only inside the `fetch(...).then()`/`.catch()` callbacks.
+  - `showingRevisionChat` and the `tab === 'profile'` JSX branch now check
+    `profileState.state === 'success'` explicitly (previously just `tab ===
+    'profile'`), matching the loading/error/success three-way branch already used
+    for the Resume and Cover Letter tabs.
+- **`app/components/ProfileView.tsx`**: converted from an owner of local
+  `useState` to a controlled component — `profile`, `previewMode`, `selectedIds`,
+  `reviseState`, `history`, `openIds` are now props (setters typed
+  `Dispatch<SetStateAction<T>>` so `page.tsx`'s raw `useState` setters pass
+  through unchanged), plus a new `onProfileChange(profile)` prop that replaces
+  every internal `setProfileState({state:'success', profile: ...})` call. All the
+  handler logic (`handleRevise`, `handleEditField`, `updateProfile`,
+  `handleRevert`, the add/remove mutators) stayed in `ProfileView` essentially
+  unchanged — only the state's storage location moved, not the logic operating on
+  it. `applyState` (the Apply-to-Profile confirm popover's own idle/confirming/
+  applying/error state) was deliberately **left local**, not lifted — it's
+  transient UI state for a modal-like popover, the same category of thing
+  `SaveButton`'s own `saveState` already keeps local rather than lifting into
+  `page.tsx`, and the spec's "loaded profile data, selection state, undo/revert
+  history" wording didn't name it.
+  - Also lifted (beyond the three explicitly named in the ask): `previewMode` and
+    `openIds` (collapse state), given their own dedicated `page.tsx` slots rather
+    than sharing Resume/CL's single global `previewMode` toggle. Reasoning: since
+    `ProfileView` still fully unmounts/remounts on tab switch (same as Resume/CL),
+    leaving these two local would have meant the profile data/selection/undo
+    history survived correctly but the UI would still visually snap back to
+    all-collapsed, Select-mode on every return visit — a confusing half-fix.
+    Flagging this as a scope judgment call since it wasn't explicitly requested,
+    but it directly serves the "preserves whatever edits/selections were in
+    progress" goal the ask was written around.
+
+### Verification (real browser + direct API checks — state/logic correctness)
+
+- Selected the name field (Select mode), then switched to Edit mode and appended
+  "-PERSIST" to it (pushing one undo entry). Expanded the Meta/Links section
+  first, before either of those actions.
+- Switched away via the hamburger menu to Saved, then back to Profile: the edited
+  name ("...-PERSIST"), Edit mode, the expanded Meta/Links section, the name
+  field's selected state (confirmed by switching to Select mode and seeing
+  "Selected: 1 item" with the field still ring-highlighted), and the enabled
+  Revert button (undo history intact) were **all** exactly as left — no re-fetch,
+  no flash of "Loading profile...".
+- `curl GET /profile` at this point confirmed the edit was never written to disk
+  (Apply was never clicked) — persistence across tab-switching is purely
+  client-side session state, not an accidental auto-save.
+- Clicked "Generate for new job", then reopened Profile: everything reset — all
+  sections collapsed, Select mode, name field back to its original unedited text,
+  Revert button disabled. Confirmed via the Raw JSON panel that a genuinely fresh
+  fetch had occurred (unedited `meta.name`), not just an in-memory reset.
+- `tsc --noEmit` and `eslint` both clean. `curl GET /profile` after all testing
+  confirms no residual test data on disk.

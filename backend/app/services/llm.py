@@ -31,10 +31,19 @@ bullet after bullet. Vary sentence rhythm and structure the way a person natural
 This applies only to prose (the summary and bullet text) — not structural fields like
 titles, organizations, dates, or links.
 
+You will also be given the job description raw as pasted, which is often an entire
+scraped webpage — navigation links, "Apply Now"/"Copy"/"Share" button labels,
+cookie-consent banners, and other site chrome mixed in with the actual posting. Since you
+already have to read and understand the whole thing to tailor the resume, also return a
+"cleaned_job_description" field: the same posting with that page junk stripped out, but
+keeping all the substantive content (responsibilities, requirements, qualifications,
+company/role info) in its original wording — this is cleanup, not a summary or rewrite.
+
 Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
 
 {
   "type": "resume",
+  "cleaned_job_description": "...",
   "meta": {
     "name": { "id": "meta_name", "text": "..." },
     "email": { "id": "meta_email", "text": "..." },
@@ -189,10 +198,19 @@ paragraph. Vary sentence rhythm and structure the way a person naturally would. 
 applies only to the paragraph prose, not structural fields like name, company, role, or
 date.
 
+You will also be given the job description raw as pasted, which is often an entire
+scraped webpage — navigation links, "Apply Now"/"Copy"/"Share" button labels,
+cookie-consent banners, and other site chrome mixed in with the actual posting. Since you
+already have to read and understand the whole thing to write the letter, also return a
+"cleaned_job_description" field: the same posting with that page junk stripped out, but
+keeping all the substantive content (responsibilities, requirements, qualifications,
+company/role info) in its original wording — this is cleanup, not a summary or rewrite.
+
 Return ONLY valid JSON matching this exact structure (no markdown fences, no preamble):
 
 {
   "type": "cover_letter",
+  "cleaned_job_description": "...",
   "meta": {
     "name": { "id": "cl_meta_name", "text": "..." },
     "email": { "id": "cl_meta_email", "text": "..." },
@@ -333,7 +351,7 @@ JOB DESCRIPTION:
 
     response = client.messages.create(
         model=MODEL,
-        max_tokens=2048,
+        max_tokens=8192,
         system=COVER_LETTER_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )

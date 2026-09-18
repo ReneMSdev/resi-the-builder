@@ -1,6 +1,6 @@
 # Resume Builder — Global Status
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-09-16_
 
 High-level status for the whole monorepo. For implementation detail, see:
 - [`backend/STATUS_BACKEND.md`](backend/STATUS_BACKEND.md) — FastAPI service
@@ -13,7 +13,31 @@ Claude to tailor a resume (or cover letter) from a master profile → user edits
 via chat-scoped revision → downloads a formatted `.docx`/`.pdf`. See
 `backend/CLAUDE_CODE_CONTEXT.md` for the original spec/architecture doc.
 
-## Overall state: feature-complete, running locally only
+## Complete, not yet merged: UI/storage redesign (branch `redesign/application-workspace`)
+
+Done and verified, ready for merge review — not yet merged to `main`. Reworked the
+frontend into a two-bar flat layout (top bar: logo/backend-status/"generate for new
+job"; second bar: Job Description/Resume/Cover Letter as flat peer tabs), plus a
+top-bar polish round (stone background, Roboto Mono coral logo, contrast fixes,
+auto-growing chat input). Introduced a job-application "package" concept on the
+backend (`/applications`, replacing `/resumes` entirely) bundling JD + resume + cover
+letter together, with the Save button and a Saved browsing view fully wired to it
+(per-package pills, one-click load hydrating all three content tabs).
+
+On top of that original scope, also shipped: a hamburger menu (Radix UI + Lucide
+icons, the project's first UI/icon dependencies) replacing the old "Saved" tab —
+Saved and a new minimal Profile view (raw `/profile` JSON) now live there instead of
+the flat tab row; a reusable toast notification system; a custom favicon; icons on
+the Save/Download buttons; an anchored Save popover instead of an inline layout-
+shifting swap; and a full restructure of page scrolling (html/body no longer scroll,
+an inner content container does) with custom scrollbar styling, fixing a scrollbar-
+gutter layout-shift bug along the way.
+
+See `backend/STATUS_BACKEND.md` ("Backend Part 6"/"Part 7") and
+`frontend/STATUS_FRONTEND.md` (the redesign, `/applications`-wiring, and
+toast/icons/hamburger-menu/scrollbar sections) for full build/verification detail.
+
+## Overall state (on `main`): feature-complete, running locally only
 
 Both halves of the original plan are done and verified end-to-end together:
 

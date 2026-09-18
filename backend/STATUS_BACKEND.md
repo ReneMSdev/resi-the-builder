@@ -941,6 +941,134 @@ came back empty and the full default suite was re-confirmed green (30 passed).
 a *different* package called `httpx2`, not `httpx`, so this was a genuinely new
 dependency, not already satisfied transitively).
 
+## Backend Part 6 — `cleaned_job_description` field (2026-09-16, UI redesign Phase 1)
+
+**Context**: first backend piece of the two-tab (Generate/Saved) redesign being planned
+with the user (full scope in `TODO.md`'s "Planned features" section). Users typically
+paste an entire scraped webpage as the job description — nav links, "Apply Now" buttons,
+cookie banners, application-form fields, EEO survey questions, footer boilerplate — mixed
+in with the actual posting. Since the model already has to read the whole thing to
+tailor content, it now also returns a cleaned version in the same call, at no extra API
+cost. This is Phase 1 only — the bigger `/applications` package-storage work (Phase 3 in
+the redesign) is separate and not started.
+
+**What changed**:
+- `GenerateResponse` (`app/models.py`) gains `cleaned_job_description: Optional[str] = None`.
+- Both `GENERATE_SYSTEM_PROMPT` and `COVER_LETTER_SYSTEM_PROMPT` (`app/services/llm.py`)
+  now instruct the model to also return a `"cleaned_job_description"` field alongside the
+  resume/cover-letter JSON it was already producing — same JSON object, one extra
+  top-level key. Explicitly framed as cleanup, not summarization: "keeping all the
+  substantive content ... in its original wording."
+- `app/routes/generate.py` pops that key off the parsed result dict before assigning the
+  rest to `resume`/`cover_letter`, so it surfaces at the top level of the response and
+  never leaks into the nested `Resume`/`CoverLetter` object. Defaults to `None` via
+  `dict.pop(..., None)` if the model ever omits it, so an older-shaped response can't crash
+  response-model validation.
+
+**Verified against a real scraped page**, not just clean sample text: pulled the actual
+rendered DOM text (`document.body.innerText`, not `get_page_text`'s already-cleaned
+article extraction) from a live Greenhouse job posting
+(`job-boards.greenhouse.io/justworks/jobs/6917404`) via Claude-in-Chrome — 10,984 raw
+characters including "Back to jobs", the "Apply" button, the entire application form
+(First Name/Last Name/Resume attach/Dropbox/Google Drive), the full EEO/demographic
+survey block, and footer boilerplate. Posted that raw text through `/generate`
+(`type: "resume"`): `cleaned_job_description` came back at 5,040 characters — all of the
+above stripped, all substantive content preserved (Who We Are, Who You Are,
+responsibilities, competencies/values, qualifications, tech stack, salary range) in its
+original wording, not leaked into the `resume` object. Repeated with a smaller synthetic
+junk sample (`type: "cover_letter"`) — same clean strip ("Apply Now", cookie banner,
+footer copyright all removed; substance intact), confirming both generation types work.
+
+**Test coverage** (`tests/test_generate.py`, mocked): resume/cover-letter success cases
+now assert `cleaned_job_description` surfaces at the top level and isn't nested inside
+`resume`/`cover_letter`; a third test confirms a model response that omits the field
+comes back as `null` instead of crashing. Full suite: 31 passed (was 30).
+
+## Backend Part 7 — Job application packages, `/applications` replaces `/resumes` (2026-09-17, UI redesign Phase 3)
+
+**Context**: bigger backend piece of the UI redesign (full scope in `TODO.md`'s "Planned
+features" section). The old `/resumes` save model saved one document at a time with no
+JD attached and no link between a resume and its paired cover letter — doesn't fit the
+new Saved-tab design, which needs one package per job with pills for whichever of
+JD/Resume/CL exist. No migration: existing `app/data/saved_items/` entries were confirmed
+disposable by the user, nothing carried over. `/resumes` is removed entirely, not kept
+alongside `/applications` — `app/routes/resumes.py` and `tests/test_resumes.py` deleted,
+`SavedItem`/`SaveRequest` removed from `app/models.py`.
+
+**New model** (`app/models.py`): `JobDescription {raw: str, cleaned: Optional[str]}`,
+`Application {id, name, created_at, job_description: JobDescription, resume:
+Optional[Resume], cover_letter: Optional[CoverLetter]}`, `ApplicationSummary {id, name,
+created_at, has_resume: bool, has_cover_letter: bool}` (the list-view shape — frontend
+needs the two booleans to know which pills to render on a Saved-tab card, not the full
+nested data), `CreateApplicationRequest {name: Optional[str], job_description:
+JobDescription, resume: Optional[Resume], cover_letter: Optional[CoverLetter]}`. This
+closes the known soft spot noted in `TODO.md` about `/resumes`'s `SaveRequest.data` being
+an unvalidated loose `dict` — resume/cover_letter are real typed fields now, validated by
+FastAPI before the route body ever runs.
+
+**Storage** (`app/routes/applications.py`, new): one folder per package at
+`backend/app/data/applications/{id}/` (gitignored, same pattern as the old
+`saved_items/` — `.gitignore` updated), containing real separately-openable files rather
+than one opaque blob: `job_description.txt` (raw), `job_description_cleaned.txt` (only
+written if a cleaned version was provided), `resume.json` / `cover_letter.json` (only
+whichever exist), `resume.docx` / `cover_letter.docx` (rendered at save time via the
+existing `render_resume_docx`/`render_cover_letter_docx` — this is what makes a package
+reviewable by opening files directly, per the original design goal), and `meta.json`
+(`{id, name, created_at}`, the source of truth `GET /applications` reads without touching
+the heavier JSON/docx files). **PDF snapshots were skipped** — docx alone is a real
+openable file and avoids paying the ~10-22s LibreOffice cold-start cost documented above
+on every single save; can add later if a package-level "download PDF" turns out to be
+wanted beyond the existing on-demand `/render?format=pdf`.
+
+**Endpoints**, mirroring `/resumes`'s conventions:
+- `POST /applications` — body is `CreateApplicationRequest`. Derives a default name the
+  same way `/resumes` did (company + role from the cover letter's meta if present, else
+  company alone, else role alone, else an `"Application — <timestamp>"` fallback) unless
+  `name` is given explicitly. Renders + writes all snapshot files, returns the full
+  `Application`. Wraps the write/render steps in try/except that `shutil.rmtree`s the
+  partial folder and returns 500 on failure (mirrors `/render`'s existing error-handling
+  pattern) — no half-written package left behind if docx rendering fails partway through.
+- `GET /applications` — list of `ApplicationSummary` only (id/name/created_at/pill
+  flags), sorted newest-first. Only reads `meta.json` per folder plus two `.exists()`
+  checks — doesn't touch resume.json/cover_letter.json/docx at all, so listing stays
+  cheap regardless of package count.
+- `GET /applications/{id}` — full `Application` (JD raw+cleaned, resume JSON, cover
+  letter JSON) — enough to hydrate all three Generate sub-tabs on load. 404 if
+  `meta.json` doesn't exist for that id.
+- `DELETE /applications/{id}` — 204, `shutil.rmtree`s the whole folder. 404 if missing.
+
+**Test coverage** (`tests/test_applications.py`, new, 10 tests, no LLM involved so fully
+mocked-suite-speed): JD+resume-only create (and the resulting on-disk files), all-three
+create (default name from cover letter meta), explicit-name override, JD-only create
+(no resume/cover_letter files written), **real docx snapshots opened and text-verified
+via `python-docx`** (not just "file exists"), list summaries' pill-flag correctness and
+lightweight shape, full get round-trip, 404s on missing id for both get and delete, and
+delete actually removing the folder from disk (checked via `Path.exists()`, not just the
+204 status code). `tests/conftest.py`'s `tmp_saved_items` fixture replaced with
+`tmp_applications` (same monkeypatch-the-route's-`DATA_DIR` pattern, pointed at the new
+module). Full suite: 34 passed (was 31).
+
+**Manually verified against the live server** (not just the mocked suite): generated a
+real resume via `/generate`, packaged it via `POST /applications` (JD+resume only) —
+200, folder created with `job_description.txt`/`job_description_cleaned.txt`/
+`resume.json`/`resume.docx`/`meta.json`, `resume.docx` confirmed as real `Microsoft
+OOXML` (via `file`) with correct extracted text (name, contact info, summary) via
+`python-docx`. `GET /applications` showed it with correct pill flags, `GET
+/applications/{id}` round-tripped correctly, `DELETE` returned 204 and the folder was
+verified gone from disk via `ls`, followed by a 404 on a subsequent `GET`. Repeated with
+a real resume + real cover letter together: default name correctly fell back to the
+cover letter's role (`"Software Engineer"`, company was blank in this test JD), both
+`resume.docx` and `cover_letter.docx` rendered as real openable files with correct
+content. Confirmed `/resumes` is gone from the live route table (`GET /openapi.json`)
+and `/applications` is live. Test data cleaned up afterward — real
+`app/data/applications/` is empty again.
+
+**Not migrated / left as-is**: the two leftover files in `app/data/saved_items/` from
+earlier manual testing were left on disk rather than deleted — they're inert now (no
+route reads that directory anymore, and it stays gitignored) and deleting them wasn't
+necessary to ship this, so it seemed better to leave that as an explicit manual cleanup
+step for whoever wants it gone rather than a silent side effect of this pass.
+
 ## Not yet built (explicitly deferred so far)
 
 1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled

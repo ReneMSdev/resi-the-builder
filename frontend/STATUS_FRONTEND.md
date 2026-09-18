@@ -643,3 +643,394 @@ no logic to protect one from being overwritten by the other. This was explicit s
 for a future pass, not an oversight — the data shape used for an edited value
 (`{id, text}` in local state, same as everything else) was deliberately kept plain so
 that bolting a provenance flag on later doesn't require restructuring anything now.
+
+## Feature: Application-workspace UI redesign — two-bar layout + polish round (2026-09-16)
+
+Built on branch `redesign/application-workspace` (not yet merged to `main`), per a
+design spec worked out between the user and the manager session, captured in
+`TODO.md`'s "UI redesign" section. The manager broke this into checkpointed phases so
+nothing ran too long; an initial nested Generate>JD/Resume/CL shell was built first,
+then immediately revised into the flat two-bar layout below before anything was
+committed — so only the final flat-layout shape ever landed in git.
+
+### Two-bar flat layout (`app/page.tsx`)
+
+- Replaces the old three-tab (Resume / Cover Letter / Saved) structure with two
+  stacked bars: a top bar (logo, backend-connectivity status, a "Generate for new job"
+  button) and a second bar of four flat peer-level tabs — Job Description, Resume,
+  Cover Letter, Saved — no nesting.
+- `Tab` state collapsed the old three-way `Mode` (`'resume' | 'cover_letter' |
+  'saved'`) plus an interim nested sub-tab into one flat `'jd' | 'resume' |
+  'cover_letter' | 'saved'`.
+- New shared `GenerateForm` component (JD text + company-context text + 0/1/2 Generate
+  buttons depending on what already exists) is the single component rendered in three
+  places: the Job Description tab, the Resume tab (when no resume yet), and the Cover
+  Letter tab (when no cover letter yet). Because it's the same component instance in
+  all three spots, "a Generate button disappears everywhere once that content exists"
+  falls out for free — there's no separate flag-syncing logic across tabs, just one
+  `showResumeButton`/`showCoverLetterButton` prop pair driven off `resumeState`/
+  `coverLetterState`.
+- Job Description tab shows `GenerateForm` until both Resume and Cover Letter exist,
+  then switches to a plain read-only block showing the raw pasted JD text (the
+  *cleaned* JD text the backend added in parallel isn't wired in yet — still shows the
+  raw string; a quick follow-up once that's confirmed ready).
+- "Generate for new job" (top bar) replaces the old per-tab-click reset: wipes JD text,
+  company context, both resume/cover-letter states, both selection sets, both revise
+  states, and lands on the Job Description tab — same reset payload as before, just
+  triggered by an explicit button instead of a nav-tab click, since "Generate" isn't a
+  tab anymore.
+- Action buttons (Select/Edit toggle, Save, Download) were already sitting above the
+  preview content in the pre-existing code — carried that ordering into the new
+  per-tab layout unchanged, no separate move was needed.
+- `SavedTab.tsx` itself is untouched — it's now just one more peer tab in the row;
+  `onLoad` routes into `Tab: item.type` instead of the old three-way mode switch.
+
+### Polish round (`app/globals.css`, `app/layout.tsx`, `app/page.tsx`, `app/components/RevisionChat.tsx`)
+
+- Top bar background moved to a new `--topbar-bg` token (`#292524`, a dark stone —
+  value later hand-tuned by the user directly in `globals.css`), separated from the
+  page below it by a `border-b` plus the background-color contrast, with tighter
+  vertical padding than the first pass.
+- "Resume Builder" wordmark now renders in Roboto Mono (loaded via `next/font/google`
+  — checked `node_modules/next/dist/docs` first per `AGENTS.md` before assuming the API
+  matched training data; it did) at the `--accent` coral color instead of the previous
+  serif/foreground styling. Weight went through a hand-edit by the user (600 → 700)
+  directly in `layout.tsx`; the Tailwind weight class on the logo span was kept in sync
+  (`font-semibold` → `font-bold`).
+- Added `--success-on-dark`, a separate token for the "Backend: ok" text specifically
+  on the dark top bar. Computed actual WCAG contrast ratios (relative-luminance
+  formula, not eyeballed): the original `--success` (`#4f7942`) against the new
+  `--topbar-bg` measures **2.99:1** — fails AA (needs 4.5:1). The new
+  `--success-on-dark` (`#4ade80`) measures **8.71:1** against the same background —
+  passes AA and AAA. `--success` itself was left unchanged, since `SaveButton.tsx`'s
+  "Saved!" text still relies on it against the light `--surface` background (4.91:1
+  there) — no single green satisfies AA against both a near-black and a near-white
+  background at once, so a second token was the correct fix rather than a compromise
+  value. (Flagged, not fixed: the top bar's error-state `--danger` text measures
+  2.56:1 and its loading-state `--muted` text measures 3.47:1 against the same dark
+  background — same root cause, out of scope until asked.)
+- Added a divider (`border-b`, same `--border` token as the top bar's own separator)
+  below the Job Description/Resume/Cover Letter/Saved tab row, spanning the content
+  column's width, separating the tabs from the generated content/action buttons below.
+- `RevisionChat.tsx`'s revision-instruction field changed from a single-line `<input>`
+  to an auto-growing `<textarea>` (same resize pattern already used in
+  `InlineEdit.tsx`: reset height to `auto`, then set to `scrollHeight`, re-run on every
+  keystroke), capped at `max-h-[50vh]` with `overflow-y-auto` beyond that instead of
+  pushing the rest of the page down. Enter submits, Shift+Enter inserts a newline (a
+  necessary addition once Enter alone would otherwise submit prematurely on a
+  multi-line box).
+- **Border-box height bug found and fixed while building the above**: the textarea has
+  `box-sizing: border-box` (Tailwind preflight default) and a 1px border on all sides.
+  `scrollHeight` excludes borders by spec, so setting `style.height = scrollHeight +
+  'px'` directly left the border-box height permanently ~2px short of what the content
+  needed — a scrollbar showed even on a completely empty, single-line box. Confirmed
+  via direct DOM measurement (`scrollHeight: 41` vs `clientHeight: 39` at idle) before
+  fixing, and confirmed the fix (`autoResize` now adds `getComputedStyle`'s
+  `borderTopWidth + borderBottomWidth` to the height it sets) at four sizes after:
+  empty (`41 === 41`, no scrollbar), 3 lines (`86 === 86`, no scrollbar), just under
+  the 50vh cap (`311` vs cap `335`, no scrollbar), and just past it (`scrollHeight: 356`
+  vs `clientHeight: 333`, scrollbar correctly appears).
+
+### Verification (real browser + DOM measurement, not just code review)
+
+- Two-bar layout: loaded a saved resume and a saved cover letter from the Saved tab in
+  turn — confirmed each landed on its own tab with content and the action-button row
+  at the top; confirmed the Job Description tab correctly showed only the
+  not-yet-generated Generate button for whichever type was still missing, and flipped
+  to the read-only reference view once both existed; ran one real end-to-end
+  `/generate` call through the new button (not just saved-item loading) and confirmed
+  "Generating..." → rendered content; confirmed "Generate for new job" fully resets
+  from multiple starting tabs, including from the Saved tab itself.
+- Polish round: screenshot-verified the stone top bar, tightened padding, and coral
+  Roboto Mono logo; verified the tab-row divider across three tab states (Job
+  Description, Saved, generated Resume); computed and cross-checked the WCAG contrast
+  numbers above with a small Python script rather than eyeballing; measured the
+  auto-growing textarea's actual rendered height against `window.innerHeight` (335px
+  at a 670px viewport, exactly 50vh) and confirmed `overflow-y: auto` plus a
+  `scrollHeight` that genuinely exceeded `clientHeight` only past the cap.
+- `tsc --noEmit` and `eslint` both clean throughout.
+
+Committed on `redesign/application-workspace` across three commits: `374312c`
+(two-bar layout), `6498546` (top-bar polish + divider), `a822a62` (auto-growing chat
+input). Not merged to `main`.
+
+## Feature: Wire Saved tab, Save button, and package loading to /applications (2026-09-17)
+
+Full cutover from the old `/resumes` endpoint (removed entirely in backend's Phase 3,
+`acb9ae5`) to the new `/applications` package storage — no parallel path kept. Backend
+contract: `POST /applications` (`{name?, job_description: {raw, cleaned?}, resume?,
+cover_letter?}` → full `Application`), `GET /applications` (lightweight
+`ApplicationSummary[]` with `has_resume`/`has_cover_letter` flags), `GET
+/applications/{id}` (full `Application`), `DELETE /applications/{id}`.
+
+- **`app/types.ts`**: `SavedItemSummary`/`SavedItem` replaced with `JobDescription`
+  (`{raw, cleaned}`), `ApplicationSummary`, and `Application`, matching the backend
+  models exactly.
+- **`SaveButton.tsx`**: no longer saves one document at a time against `type`/
+  `document` props. Now takes the whole session's state — `jobDescription: {raw,
+  cleaned}`, `resume: Resume | null`, `coverLetter: CoverLetter | null` — and POSTs it
+  as one `/applications` package. A resume-only session (no cover letter generated
+  yet) saves JD + resume with no forced empty CL slot, since `cover_letter` is simply
+  `null` in the request body. Same prompting/confirm/cancel UX as the old per-document
+  version, just a different payload and endpoint.
+- **`SavedTab.tsx`**: evolved in place (not rebuilt) into the pill-per-content-type
+  card design. Fetches `GET /applications` for the list; each row-card shows a Job
+  Description pill (always present — every application has one), a Resume pill
+  (`has_resume`), and a Cover Letter pill (`has_cover_letter`). Clicking a specific
+  pill (`stopPropagation`'d against the card's own click) fetches the full
+  `GET /applications/{id}` and calls `onLoad(application, thatTab)`; clicking the card
+  body anywhere else does the same with `tab: 'jd'`. Delete/Confirm/Cancel also
+  `stopPropagation`. Delete now calls `DELETE /applications/{id}`.
+- **`page.tsx`**: added `cleanedJobDescription` state, captured from `/generate`'s
+  `cleaned_job_description` field (added in backend's earlier Phase 1) on every
+  successful generate call, and reset alongside everything else on "Generate for new
+  job". `handleLoadSavedItem` replaced with `handleLoadApplication(application,
+  targetTab)`, which hydrates the Job Description, Resume, and Cover Letter tabs all
+  at once from one `Application` — each slot independently `success` or `idle` based
+  on whether `resume`/`cover_letter` is present — mirroring the same
+  "independent-slots, all populated together" pattern already used for
+  freshly-generated content in the Phase 2 redesign, rather than introducing new
+  state-management shape. Both `SaveButton` call sites (Resume tab, Cover Letter tab)
+  now pass the complete session data so either one saves the same full package. The
+  Job Description tab's reference view (shown once both Resume and Cover Letter
+  exist) now renders `cleanedJobDescription` when available, falling back to the raw
+  `jobDescription` text when it's null/empty (older data, or the rare case the model
+  omitted it) — this was a quick follow-up after the initial pass shipped with the
+  raw text only.
+
+### Verification (real browser + direct API checks, not just visual)
+
+- Loaded the pre-existing "Justworks" fixture (resume + cover letter, real cleaned JD
+  from backend's own Phase 1 testing) via its Resume pill — landed on the Resume tab
+  populated with the action row at the top; checked the Job Description tab and
+  confirmed it showed the reference view (both exist) rendering the **cleaned** text —
+  cross-checked via `curl`ing `/applications/{id}` directly first to confirm raw and
+  cleaned actually differ (raw opens with "Back to jobs / Software Engineer / New
+  York, New York / Apply / Who We Are..."; cleaned opens with "Software Engineer / New
+  York, New York / Who We Are..." — site-chrome stripped), then confirmed the
+  rendered page matched the cleaned version, not raw; checked the Cover Letter tab
+  also came in populated. Confirms all three tabs hydrate from one load.
+- Reset via "Generate for new job", generated a resume only (no cover letter) for a
+  fresh JD, saved with no custom name — `curl`ed `/applications` and confirmed
+  `has_resume: true, has_cover_letter: false`; confirmed the Saved-tab card showed
+  only the Job Description and Resume pills, no Cover Letter pill.
+- Clicked that card's body (not a pill) — correctly defaulted to the Job Description
+  tab, JD populated, and correctly showed only "Generate Cover Letter" (resume already
+  exists for the loaded package).
+- Deleted that package via Delete → Confirm — verified gone both in the UI and via a
+  follow-up `curl`.
+- Generated a Cover Letter on top of the still-loaded resume, saved again with a
+  custom name ("Fintech QA Role") — `curl`-confirmed both flags true and the name
+  matched exactly; confirmed all three pills rendered; clicked the Cover Letter pill
+  specifically (as opposed to the card body or the Resume pill) and landed correctly
+  on the Cover Letter tab. Deleted the test package afterward so only the original
+  fixture remained.
+- `tsc --noEmit` and `eslint` clean throughout.
+
+Committed as `b6f9a4c` on `redesign/application-workspace`. Not merged to `main`.
+
+## Feature: Toast notifications, icons, hamburger menu, Profile view (2026-09-17)
+
+Continuation of the `redesign/application-workspace` branch — several small-to-medium
+UI passes, each requested and verified separately, landed here as four commits.
+
+### Toast notifications (`app/components/Toast.tsx`)
+
+Small reusable mechanism, not a one-off: a module-level `toasts` array + subscriber
+list, `showToast(text, variant?, duration?)` any component can call directly (no
+Context/Provider needed), and a `<ToastContainer/>` mounted once at the page root that
+subscribes and renders — fixed bottom-right, stacks multiple toasts, `'success'`/
+`'error'` variants using the existing `--success`/`--danger` tokens, 2.5s auto-dismiss.
+`SaveButton.tsx`'s inline fading "Saved!" span was replaced with `showToast('Saved!')`
+on successful save; no other existing inline message was a good fit for the same
+treatment (the rest are error-styled, not success).
+
+**Bug found and resolved during verification, worth recording**: the toast appeared to
+not work at all on the first several tries. Traced it to live-editing `Toast.tsx`
+(adding temporary debug logging, changing the duration) *while the page was already
+loaded* — Turbopack Fast Refresh re-executes a changed module's top-level state
+(resetting the `toasts`/`listeners` arrays) without necessarily remounting an
+already-mounted component that captured a reference to the old array, so the mounted
+`ToastContainer` was listening on a stale array while `showToast` (from the
+freshly-swapped module) wrote to a new one. Confirmed via a temporary console.log that
+`ToastContainer`'s mount effect only registers a listener on a genuine fresh page load,
+not mid-edit. Dev-only HMR artifact from the debugging process itself, not a real bug — no code
+change was needed once verification was redone on an unedited, freshly-loaded page:
+clicked Save → Confirm, screenshotted at +1s (toast visible, "Saved!" in a green pill
+bottom-right, Select/Edit/Save/Download buttons all in their exact original
+positions) and again at +4s (toast gone on its own, no residue, no layout shift at
+either point).
+
+### Favicon, Save/Download icons, Save popover (`app/icon.svg`, `app/components/icons.tsx`, `SaveButton.tsx`, `DownloadButtons.tsx`)
+
+- `app/icon.svg`: minimal coral document icon (folded top-right corner, two cream
+  lines suggesting text), replacing the default create-next-app `favicon.ico`. Checked
+  `node_modules/next/dist/docs` first per `AGENTS.md` — this version's `icon` file
+  convention accepts `.svg` directly, no build step needed. Verified via
+  `document.querySelectorAll('link[rel*="icon"]')` that exactly one correct `<link>`
+  tag is generated, no leftover favicon reference.
+- `app/components/icons.tsx`: hand-drawn `SaveIcon` (floppy disk) and `DownloadIcon`
+  (arrow into a tray), simple stroke-based SVGs using `stroke="currentColor"` so they
+  automatically match each button's existing text color — no icon library added for
+  these two (Lucide was later added for the hamburger menu, see below; swapping these
+  two to Lucide equivalents was floated as an optional consistency pass but
+  deliberately left alone, they work fine as-is).
+- `SaveButton.tsx`: the inline name-input/Confirm/Cancel used to swap the Save
+  button's own layout in place, which visibly shifted the neighboring Download
+  buttons when it opened. Converted to an absolutely-positioned popover anchored below
+  the Save button (`absolute left-0 top-full`) plus click-outside-to-close (a
+  `mousedown` listener scoped to while it's open). Verified: opening it never moves
+  the Select/Edit toggle or either Download button; outside-click and Cancel both
+  close it cleanly with no residue.
+
+### Hamburger dropdown menu + Profile view (`app/components/HamburgerMenu.tsx`, `app/components/ProfileView.tsx`, `page.tsx`)
+
+Adopted two new dependencies — the first runtime deps beyond Next/React/Tailwind on
+this project: `@radix-ui/react-dropdown-menu` (headless; styled entirely with the
+existing Tailwind/CSS-variable theme, no new visual system) and `lucide-react` (icons).
+
+- "Saved" removed from the flat second tab row entirely — the row is now 3 tabs (Job
+  Description/Resume/Cover Letter), down from 4. It's reached only via a new hamburger
+  icon placed before the "Resume Builder" wordmark, which opens a coral (`--accent`)
+  Radix `DropdownMenu` with two items: "Profile" (new) and "Saved" (unchanged
+  `SavedTab.tsx`, just a different entry point). Neither item is a flat tab, so no tab
+  shows active while viewing either — falls out for free from `tabClass`'s existing
+  `tab === t` check, no extra state needed.
+- The hamburger↔X toggle is a hand-built cross-fade+rotate between Lucide's `Menu`/`X`
+  icons (stacked absolutely, opacity/rotate CSS transition on a controlled `open`
+  state) rather than a true line-morph, since Lucide doesn't animate between icons
+  natively. Radix's built-in dismiss behavior (click-outside, Escape) closes the menu
+  for free, and since `open` is controlled the icon reverts automatically whenever
+  Radix closes it for any reason.
+- `app/components/ProfileView.tsx`: fetches `GET /profile`, renders it as raw JSON in
+  a `<pre>` — deliberately unstyled placeholder, matching how earlier phases of this
+  project started with raw JSON dumps before a styling pass. Used the same
+  lazy-initializer pattern as `SavedTab.tsx` for the missing-`NEXT_PUBLIC_API_URL`
+  case (setting error state synchronously inside the effect body tripped the
+  `react-hooks/set-state-in-effect` eslint rule; matched the existing codebase
+  convention instead of suppressing it).
+- Verified: hamburger fully morphs to X and the coral dropdown opens on click;
+  "Profile" shows real data from a live `/profile` call (name, email, links — not a
+  stub) and closes/reverts correctly; "Saved" behaves identically to before, just
+  relocated; click-outside and Escape both close the menu and revert the icon;
+  switching to a flat tab afterward restores its active highlight correctly.
+
+### Dropdown scroll-lock and gutter-color fixes, checkpoint (`app/globals.css`, `HamburgerMenu.tsx`)
+
+Two related fixes, both verified, though the second is a known-incomplete checkpoint
+(see "Known follow-up" below):
+
+- `DropdownMenu.Root` got `modal={false}` — the user wants the page to stay scrollable
+  while this small 2-item nav menu is open, not scroll-locked like a blocking dialog.
+- Radix's default modal behavior locks body scroll and compensates with `padding-right`
+  on `<body>` to prevent a width jump when the scrollbar disappears — but the top bar
+  isn't itself scroll-locked/compensated, so a color gap appeared alongside it whenever
+  the dropdown opened. First fix: `scrollbar-gutter: stable` on `html`, so the
+  scrollbar's space is always reserved and hiding it never changes available width at
+  all — this itself fully solves the *layout shift*, but exposed a second, narrower
+  problem: the permanently-reserved gutter strip belongs to `html`'s own box, not any
+  descendant's constrained content width. Confirmed by direct measurement (a probe
+  `div`, `getBoundingClientRect`) that both `100vw` and `position:fixed;left:0;right:0`
+  resolve *smaller* than the true viewport once `scrollbar-gutter: stable` is active in
+  current Chrome — neither classic full-bleed trick can reach into that space. Fixed
+  by giving `html` itself a hard-stop `background: linear-gradient(...)`: stone
+  (`--topbar-bg`) for the top bar's measured height (~69px), cream (`--background`)
+  below — since `html` is the actual scrolling element, this gradient is anchored to
+  the *document's* top regardless of scroll position, so it reads as part of the top
+  bar everywhere and reverts to cream past it, with no JS.
+- Verified: `elementFromPoint()` at the exact gutter pixel returns `null` (nothing
+  renders there but `html`'s own background) at two window widths (1191px, 900px);
+  scrolled a genuinely tall page (`scrollHeight: 2531`) 500px down with the dropdown
+  open, confirmed both that the page actually scrolled and that the dropdown (`[role=
+  "menu"]`) stayed open and correctly positioned the whole time; `document.body
+  .paddingRight` stayed `0px` throughout, confirming no scroll-lock compensation ever
+  fires; click-outside/Escape/item-selection all still close the menu correctly with
+  `modal={false}` (click-outside also correctly lets the same click pass through to
+  the page underneath in one motion, confirmed it simultaneously selected a resume
+  field — the intended non-modal behavior).
+
+**Known follow-up, in progress, not yet built**: the gradient-based fix above still
+left a visible gap in practice per the user's own check, and the decided direction is
+more structural — stop `html`/`body` from scrolling at all (`height: 100%`/`100vh` +
+`overflow: hidden`), and give an inner content wrapper below the top bar its own
+`overflow-y: auto` instead, so the top bar is never adjacent to a scrolling context
+that needs gutter reservation in the first place. That removes the need for
+`scrollbar-gutter`/the gradient hack entirely rather than continuing to patch around
+it. Not done as of this entry — captured here so the gradient-based commit below is
+understood as a checkpoint, not the final state.
+
+### Verification summary
+
+`tsc --noEmit` and `eslint` (full project) clean after every commit in this batch.
+
+Committed on `redesign/application-workspace` across four commits: `fdbf03a` (toast
+system), `77f22f3` (favicon/icons/popover), `abbb2f9` (hamburger menu + Profile view +
+Radix/Lucide adoption), `7b451fe` (scroll-lock + gutter-color checkpoint). Not merged
+to `main`.
+
+## Fix: Replace scrollbar-gutter/gradient hack with a non-scrolling html/body (2026-09-17)
+
+Follow-up to the previous entry's "Known follow-up, in progress" note — the
+gradient-based gutter-color fix still left a visible gap in the user's own check, and
+the decided direction was structural rather than another patch: stop `html`/`body`
+from scrolling at all, and give an inner content wrapper its own scrollbar instead, so
+the top bar is never adjacent to a scrolling context that needs gutter reservation in
+the first place. This eliminates the whole bug class rather than continuing to fight
+it.
+
+- **`app/layout.tsx`**: `html` gets `overflow-hidden` (already had `h-full`); `body`
+  changed from `min-h-full` to `h-full overflow-hidden`. Neither element can ever
+  scroll now.
+- **`app/page.tsx`**: the root wrapper is `h-full flex flex-col items-center
+  overflow-hidden` (previously no height/overflow control at all). `main` — the
+  actual content area — is `min-h-0 flex-1 overflow-y-auto`, making it the one and
+  only scrolling element on the page. The `min-h-0` is load-bearing: without it, a
+  flex-1 item won't shrink below its content's natural height in Chrome/Firefox,
+  which would silently defeat the internal scrolling and let content overflow the
+  parent instead of scrolling within `main`. The top bar sits above `main` as an
+  ordinary non-growing flex-column sibling, structurally never inside a scrolling
+  context.
+- **`app/globals.css`**: removed `scrollbar-gutter: stable` and the `html` background
+  gradient entirely — no longer needed once `html` never scrolls.
+
+**Regression found and fixed during verification** (not part of the original ask, a
+side effect of the restructure): `RevisionChat.tsx`'s `sticky bottom-0` bar used to
+stick flush to the window's bottom edge when `body` was the scroll container (no
+padding there). Once `main` (which has its own `py-8`) became the scroll container,
+its bottom padding blocked the sticky bar from reaching the true bottom — measured a
+consistent 36px gap, with resume/JD text visibly peeking through below the chat bar.
+First tried a negative `-mb-8` margin on the sticky element itself (mirroring the
+existing `-mx-16` horizontal-bleed trick already used there) — empirically this had
+**zero** effect on the gap; Chrome's sticky-bottom clamp calculation appears to ignore
+the sticky element's own margin for this case, contradicting the spec-reading
+expectation. Reverted that and fixed it at the actual source instead: `main`'s bottom
+padding (`pb-8`) is now conditional on a `showingRevisionChat` flag — applied normally
+for Job Description/Saved/Profile views, omitted when the sticky chat bar is present
+so its own internal padding provides the flush-to-edge breathing room instead.
+
+### Verification (direct DOM measurement, not just visual inspection)
+
+- `document.documentElement.clientWidth === window.innerWidth` held in every check —
+  confirms no scrollbar/gutter discrepancy exists anywhere anymore, at two window
+  sizes tested.
+- `elementFromPoint()` at the top bar's right edge now returns the bar's own `DIV`
+  (previously returned `null`, meaning only `html`'s background painted there) — its
+  own box genuinely reaches the true viewport edge, no background-painting trick
+  needed.
+- Loaded a long resume (`main.scrollHeight` over 2400px), confirmed `main` scrolls
+  internally while the top bar stays completely static and fully stone-colored.
+- Measured `main.getBoundingClientRect().bottom - chatBar...bottom` = exactly `0` on
+  both the Resume and Cover Letter tabs after the padding fix (was 36px before);
+  confirmed the Job Description tab (no chat bar) still retains its normal bottom
+  breathing room via the same measurement approach plus a scroll-to-bottom screenshot.
+- Hamburger dropdown, toast, and Save popover all confirmed unaffected — screenshot
+  showed the dropdown still opening flush under the top bar even after scrolling
+  `main` deep into a long resume (Radix portals its content straight to
+  `document.body`, entirely outside the new scroll structure; the toast's `fixed` and
+  Save popover's `absolute` positioning are likewise independent of it).
+- Grepped the whole `app/` tree for `window.scroll`/`document.body.scroll`/
+  `scrollIntoView`/explicit `position: fixed` — nothing else in the codebase makes a
+  window-level-scroll assumption this change could break.
+- `tsc --noEmit` and `eslint` (full project) clean.
+
+Committed as `c57fdca` on `redesign/application-workspace`. Not merged to `main`.

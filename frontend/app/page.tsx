@@ -81,6 +81,8 @@ type CoverLetterGenerateState =
 
 type ReviseState = { state: 'idle' } | { state: 'loading' } | { state: 'error'; message: string }
 
+const MAX_HISTORY = 10
+
 function GenerateForm({
   jobDescription,
   onJobDescriptionChange,
@@ -191,11 +193,14 @@ export default function Home() {
   const [clReviseState, setClReviseState] = useState<ReviseState>({
     state: 'idle',
   })
+  const [resumeHistory, setResumeHistory] = useState<Resume[]>([])
+  const [clHistory, setClHistory] = useState<CoverLetter[]>([])
 
   const selectedIds = tab === 'resume' ? resumeSelectedIds : clSelectedIds
   const setSelectedIds = tab === 'resume' ? setResumeSelectedIds : setClSelectedIds
   const reviseState = tab === 'resume' ? resumeReviseState : clReviseState
   const setReviseState = tab === 'resume' ? setResumeReviseState : setClReviseState
+  const history = tab === 'resume' ? resumeHistory : clHistory
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -293,29 +298,54 @@ export default function Home() {
     })
   }
 
-  function handleEditField(id: string, text: string) {
+  function pushResumeHistory(resume: Resume) {
+    setResumeHistory((prev) => {
+      const next = [...prev, resume]
+      return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next
+    })
+  }
+
+  function pushClHistory(coverLetter: CoverLetter) {
+    setClHistory((prev) => {
+      const next = [...prev, coverLetter]
+      return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next
+    })
+  }
+
+  function handleRevert() {
     if (tab === 'resume') {
-      setResumeState((prev) =>
-        prev.state !== 'success'
-          ? prev
-          : { state: 'success', resume: applyRevisionUpdates(prev.resume, [{ id, text }]) },
-      )
+      if (resumeHistory.length === 0) return
+      const last = resumeHistory[resumeHistory.length - 1]
+      setResumeHistory(resumeHistory.slice(0, -1))
+      setResumeState({ state: 'success', resume: last })
     } else if (tab === 'cover_letter') {
-      setCoverLetterState((prev) =>
-        prev.state !== 'success'
-          ? prev
-          : {
-              state: 'success',
-              coverLetter: applyCoverLetterUpdates(prev.coverLetter, [{ id, text }]),
-            },
-      )
+      if (clHistory.length === 0) return
+      const last = clHistory[clHistory.length - 1]
+      setClHistory(clHistory.slice(0, -1))
+      setCoverLetterState({ state: 'success', coverLetter: last })
+    }
+  }
+
+  function handleEditField(id: string, text: string) {
+    if (tab === 'resume' && resumeState.state === 'success') {
+      pushResumeHistory(resumeState.resume)
+      setResumeState({
+        state: 'success',
+        resume: applyRevisionUpdates(resumeState.resume, [{ id, text }]),
+      })
+    } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
+      pushClHistory(coverLetterState.coverLetter)
+      setCoverLetterState({
+        state: 'success',
+        coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, [{ id, text }]),
+      })
     }
   }
 
   function updateResume(updater: (resume: Resume) => Resume) {
-    setResumeState((prev) =>
-      prev.state !== 'success' ? prev : { state: 'success', resume: updater(prev.resume) },
-    )
+    if (resumeState.state !== 'success') return
+    pushResumeHistory(resumeState.resume)
+    setResumeState({ state: 'success', resume: updater(resumeState.resume) })
   }
 
   const handleAddBullet = (entryId: string, text: string) =>
@@ -373,19 +403,22 @@ export default function Home() {
 
       const data: { updates: { id: string; text: string }[] } = await res.json()
 
-      if (tab === 'resume') {
-        setResumeState((prev) => {
-          if (prev.state !== 'success') return prev
-          return { state: 'success', resume: applyRevisionUpdates(prev.resume, data.updates) }
-        })
-      } else {
-        setCoverLetterState((prev) => {
-          if (prev.state !== 'success') return prev
-          return {
+      if (tab === 'resume' && resumeState.state === 'success') {
+        if (data.updates.length > 0) {
+          pushResumeHistory(resumeState.resume)
+          setResumeState({
             state: 'success',
-            coverLetter: applyCoverLetterUpdates(prev.coverLetter, data.updates),
-          }
-        })
+            resume: applyRevisionUpdates(resumeState.resume, data.updates),
+          })
+        }
+      } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
+        if (data.updates.length > 0) {
+          pushClHistory(coverLetterState.coverLetter)
+          setCoverLetterState({
+            state: 'success',
+            coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, data.updates),
+          })
+        }
       }
       setReviseState({ state: 'idle' })
     } catch (err: unknown) {
@@ -414,6 +447,8 @@ export default function Home() {
     setClSelectedIds(new Set())
     setResumeReviseState({ state: 'idle' })
     setClReviseState({ state: 'idle' })
+    setResumeHistory([])
+    setClHistory([])
     setPreviewMode('select')
     setTab(targetTab)
   }
@@ -429,6 +464,8 @@ export default function Home() {
     setClSelectedIds(new Set())
     setResumeReviseState({ state: 'idle' })
     setClReviseState({ state: 'idle' })
+    setResumeHistory([])
+    setClHistory([])
     setPreviewMode('select')
     setTab('jd')
   }
@@ -598,6 +635,8 @@ export default function Home() {
                       loading={reviseState.state === 'loading'}
                       errorMessage={reviseState.state === 'error' ? reviseState.message : null}
                       onSubmit={handleRevise}
+                      canRevert={history.length > 0}
+                      onRevert={handleRevert}
                     />
                   </div>
                 ) : (
@@ -668,6 +707,8 @@ export default function Home() {
                       loading={reviseState.state === 'loading'}
                       errorMessage={reviseState.state === 'error' ? reviseState.message : null}
                       onSubmit={handleRevise}
+                      canRevert={history.length > 0}
+                      onRevert={handleRevert}
                     />
                   </div>
                 ) : (

@@ -1141,3 +1141,81 @@ in one backend delivery.
 - No test data was saved to `/applications` during this verification (Save was never
   clicked) — confirmed via `GET /applications` that only the pre-existing fixture
   remained, nothing to clean up.
+
+## Feature: Undo/revert for chat-scoped revisions and manual edits (2026-09-18)
+
+Pure frontend feature, no backend involvement — a local per-document undo stack that
+gets applied before an explicit Save/Update, same as any other in-session state.
+
+- **`app/page.tsx`**: two new state slots, `resumeHistory: Resume[]` and `clHistory:
+  CoverLetter[]`, mirroring the existing per-tab state-slot pattern
+  (`resumeState`/`coverLetterState`). A derived `history = tab === 'resume' ?
+  resumeHistory : clHistory` follows the same pattern as `selectedIds`/`reviseState`.
+  Capped at `MAX_HISTORY = 10` (oldest entry dropped first once full) via
+  `pushResumeHistory`/`pushClHistory` helpers — a simple array of full prior document
+  states, no partial/scoped patches, matching how revise/manual-edits already apply as
+  whole-object immutable updates.
+- **Every content-mutating action pushes the pre-change document onto that document's
+  stack before applying the new state**: `updateResume` (covers `addBullet`/
+  `removeBullet`/`addSkillItem`/`removeSkillItem`/`editSkillItem`/`addLink`/
+  `removeLink`/`editLink` — all of `app/lib/resume.ts`'s mutators funnel through this
+  one function already), `handleEditField` (manual scalar-field edits via
+  `InlineEdit.tsx`), and `handleRevise`'s success path (both resume and cover-letter
+  branches). These three call sites were rewritten from React's functional
+  `setState((prev) => ...)` form to reading `resumeState`/`coverLetterState` directly
+  (already safe — synchronous event-handler closures, same pattern the request-body
+  construction in `handleRevise` already relied on) specifically so the pre-change
+  value could be captured and pushed onto history in the same breath as applying the
+  new state, without nesting a `setState` call inside another `setState`'s updater.
+  `handleRevise` only pushes when `data.updates.length > 0` — a no-op revise response
+  (the model declining to change anything) doesn't waste a history slot on an
+  identical snapshot.
+- **`handleRevert`**: pops the current tab's stack (LIFO) and sets it as the current
+  resume/cover-letter state. Single-direction undo, no redo, matching the simplest
+  model that covers the ask.
+- **Stack reset**: both `handleGenerateForNewJob` and `handleLoadApplication` now also
+  clear `resumeHistory`/`clHistory` — a fresh workspace or a newly-loaded package
+  makes the old undo history meaningless. **Save/Update does not touch either
+  stack** — confirmed this was intentional per the spec (a save is a snapshot upload,
+  not an undo checkpoint) and verified it holds in practice.
+- **`app/components/RevisionChat.tsx`**: new `canRevert`/`onRevert` props. A
+  `Undo2` (lucide-react, already a project dependency since the hamburger-menu pass)
+  icon button sits between the textarea and the Revise submit button, `type="button"`
+  so it can't trigger the form's submit, disabled when `canRevert` is false. Placed
+  inside the sticky chat bar rather than the Select/Edit top action row because that
+  bar is already rendered unconditionally regardless of `previewMode` (confirmed by
+  reading `page.tsx`'s JSX — `RevisionChat` sits below `ResumePreview`/
+  `CoverLetterPreview` in both Select and Edit mode, not hidden in either), so it's
+  reachable regardless of which mode manual edits vs. chat revisions happen in without
+  needing a second copy of the control.
+- `tsc --noEmit` and `eslint` both clean.
+
+### Verification (real browser, this is state/logic correctness — not CSS)
+
+- Selected a bullet, submitted a chat-scoped revise ("make this more concise, one
+  sentence") — bullet text changed, revert button went from disabled to enabled.
+  Clicked revert: bullet text came back byte-for-byte identical to the pre-revise
+  version (confirmed via the Raw JSON panel), and the button went back to disabled
+  since the stack was empty again.
+- Switched to Edit mode, manually edited the resume name field (appended " Jr."),
+  clicked revert — name reverted to the exact pre-edit value. Confirms the revert
+  control (living in the always-rendered chat bar) is reachable and functional from
+  Edit mode, not just Select mode.
+- Chained three manual edits to the same field (appended "-A", then "-B", then "-C"
+  in three separate edits) and reverted three times in a row: each click removed
+  exactly one suffix in reverse order (`...-A-B-C` → `...-A-B` → `...-A` →
+  original), confirming LIFO step-by-step behavior rather than jumping straight back
+  to the original or losing intermediate steps.
+- Made one more manual edit, then clicked **Update** (save) — confirmed via direct
+  DOM inspection that the revert button was still enabled (not disabled) immediately
+  after the save completed, i.e. Save/Update does not clear the stack. Reverted after
+  the save and confirmed the pre-edit content came back correctly, then re-saved to
+  leave the fixture clean.
+- Made a manual edit (unsaved), then reloaded the same package via the Saved tab —
+  confirmed the revert button was disabled afterward, i.e. loading a package resets
+  the stack (didn't get a chance to test against a genuinely *different* second saved
+  package since only one fixture exists in this environment, but the reset code path
+  is identical regardless of which package is loaded).
+- Cleanup: the one test edit that was actually persisted via Update mid-verification
+  was saved back to its original value before finishing; `GET /applications`
+  confirmed exactly one record remains with the original name intact.

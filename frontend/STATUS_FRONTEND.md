@@ -2230,3 +2230,131 @@ without a separate production build, and so a curious visitor can see what
 the user once it's picked back up: the toggle must be completely absent from
 the public Vercel build, not just hidden, likely by gating its existence on
 the build-time `NEXT_PUBLIC_DEMO_MODE` value rather than on runtime state.
+
+---
+
+## Feature: Runtime Live/Demo toggle, gated so it cannot exist on the public demo build (2026-09-18)
+
+Implements the paused toggle from the previous entry, now with a concrete
+plan from the user. Hard constraint driving every design choice here: a
+public demo visitor must never be able to reach real network calls through
+this — not "hidden," structurally absent from that build's shipped code.
+
+### The two-flag split
+
+- **`app/lib/demo.ts`**: `DEMO_MODE` renamed to `BUILD_DEMO_MODE` — the raw,
+  permanent, build-time value from `NEXT_PUBLIC_DEMO_MODE`, exactly as
+  before. Nothing reads this to decide what to render/fetch anymore; it
+  exists only to gate whether the runtime override can exist at all.
+- **New `app/lib/DemoModeContext.tsx`**: `DemoModeProvider` +
+  `useDemoMode()` (`{ demoMode, toggle }`). `readInitialDemoMode()` returns
+  `true` unconditionally, without ever touching `localStorage`, when
+  `BUILD_DEMO_MODE` is true — the override branch is skipped entirely, not
+  defaulted off, so there's no code path where a public build's runtime
+  state could differ from `true`. When `BUILD_DEMO_MODE` is false, it reads
+  a `demoModeOverride` key from `localStorage` (`'true'`/`'false'`),
+  falling back to `BUILD_DEMO_MODE` if unset or unreadable (private
+  browsing, blocked storage).
+- **`toggle()`** persists the flipped value to `localStorage` and calls
+  `window.location.reload()` rather than flipping in-place state. Reasoning:
+  nearly every `demoMode`-gated `useState` initializer and mount effect in
+  this app (profile state, resume/cover-letter state, the JD prefill, etc.)
+  only ever runs once per page load — an in-place flip would leave most of
+  the app on the old mode until a manual refresh anyway, so a reload gets
+  every consumer to a consistent state in one step instead of partially.
+  `toggle()` is also a no-op when `BUILD_DEMO_MODE` is true, matching
+  `readInitialDemoMode`'s guarantee.
+
+### Hydration-safe mounting (found by testing, not anticipated)
+
+First pass read `localStorage` synchronously in the `useState` initializer.
+Locally this threw a real hydration-mismatch exception in the browser
+console (Next's dev overlay flagged it as "1 Issue") whenever the persisted
+override differed from `BUILD_DEMO_MODE`: `next dev`/a static prerender has
+no `window`, so the server-rendered HTML always reflects `BUILD_DEMO_MODE`,
+while the client's first hydration pass wanted the corrected override value
+— React detected the text mismatch and discarded/regenerated the whole tree.
+Fixed by gating `DemoModeProvider`'s children behind a `mounted` flag that
+starts `true` immediately when `BUILD_DEMO_MODE` is true (no override
+possible, so first render is already final and matches the server exactly)
+and starts `false` otherwise, flipping to `true` in a mount effect that also
+resolves the real `demoMode` value from `localStorage` at the same time.
+This means the one render that actually depends on `demoMode` only ever
+happens client-side with no server-rendered counterpart to mismatch against
+— briefly showing nothing (the app's `--background` color from `body`'s own
+CSS, not a white flash) instead of a discard-and-rebuild. Verified this
+resolves it: reloading with an override set no longer throws, no "1 Issue"
+badge, correct content on the very next paint.
+
+### Every `DEMO_MODE` static import swapped for the hook
+
+Mechanical rename (`DEMO_MODE` → `demoMode`, from `useDemoMode()` instead of
+a static import) across `page.tsx`, `ProfileView.tsx`, `SavedTab.tsx`,
+`DownloadButtons.tsx`, `SaveButton.tsx`. Safe as a pure rename rather than a
+logic change because `toggle()` always reloads: `demoMode` never changes
+within a session, so every existing `useState(() => demoMode ? X : Y)` lazy
+initializer keeps behaving exactly as it did with the old module constant.
+`RevisionChat.tsx` and `DemoCapabilityBanner.tsx` needed no changes — both
+already took `demoMode`/gating as props or left it to their callers, not a
+direct import. Added `demoMode` isn't a dependency array entry in the two
+`page.tsx` effects and one `SavedTab.tsx` effect that reference it (guarded
+`if (demoMode) return` at the top, mirroring the existing
+`eslint-disable-next-line react-hooks/exhaustive-deps` pattern already used
+in `InlineEdit.tsx`) — legitimate since, again, `demoMode` is stable for the
+life of a page load.
+
+### Toggle UI: `app/components/DemoModeToggle.tsx`
+
+Checks `BUILD_DEMO_MODE` directly (not the hook's `demoMode`) and returns
+`null` outright if true — this is the actual enforcement point, independent
+of whatever the context computes, matching the "structurally absent, not
+just hidden" requirement. Otherwise renders a small pill (`"Live mode"` /
+`"Demo mode"`, `toggle()` on click), styled muted/neutral rather than the
+demo banners' success-green, since it's a dev tool, not part of the demo's
+own visual language.
+
+**Positioning, found by testing rather than guessed**: the original
+`bottom-4 left-4` placement collided with Next's own dev-mode indicator
+badge, which also anchors bottom-left during `next dev` and is only ever
+absent in production — bad for exactly the local-dev use case this toggle
+targets. Moved to `bottom-20 right-4`: right side to dodge the dev badge,
+and offset up from `bottom-4` to clear `ToastContainer`'s toast stack, which
+anchors at `bottom-4 right-4` and grows upward.
+
+Wrapped in `layout.tsx`: `<DemoModeProvider>{children}<DemoModeToggle /></DemoModeProvider>`.
+
+### Verification
+
+- **Local dev, both directions, no rebuild**: on the real dev server
+  (`localhost:3000`, `BUILD_DEMO_MODE` false), clicking "Live mode" flipped
+  to the full canned demo experience (banner, prefilled JD, capability
+  banners) after one reload; clicking "Demo mode" flipped back to "Backend:
+  ok" and real `/health` calls succeeding against the local backend — this
+  is the actual benefit promised: no separate production build needed to
+  preview demo mode.
+- **No hydration errors** on either toggle direction after the mounted-gate
+  fix — confirmed via `read_console_messages` (no hydration exception) and
+  visually (no "1 Issue" badge in Next's dev overlay).
+- **Public-build absence, the critical check**: `NEXT_PUBLIC_DEMO_MODE=true
+  npx next build`, then grepped the actual build output — zero matches for
+  `demoModeOverride` or the toggle's button text (`"Live mode"`/`"Demo
+  mode"`) in either the prerendered `index.html` or the static JS chunks.
+  This is a stronger guarantee than "doesn't render": the code path is
+  tree-shaken out, not just skipped at runtime.
+- **Defense-in-depth against a manually-set override**: on that same public
+  build, manually ran `localStorage.setItem('demoModeOverride', 'false')`
+  via devtools (simulating a visitor trying to force Live mode) and
+  reloaded — the app stayed in Demo mode with no toggle rendered, confirming
+  `BUILD_DEMO_MODE` truly short-circuits the override path rather than the
+  override just defaulting the same way.
+- **Regression check**: re-ran the single-select/pill mechanism (selected a
+  bullet, pill appeared, applied correctly) and the per-tab capability
+  banners on the public build — all still correct now that they read
+  `demoMode` from the hook instead of the old constant.
+- `tsc --noEmit` and `eslint app/` clean (one legitimate
+  `eslint-disable-next-line react-hooks/set-state-in-effect` added for the
+  mount-effect localStorage sync, and three `exhaustive-deps` disables for
+  the now-hook-sourced `demoMode` in effects — same precedent as the
+  existing one in `InlineEdit.tsx`).
+- Killed the temporary port-3001 production server; confirmed the real dev
+  server (port 3000) and `.env.local` unaffected throughout.

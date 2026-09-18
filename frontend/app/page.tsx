@@ -12,7 +12,8 @@ import { ToastContainer } from './components/Toast'
 import { HamburgerMenu } from './components/HamburgerMenu'
 import { ProfileView } from './components/ProfileView'
 import { DemoCapabilityBanner } from './components/DemoCapabilityBanner'
-import { DEMO_MODE, demoApplication, demoDelay, demoProfile } from './lib/demo'
+import { demoApplication, demoDelay, demoProfile } from './lib/demo'
+import { useDemoMode } from './lib/DemoModeContext'
 import { demoResumeRefinements, demoCoverLetterRefinements } from './lib/demoFixtures/refinements'
 import {
   applyRevisionUpdates,
@@ -174,6 +175,7 @@ function GenerateForm({
 }
 
 export default function Home() {
+  const { demoMode } = useDemoMode()
   const [status, setStatus] = useState<BackendStatus>(() =>
     process.env.NEXT_PUBLIC_API_URL
       ? { state: 'loading' }
@@ -184,7 +186,7 @@ export default function Home() {
   // realistic, ready-to-generate textarea instead of an empty one — see the
   // "Demo mode: generate-it-yourself landing flow" note in STATUS_FRONTEND.md.
   const [jobDescription, setJobDescription] = useState(() =>
-    DEMO_MODE ? demoApplication.job_description.raw : '',
+    demoMode ? demoApplication.job_description.raw : '',
   )
   const [cleanedJobDescription, setCleanedJobDescription] = useState<string | null>(null)
   const [additionalContext, setAdditionalContext] = useState('')
@@ -209,7 +211,7 @@ export default function Home() {
   const [resumeHistory, setResumeHistory] = useState<Resume[]>([])
   const [clHistory, setClHistory] = useState<CoverLetter[]>([])
   const [profileState, setProfileState] = useState<ProfileLoadState>(() => {
-    if (DEMO_MODE) return { state: 'success', profile: demoProfile }
+    if (demoMode) return { state: 'success', profile: demoProfile }
     return process.env.NEXT_PUBLIC_API_URL
       ? { state: 'idle' }
       : { state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' }
@@ -228,14 +230,14 @@ export default function Home() {
 
   const demoRefinements = tab === 'resume' ? demoResumeRefinements : demoCoverLetterRefinements
   const demoSelectedId = selectedIds.size === 1 ? Array.from(selectedIds)[0] : undefined
-  const demoPillAvailable = DEMO_MODE && demoSelectedId !== undefined && demoSelectedId in demoRefinements
+  const demoPillAvailable = demoMode && demoSelectedId !== undefined && demoSelectedId in demoRefinements
 
   useEffect(() => {
     // Demo mode never reaches this — profileState is initialized straight to
     // 'success' with the demo fixture, so it's never 'idle' here. Guarded
     // explicitly anyway as a second line of defense against ever firing a
     // real network call in demo mode.
-    if (DEMO_MODE) return
+    if (demoMode) return
     if (tab !== 'profile' || profileState.state !== 'idle') return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     // profileState can only be 'idle' here if the initializer already found
@@ -256,12 +258,15 @@ export default function Home() {
         const message = err instanceof Error ? err.message : String(err)
         setProfileState({ state: 'error', message })
       })
+    // demoMode never changes without a full page reload (see
+    // DemoModeContext.tsx), so it doesn't need to be a reactive dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, profileState.state])
 
   useEffect(() => {
     // Demo mode replaces this entire connectivity check with a static banner
     // in the top bar (see the JSX below) — no /health call ever fires.
-    if (DEMO_MODE) return
+    if (demoMode) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) return
 
@@ -277,6 +282,9 @@ export default function Home() {
         const message = err instanceof Error ? err.message : String(err)
         setStatus({ state: 'error', message })
       })
+    // demoMode never changes without a full page reload (see
+    // DemoModeContext.tsx), so it doesn't need to be a reactive dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleGenerate(kind: 'resume' | 'cover_letter') {
@@ -288,7 +296,7 @@ export default function Home() {
       setClSelectedIds(new Set())
     }
 
-    if (DEMO_MODE) {
+    if (demoMode) {
       // No LLM call in demo mode — always returns the same pre-baked
       // resume/cover-letter fixture regardless of what's typed above,
       // after an artificial delay so the loading state still reads as real.
@@ -367,7 +375,7 @@ export default function Home() {
 
   function toggleSelected(id: string) {
     setSelectedIds((prev) => {
-      if (DEMO_MODE) {
+      if (demoMode) {
         // Demo mode is single-select only, so a pill can unambiguously say
         // what it edits: clicking the sole selected item deselects it,
         // clicking anything else replaces the selection outright rather than
@@ -455,7 +463,7 @@ export default function Home() {
       return
     }
 
-    if (DEMO_MODE) {
+    if (demoMode) {
       // Free-text revise has no trigger path in demo mode — RevisionChat's
       // textarea/button are inert there, and the suggested-edit pill calls
       // handleApplyDemoRefinement directly instead. Guarded here too as
@@ -522,7 +530,7 @@ export default function Home() {
   }
 
   async function handleApplyDemoRefinement() {
-    if (!DEMO_MODE || !demoPillAvailable || demoSelectedId === undefined) return
+    if (!demoMode || !demoPillAvailable || demoSelectedId === undefined) return
     const text = demoRefinements[demoSelectedId]
 
     setReviseState({ state: 'loading' })
@@ -579,7 +587,7 @@ export default function Home() {
     // pre-filled landing state was added to avoid. Canned Generate ignores
     // the textarea's content either way, so this only affects what the
     // visitor sees, not what running Generate again produces.
-    setJobDescription(DEMO_MODE ? demoApplication.job_description.raw : '')
+    setJobDescription(demoMode ? demoApplication.job_description.raw : '')
     setCleanedJobDescription(null)
     setAdditionalContext('')
     setResumeState({ state: 'idle' })
@@ -596,7 +604,7 @@ export default function Home() {
     // to 'idle' here would permanently strand the Profile tab on "Loading
     // profile..." for the rest of the session, since nothing ever moves it
     // off 'idle' again. Reset straight back to the fixture instead.
-    setProfileState(DEMO_MODE ? { state: 'success', profile: demoProfile } : { state: 'idle' })
+    setProfileState(demoMode ? { state: 'success', profile: demoProfile } : { state: 'idle' })
     setProfilePreviewMode('select')
     setProfileSelectedIds(new Set())
     setProfileReviseState({ state: 'idle' })
@@ -635,7 +643,7 @@ export default function Home() {
             Resume Builder
           </span>
         </div>
-        {DEMO_MODE ? (
+        {demoMode ? (
           <p className='text-sm font-medium text-(--success-on-dark)'>
             Demo Mode — sample data only, no live backend
           </p>
@@ -710,7 +718,7 @@ export default function Home() {
 
           {tab === 'saved' && (
             <>
-              {DEMO_MODE && (
+              {demoMode && (
                 <DemoCapabilityBanner message="In the full app, save and manage multiple job-application packages, each bundling its job description, tailored resume, and cover letter for quick reuse." />
               )}
               <SavedTab onLoad={handleLoadApplication} />
@@ -719,7 +727,7 @@ export default function Home() {
 
           {tab === 'profile' && (
             <>
-              {DEMO_MODE && (
+              {demoMode && (
                 <DemoCapabilityBanner message="This is a read-only demo of your master profile. In the full app, every field is editable — including AI-assisted revision — and changes here update the source data used for future generations." />
               )}
               {profileState.state === 'success' ? (
@@ -751,7 +759,7 @@ export default function Home() {
             <>
               {tab === 'jd' && (
                 <>
-                  {DEMO_MODE && (
+                  {demoMode && (
                     <DemoCapabilityBanner message="This demo uses a pre-written job description and pre-generated results. In the full app, Claude reads any real job posting and tailors your resume and cover letter to it automatically." />
                   )}
                   {resumeReady && coverLetterReady ? (
@@ -784,7 +792,7 @@ export default function Home() {
 
               {tab === 'resume' && (
                 <>
-                  {DEMO_MODE && (
+                  {demoMode && (
                     <DemoCapabilityBanner message="In the full app, an AI model (Claude) generates every bullet, summary, and skill section tailored to the job, and revises them live via chat instructions." />
                   )}
                   {resumeState.state === 'success' ? (
@@ -842,7 +850,7 @@ export default function Home() {
                       onSubmit={handleRevise}
                       canRevert={history.length > 0}
                       onRevert={handleRevert}
-                      demoMode={DEMO_MODE}
+                      demoMode={demoMode}
                       demoPillAvailable={demoPillAvailable}
                       onApplyDemoRefinement={handleApplyDemoRefinement}
                     />
@@ -870,7 +878,7 @@ export default function Home() {
 
               {tab === 'cover_letter' && (
                 <>
-                  {DEMO_MODE && (
+                  {demoMode && (
                     <DemoCapabilityBanner message="In the full app, Claude writes a complete, tailored cover letter for each job, fully revisable via chat." />
                   )}
                   {coverLetterState.state === 'success' ? (
@@ -923,7 +931,7 @@ export default function Home() {
                       onSubmit={handleRevise}
                       canRevert={history.length > 0}
                       onRevert={handleRevert}
-                      demoMode={DEMO_MODE}
+                      demoMode={demoMode}
                       demoPillAvailable={demoPillAvailable}
                       onApplyDemoRefinement={handleApplyDemoRefinement}
                     />

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { CoverLetter, Resume } from '../types'
 import { DownloadIcon } from './icons'
-import { DEMO_MODE } from '../lib/demo'
+import { useDemoMode } from '../lib/DemoModeContext'
 
 type DownloadState =
   | { state: 'idle' }
@@ -15,6 +15,7 @@ export function DownloadButtons({
 }: {
   document: { resume: Resume } | { coverLetter: CoverLetter }
 }) {
+  const { demoMode } = useDemoMode()
   const [downloadState, setDownloadState] = useState<DownloadState>({
     state: 'idle',
   })
@@ -26,7 +27,7 @@ export function DownloadButtons({
       let res: Response
       let filename: string
 
-      if (DEMO_MODE) {
+      if (demoMode) {
         // Static assets served by Next.js itself (same origin, /public), not
         // the backend — real pre-rendered files, never a /render POST.
         const kind = 'resume' in doc ? 'resume' : 'cover_letter'

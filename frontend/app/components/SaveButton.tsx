@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Application, CoverLetter, JobDescription, Resume } from '../types'
 import { SaveIcon } from './icons'
 import { showToast } from './Toast'
-import { DEMO_MODE } from '../lib/demo'
+import { useDemoMode } from '../lib/DemoModeContext'
 
 type SaveState =
   | { state: 'idle' }
@@ -27,6 +27,7 @@ export function SaveButton({
   initialName: string
   onSaved: (application: Application) => void
 }) {
+  const { demoMode } = useDemoMode()
   const [saveState, setSaveState] = useState<SaveState>({ state: 'idle' })
   const [name, setName] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -49,7 +50,7 @@ export function SaveButton({
     // Defense in depth: the trigger button already short-circuits before the
     // popover ever opens in demo mode, so this should be unreachable — kept
     // as a second guard against ever hitting the network in demo mode.
-    if (DEMO_MODE) return
+    if (demoMode) return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setSaveState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -97,7 +98,7 @@ export function SaveButton({
       <button
         type='button'
         onClick={() => {
-          if (DEMO_MODE) {
+          if (demoMode) {
             showToast("Saving isn't available in this demo")
             return
           }

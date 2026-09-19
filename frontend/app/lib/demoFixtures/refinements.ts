@@ -18,6 +18,6 @@ export const demoResumeRefinements: Record<string, string> = {
 }
 
 export const demoCoverLetterRefinements: Record<string, string> = {
-  p1: "I'm excited to apply for the Software Engineer role at Justworks, a team that clearly values both the product and the people building it, and where I can own meaningful projects end-to-end.",
+  p1: "I'm excited to apply for the Software Engineer role at Justworks — a team that clearly values both the product and the people building it, and where I can own meaningful projects end-to-end.",
   p2: "At Salo Labs, I designed and deployed a multi-service Python backend on GCP Cloud Run, built a CI/CD pipeline that gates every deploy behind a full test run, and grew our suite to 100+ passing tests. I'd be thrilled to bring that same hands-on ownership to Justworks' engineering team.",
 }

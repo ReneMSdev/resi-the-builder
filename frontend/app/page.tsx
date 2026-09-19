@@ -265,7 +265,8 @@ export default function Home() {
 
   const demoRefinements = tab === 'resume' ? demoResumeRefinements : demoCoverLetterRefinements
   const demoSelectedId = selectedIds.size === 1 ? Array.from(selectedIds)[0] : undefined
-  const demoPillAvailable = demoMode && demoSelectedId !== undefined && demoSelectedId in demoRefinements
+  const demoPillAvailable =
+    demoMode && demoSelectedId !== undefined && demoSelectedId in demoRefinements
 
   useEffect(() => {
     // Demo mode never reaches this — profileState is initialized straight to
@@ -757,7 +758,7 @@ export default function Home() {
           {tab === 'saved' && (
             <>
               {demoMode && (
-                <DemoCapabilityBanner message="In the full app, save and manage multiple job-application packages, each bundling its job description, tailored resume, and cover letter for quick reuse." />
+                <DemoCapabilityBanner message='In the full app, save and manage multiple job-application packages, each bundling its job description, tailored resume, and cover letter for quick reuse.' />
               )}
               <SavedTab onLoad={handleLoadApplication} />
             </>
@@ -766,23 +767,23 @@ export default function Home() {
           {tab === 'profile' && (
             <>
               {demoMode && (
-                <DemoCapabilityBanner message="This is a read-only demo of your master profile. In the full app, every field is editable — including AI-assisted revision — and changes here update the source data used for future generations." />
+                <DemoCapabilityBanner message='This is a read-only demo of your master profile. In the full app, every field is editable — including AI-assisted revision — and changes here update the source data used for future generations.' />
               )}
               {profileState.state === 'success' ? (
-              <ProfileView
-                profile={profileState.profile}
-                onProfileChange={(profile) => setProfileState({ state: 'success', profile })}
-                previewMode={profilePreviewMode}
-                setPreviewMode={setProfilePreviewMode}
-                selectedIds={profileSelectedIds}
-                setSelectedIds={setProfileSelectedIds}
-                reviseState={profileReviseState}
-                setReviseState={setProfileReviseState}
-                history={profileHistory}
-                setHistory={setProfileHistory}
-                openIds={profileOpenIds}
-                setOpenIds={setProfileOpenIds}
-              />
+                <ProfileView
+                  profile={profileState.profile}
+                  onProfileChange={(profile) => setProfileState({ state: 'success', profile })}
+                  previewMode={profilePreviewMode}
+                  setPreviewMode={setProfilePreviewMode}
+                  selectedIds={profileSelectedIds}
+                  setSelectedIds={setProfileSelectedIds}
+                  reviseState={profileReviseState}
+                  setReviseState={setProfileReviseState}
+                  history={profileHistory}
+                  setHistory={setProfileHistory}
+                  openIds={profileOpenIds}
+                  setOpenIds={setProfileOpenIds}
+                />
               ) : profileState.state === 'error' ? (
                 <p className='font-medium text-(--danger)'>
                   Error loading profile: {profileState.message}
@@ -798,9 +799,9 @@ export default function Home() {
               {tab === 'jd' && (
                 <>
                   {demoMode && (
-                    <DemoCapabilityBanner message="This demo uses a pre-written job description and pre-generated results. In the full app, Claude reads any real job posting and tailors your resume and cover letter to it automatically." />
+                    <DemoCapabilityBanner message='This demo uses a pre-written job description and pre-generated results. In the full app, Claude reads any real job posting and tailors your resume and cover letter to it automatically.' />
                   )}
-                  {(resumeReady || coverLetterReady) ? (
+                  {resumeReady || coverLetterReady ? (
                     <div className='flex flex-col gap-2'>
                       <p className='text-xs text-(--muted)'>Job description (reference)</p>
                       <div className='whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 text-sm text-foreground'>
@@ -834,12 +835,12 @@ export default function Home() {
                     <DemoCapabilityBanner
                       message={
                         <>
-                          In the full app, an AI model (Claude) generates every bullet,
-                          summary, and skill section tailored to the job.
+                          In the full app, Claude generates every bullet, summary, and skill section
+                          tailored to the job.
                           <br />
-                          <strong>Select</strong> mode lets you pick a bullet, entry, or
-                          section and revise it live via chat instructions;{' '}
-                          <strong>Edit</strong> mode lets you type changes in directly.
+                          <strong>Select</strong> mode lets you pick a bullet, entry, or section and
+                          revise it live via chat instructions; <strong>Edit</strong> mode lets you
+                          type changes in directly.
                         </>
                       }
                     />
@@ -847,81 +848,85 @@ export default function Home() {
                   {resumeState.state === 'success' ? (
                     <div className='flex flex-col gap-2'>
                       <div className='flex items-center justify-between gap-2'>
-                      <p className='text-xs text-(--muted)'>
-                        {previewMode === 'edit'
-                          ? 'Edit mode: click any field to edit it.'
-                          : selectedIds.size === 0
-                            ? 'Click a bullet, entry, or section to select it.'
-                            : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
-                      </p>
-                      <div className='flex items-center gap-2'>
-                        <ModeToggle
-                          mode={previewMode}
-                          onChange={setPreviewMode}
-                        />
-                        <SaveButton
-                          jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
-                          resume={resumeState.resume}
-                          coverLetter={coverLetterState.state === 'success' ? coverLetterState.coverLetter : null}
-                          applicationId={loadedApplication?.id ?? null}
-                          initialName={loadedApplication?.name ?? ''}
-                          onSaved={handleSaved}
-                        />
-                        <DownloadButtons document={{ resume: resumeState.resume }} />
+                        <p className='text-xs text-(--muted)'>
+                          {previewMode === 'edit'
+                            ? 'Edit mode: click any field to edit it.'
+                            : selectedIds.size === 0
+                              ? 'Click a bullet, entry, or section to select it.'
+                              : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+                        </p>
+                        <div className='flex items-center gap-2'>
+                          <ModeToggle
+                            mode={previewMode}
+                            onChange={setPreviewMode}
+                          />
+                          <SaveButton
+                            jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
+                            resume={resumeState.resume}
+                            coverLetter={
+                              coverLetterState.state === 'success'
+                                ? coverLetterState.coverLetter
+                                : null
+                            }
+                            applicationId={loadedApplication?.id ?? null}
+                            initialName={loadedApplication?.name ?? ''}
+                            onSaved={handleSaved}
+                          />
+                          <DownloadButtons document={{ resume: resumeState.resume }} />
+                        </div>
                       </div>
+                      <ResumePreview
+                        resume={resumeState.resume}
+                        selectedIds={selectedIds}
+                        onToggle={toggleSelected}
+                        mode={previewMode}
+                        onEditField={handleEditField}
+                        onAddBullet={handleAddBullet}
+                        onRemoveBullet={handleRemoveBullet}
+                        onAddSkillItem={handleAddSkillItem}
+                        onRemoveSkillItem={handleRemoveSkillItem}
+                        onEditSkillItem={handleEditSkillItem}
+                        onAddLink={handleAddLink}
+                        onRemoveLink={handleRemoveLink}
+                        onEditLink={handleEditLink}
+                      />
+                      <details className='text-xs text-(--muted)'>
+                        <summary className='cursor-pointer select-none'>Raw JSON</summary>
+                        <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
+                          {JSON.stringify(resumeState.resume, null, 2)}
+                        </pre>
+                      </details>
+                      <RevisionChat
+                        selectionSummary={describeSelection(resumeState.resume, selectedIds)}
+                        selectionCount={selectedIds.size}
+                        loading={reviseState.state === 'loading'}
+                        errorMessage={reviseState.state === 'error' ? reviseState.message : null}
+                        onSubmit={handleRevise}
+                        canRevert={history.length > 0}
+                        onRevert={handleRevert}
+                        demoMode={demoMode}
+                        demoPillAvailable={demoPillAvailable}
+                        onApplyDemoRefinement={handleApplyDemoRefinement}
+                      />
                     </div>
-                    <ResumePreview
-                      resume={resumeState.resume}
-                      selectedIds={selectedIds}
-                      onToggle={toggleSelected}
-                      mode={previewMode}
-                      onEditField={handleEditField}
-                      onAddBullet={handleAddBullet}
-                      onRemoveBullet={handleRemoveBullet}
-                      onAddSkillItem={handleAddSkillItem}
-                      onRemoveSkillItem={handleRemoveSkillItem}
-                      onEditSkillItem={handleEditSkillItem}
-                      onAddLink={handleAddLink}
-                      onRemoveLink={handleRemoveLink}
-                      onEditLink={handleEditLink}
+                  ) : (
+                    <GenerateForm
+                      jobDescription={jobDescription}
+                      onJobDescriptionChange={setJobDescription}
+                      additionalContext={additionalContext}
+                      onAdditionalContextChange={setAdditionalContext}
+                      showResumeButton={!resumeReady}
+                      showCoverLetterButton={!coverLetterReady}
+                      resumeGenerating={resumeGenerating}
+                      coverLetterGenerating={coverLetterGenerating}
+                      resumeError={resumeState.state === 'error' ? resumeState.message : null}
+                      coverLetterError={
+                        coverLetterState.state === 'error' ? coverLetterState.message : null
+                      }
+                      onGenerateResume={() => handleGenerate('resume')}
+                      onGenerateCoverLetter={() => handleGenerate('cover_letter')}
                     />
-                    <details className='text-xs text-(--muted)'>
-                      <summary className='cursor-pointer select-none'>Raw JSON</summary>
-                      <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
-                        {JSON.stringify(resumeState.resume, null, 2)}
-                      </pre>
-                    </details>
-                    <RevisionChat
-                      selectionSummary={describeSelection(resumeState.resume, selectedIds)}
-                      selectionCount={selectedIds.size}
-                      loading={reviseState.state === 'loading'}
-                      errorMessage={reviseState.state === 'error' ? reviseState.message : null}
-                      onSubmit={handleRevise}
-                      canRevert={history.length > 0}
-                      onRevert={handleRevert}
-                      demoMode={demoMode}
-                      demoPillAvailable={demoPillAvailable}
-                      onApplyDemoRefinement={handleApplyDemoRefinement}
-                    />
-                  </div>
-                ) : (
-                  <GenerateForm
-                    jobDescription={jobDescription}
-                    onJobDescriptionChange={setJobDescription}
-                    additionalContext={additionalContext}
-                    onAdditionalContextChange={setAdditionalContext}
-                    showResumeButton={!resumeReady}
-                    showCoverLetterButton={!coverLetterReady}
-                    resumeGenerating={resumeGenerating}
-                    coverLetterGenerating={coverLetterGenerating}
-                    resumeError={resumeState.state === 'error' ? resumeState.message : null}
-                    coverLetterError={
-                      coverLetterState.state === 'error' ? coverLetterState.message : null
-                    }
-                    onGenerateResume={() => handleGenerate('resume')}
-                    onGenerateCoverLetter={() => handleGenerate('cover_letter')}
-                  />
-                )}
+                  )}
                 </>
               )}
 
@@ -931,89 +936,91 @@ export default function Home() {
                     <DemoCapabilityBanner
                       message={
                         <>
-                          In the full app, Claude writes a complete, tailored cover
-                          letter for each job.
+                          In the full app, Claude writes a complete, tailored cover letter for each
+                          job.
                           <br />
-                          <strong>Select</strong> mode lets you pick a paragraph and
-                          revise it live via chat instructions; <strong>Edit</strong>{' '}
-                          mode lets you type changes in directly.
+                          <strong>Select</strong> mode lets you pick a paragraph and revise it live
+                          via chat instructions; <strong>Edit</strong> mode lets you type changes in
+                          directly.
                         </>
                       }
                     />
                   )}
                   {coverLetterState.state === 'success' ? (
-                  <div className='flex flex-col gap-2'>
-                    <div className='flex items-center justify-between gap-2'>
-                      <p className='text-xs text-(--muted)'>
-                        {previewMode === 'edit'
-                          ? 'Edit mode: click any field to edit it.'
-                          : selectedIds.size === 0
-                            ? 'Click a paragraph to select it.'
-                            : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
-                      </p>
-                      <div className='flex items-center gap-2'>
-                        <ModeToggle
-                          mode={previewMode}
-                          onChange={setPreviewMode}
-                        />
-                        <SaveButton
-                          jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
-                          resume={resumeState.state === 'success' ? resumeState.resume : null}
-                          coverLetter={coverLetterState.coverLetter}
-                          applicationId={loadedApplication?.id ?? null}
-                          initialName={loadedApplication?.name ?? ''}
-                          onSaved={handleSaved}
-                        />
-                        <DownloadButtons document={{ coverLetter: coverLetterState.coverLetter }} />
+                    <div className='flex flex-col gap-2'>
+                      <div className='flex items-center justify-between gap-2'>
+                        <p className='text-xs text-(--muted)'>
+                          {previewMode === 'edit'
+                            ? 'Edit mode: click any field to edit it.'
+                            : selectedIds.size === 0
+                              ? 'Click a paragraph to select it.'
+                              : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
+                        </p>
+                        <div className='flex items-center gap-2'>
+                          <ModeToggle
+                            mode={previewMode}
+                            onChange={setPreviewMode}
+                          />
+                          <SaveButton
+                            jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
+                            resume={resumeState.state === 'success' ? resumeState.resume : null}
+                            coverLetter={coverLetterState.coverLetter}
+                            applicationId={loadedApplication?.id ?? null}
+                            initialName={loadedApplication?.name ?? ''}
+                            onSaved={handleSaved}
+                          />
+                          <DownloadButtons
+                            document={{ coverLetter: coverLetterState.coverLetter }}
+                          />
+                        </div>
                       </div>
+                      <CoverLetterPreview
+                        coverLetter={coverLetterState.coverLetter}
+                        selectedIds={selectedIds}
+                        onToggle={toggleSelected}
+                        mode={previewMode}
+                        onEditField={handleEditField}
+                      />
+                      <details className='text-xs text-(--muted)'>
+                        <summary className='cursor-pointer select-none'>Raw JSON</summary>
+                        <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
+                          {JSON.stringify(coverLetterState.coverLetter, null, 2)}
+                        </pre>
+                      </details>
+                      <RevisionChat
+                        selectionSummary={describeCoverLetterSelection(
+                          coverLetterState.coverLetter,
+                          selectedIds,
+                        )}
+                        selectionCount={selectedIds.size}
+                        loading={reviseState.state === 'loading'}
+                        errorMessage={reviseState.state === 'error' ? reviseState.message : null}
+                        onSubmit={handleRevise}
+                        canRevert={history.length > 0}
+                        onRevert={handleRevert}
+                        demoMode={demoMode}
+                        demoPillAvailable={demoPillAvailable}
+                        onApplyDemoRefinement={handleApplyDemoRefinement}
+                      />
                     </div>
-                    <CoverLetterPreview
-                      coverLetter={coverLetterState.coverLetter}
-                      selectedIds={selectedIds}
-                      onToggle={toggleSelected}
-                      mode={previewMode}
-                      onEditField={handleEditField}
+                  ) : (
+                    <GenerateForm
+                      jobDescription={jobDescription}
+                      onJobDescriptionChange={setJobDescription}
+                      additionalContext={additionalContext}
+                      onAdditionalContextChange={setAdditionalContext}
+                      showResumeButton={!resumeReady}
+                      showCoverLetterButton={!coverLetterReady}
+                      resumeGenerating={resumeGenerating}
+                      coverLetterGenerating={coverLetterGenerating}
+                      resumeError={resumeState.state === 'error' ? resumeState.message : null}
+                      coverLetterError={
+                        coverLetterState.state === 'error' ? coverLetterState.message : null
+                      }
+                      onGenerateResume={() => handleGenerate('resume')}
+                      onGenerateCoverLetter={() => handleGenerate('cover_letter')}
                     />
-                    <details className='text-xs text-(--muted)'>
-                      <summary className='cursor-pointer select-none'>Raw JSON</summary>
-                      <pre className='mt-2 overflow-x-auto whitespace-pre-wrap'>
-                        {JSON.stringify(coverLetterState.coverLetter, null, 2)}
-                      </pre>
-                    </details>
-                    <RevisionChat
-                      selectionSummary={describeCoverLetterSelection(
-                        coverLetterState.coverLetter,
-                        selectedIds,
-                      )}
-                      selectionCount={selectedIds.size}
-                      loading={reviseState.state === 'loading'}
-                      errorMessage={reviseState.state === 'error' ? reviseState.message : null}
-                      onSubmit={handleRevise}
-                      canRevert={history.length > 0}
-                      onRevert={handleRevert}
-                      demoMode={demoMode}
-                      demoPillAvailable={demoPillAvailable}
-                      onApplyDemoRefinement={handleApplyDemoRefinement}
-                    />
-                  </div>
-                ) : (
-                  <GenerateForm
-                    jobDescription={jobDescription}
-                    onJobDescriptionChange={setJobDescription}
-                    additionalContext={additionalContext}
-                    onAdditionalContextChange={setAdditionalContext}
-                    showResumeButton={!resumeReady}
-                    showCoverLetterButton={!coverLetterReady}
-                    resumeGenerating={resumeGenerating}
-                    coverLetterGenerating={coverLetterGenerating}
-                    resumeError={resumeState.state === 'error' ? resumeState.message : null}
-                    coverLetterError={
-                      coverLetterState.state === 'error' ? coverLetterState.message : null
-                    }
-                    onGenerateResume={() => handleGenerate('resume')}
-                    onGenerateCoverLetter={() => handleGenerate('cover_letter')}
-                  />
-                )}
+                  )}
                 </>
               )}
             </>

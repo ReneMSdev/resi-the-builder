@@ -8,8 +8,8 @@ import type { ReactNode } from 'react'
 // it itself, so it stays reusable if a non-demo caller ever wants it.
 export function DemoCapabilityBanner({ message }: { message: ReactNode }) {
   return (
-    <div className="mb-3 rounded border border-[var(--success)] bg-[var(--success)]/10 px-3 py-2 text-xs text-[var(--success)]">
+    <div className='mb-3 rounded border border-(--success) bg-(--success)/10 px-3 py-2 text-sm text-(--success)'>
       {message}
     </div>
-  );
+  )
 }

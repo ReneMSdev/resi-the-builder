@@ -30,20 +30,17 @@ into a STATUS doc as completed work.
   frontend concern independent of storage order), just for readability if someone
   opens the raw file. Not acted on, noted only.
 
-## Infrastructure, not yet started
-
-- **Cloudflare Tunnel** — stable hostname to expose the *real* local backend so a
-  hosted frontend could reach it for genuine (non-demo) use away from the user's own
-  machine. Not started. Distinct from the Vercel demo deployment below, which
-  deliberately has no backend at all.
-
 ## Done, no longer tracked here
 
 - ~~Vercel deployment of the frontend~~ — done, but not the originally-envisioned
   real-backend deployment: a frontend-only, mocked-data portfolio demo
-  (`resi-the-builder.vercel.app`, see `ARCHITECTURE.md`). A real-backend-connected
-  deployment is still what the Cloudflare Tunnel item above would enable, if picked
-  back up.
+  (`resi-the-builder.vercel.app`, see `ARCHITECTURE.md`).
+- ~~Cloudflare Tunnel~~ — decided against, not just deferred. The plan was a stable
+  hostname so a separately-hosted frontend could reach the real local backend. Since
+  the Auto Apply automation workflow already requires Claude Code running locally
+  against this project, there's no scenario where the real backend needs to be
+  reachable from anywhere else — the project is open locally whenever the real app or
+  the automation workflow is in use anyway.
 
 ## Known soft spots (not bugs, flagged for whoever touches that area next)
 

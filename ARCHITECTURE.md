@@ -94,12 +94,10 @@ flowchart LR
     subgraph Vercel["Vercel — resi-the-builder.vercel.app<br/>(Root Directory: frontend/, no backend deployed)"]
         UI2["Next.js App<br/>NEXT_PUBLIC_DEMO_MODE=true"]
         Fixtures[("Static fixtures<br/>lib/demoFixtures/*.json<br/>lib/demoFixtures/refinements.ts")]
-        Assets[("Static assets<br/>public/demo/*.docx, *.pdf")]
     end
 
     Visitor -->|"browser"| UI2
     UI2 -->|"reads (no network call)"| Fixtures
-    UI2 -->|"serves"| Assets
 ```
 
 **Why this is possible at all**: `backend/` could never deploy to Vercel regardless of the
@@ -120,15 +118,23 @@ serverless functions can't run. So the demo had to be frontend-only from the sta
   the toggle's text and its localStorage key don't exist anywhere in the shipped
   HTML/JS — genuinely tree-shaken out, not just hidden behind a runtime check. A public
   demo visitor has no code path that could ever re-enable real network calls.
+- **Downloads, Save/Update, and Auto-Apply's "Prepare" action all show a "not available
+  in this demo" toast** rather than doing anything real — there are no demo-mode
+  document assets on disk at all (the earlier static `public/demo/*.docx`/`*.pdf` files
+  were removed once Downloads stopped serving them).
 
 ---
 
 ## Open architectural gaps (not urgent, worth knowing)
 
-- **No stable hostname for the local backend** — a Cloudflare Tunnel was planned (see
-  `TODO.md`) to let a *real* hosted frontend reach it, independent of the demo above.
-  Not started; the demo's zero-backend design made this less urgent.
 - **CORS is wide open** (`allow_origins=["*"]`) since there's no deployed real-backend
-  frontend origin yet to restrict it to.
+  frontend origin to restrict it to, and none is planned — see below.
 - **`SOFFICE_PATH` is hardcoded** to the default macOS Homebrew cask location — would need
   updating if the backend ever runs on a different OS/machine.
+
+**Decided against, not just deferred**: a stable hostname for the *real* backend (e.g. a
+Cloudflare Tunnel) so a separately-hosted frontend could reach it. The Auto Apply
+automation workflow already requires Claude Code running locally against this project, so
+there's no scenario where the real backend would need to be reachable from anywhere else —
+the user has this project open locally whenever the real (non-demo) app or the automation
+workflow is in use anyway.

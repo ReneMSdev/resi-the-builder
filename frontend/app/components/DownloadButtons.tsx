@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { CoverLetter, Resume } from '../types'
 import { DownloadIcon } from './icons'
 import { useDemoMode } from '../lib/DemoModeContext'
+import { showToast } from './Toast'
 
 type DownloadState =
   | { state: 'idle' }
@@ -21,45 +22,39 @@ export function DownloadButtons({
   })
 
   async function handleDownload(format: 'docx' | 'pdf') {
+    if (demoMode) {
+      // Matches Save/Update and Auto-Apply-Prepare's existing "not in scope
+      // for this demo" treatment — stays clickable rather than disabled,
+      // just doesn't do anything real.
+      showToast("Downloading isn't available in this demo")
+      return
+    }
+
     setDownloadState({ state: 'loading', format })
 
     try {
-      let res: Response
-      let filename: string
-
-      if (demoMode) {
-        // Static assets served by Next.js itself (same origin, /public), not
-        // the backend — real pre-rendered files, never a /render POST.
-        const kind = 'resume' in doc ? 'resume' : 'cover_letter'
-        res = await fetch(`/demo/${kind}.${format}`)
-        if (!res.ok) {
-          throw new Error(`${res.status}: could not load demo ${kind}.${format}`)
-        }
-        filename = `${kind}.${format}`
-      } else {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
-        if (!apiUrl) {
-          throw new Error('NEXT_PUBLIC_API_URL is not set.')
-        }
-        res = await fetch(`${apiUrl}/render`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(
-            'resume' in doc
-              ? { resume: doc.resume, format }
-              : { cover_letter: doc.coverLetter, format },
-          ),
-        })
-
-        if (!res.ok) {
-          const body = await res.text()
-          throw new Error(`${res.status}: ${body}`)
-        }
-
-        const disposition = res.headers.get('Content-Disposition') ?? ''
-        const match = disposition.match(/filename="?([^";]+)"?/)
-        filename = match ? match[1] : `document.${format}`
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      if (!apiUrl) {
+        throw new Error('NEXT_PUBLIC_API_URL is not set.')
       }
+      const res = await fetch(`${apiUrl}/render`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          'resume' in doc
+            ? { resume: doc.resume, format }
+            : { cover_letter: doc.coverLetter, format },
+        ),
+      })
+
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(`${res.status}: ${body}`)
+      }
+
+      const disposition = res.headers.get('Content-Disposition') ?? ''
+      const match = disposition.match(/filename="?([^";]+)"?/)
+      const filename = match ? match[1] : `document.${format}`
 
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)

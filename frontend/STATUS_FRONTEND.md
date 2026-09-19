@@ -2654,3 +2654,35 @@ and confirmed both `.max-w-96 { max-width: calc(var(--spacing) * 96) }`
 (`--spacing: .25rem` → 24rem) and `--container-3xl: 48rem` are present and
 generated as expected. No further browser pass, per the user testing
 locally.
+
+---
+
+## Fix: Downloads no longer serve real files in demo mode (2026-09-18)
+
+Per the user, `DownloadButtons.tsx` previously did the opposite of every
+other "not available in demo" case: it actually fetched and served the real
+static `/demo/{resume,cover_letter}.{docx,pdf}` files on click. Changed to
+match Save/Update and Auto-Apply-Prepare's existing pattern instead:
+`handleDownload` now checks `demoMode` first and short-circuits to
+`showToast("Downloading isn't available in this demo")`, matching Save's
+exact wording style ("Saving isn't available in this demo"). The old demo
+branch's real file-fetching logic was removed entirely, not left dead
+behind the toast. Buttons stay clickable rather than disabled, same as
+every other demo-blocked action.
+
+Since `downloadState` is never set to `'loading'` in this path anymore (the
+toast fires before that state exists), clicking either button in demo mode
+no longer shows "Downloading..." or disables its sibling button — consistent
+with how Save/Auto-Apply-Prepare's toasts are similarly instantaneous with
+no loading state of their own.
+
+Grepped `app/` for any other reference to `/demo/` paths — none — so
+`public/demo/{resume,cover_letter}.{docx,pdf}` are now unreferenced by any
+code path. Left them in place rather than deleting, since that wasn't asked
+for and they're harmless to keep; flagging here in case a future cleanup
+pass wants to remove them.
+
+`tsc --noEmit` and `eslint app/` clean. No verification pass beyond that,
+per the "straightforward, reasoning-through is enough" note — this is a
+single-component change with no new state machinery, just relocating an
+existing, already-proven toast pattern to a new call site.

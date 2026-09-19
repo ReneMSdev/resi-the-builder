@@ -12,6 +12,7 @@ import { ToastContainer } from './components/Toast'
 import { HamburgerMenu } from './components/HamburgerMenu'
 import { ProfileView } from './components/ProfileView'
 import { DemoCapabilityBanner } from './components/DemoCapabilityBanner'
+import { DemoIntroBanner } from './components/DemoIntroBanner'
 import { ProgressBar } from './components/ProgressBar'
 import { demoApplication, demoDelay, demoProfile } from './lib/demo'
 import { useDemoMode } from './lib/DemoModeContext'
@@ -724,6 +725,7 @@ export default function Home() {
             showingRevisionChat ? '' : 'pb-8'
           }`}
         >
+          {demoMode && <DemoIntroBanner />}
           {isContentTab && (
             <div className='w-full border-b border-(--border) pb-6'>
               <div className='flex gap-2 justify-center'>

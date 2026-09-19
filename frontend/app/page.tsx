@@ -831,7 +831,7 @@ export default function Home() {
               {tab === 'resume' && (
                 <>
                   {demoMode && (
-                    <DemoCapabilityBanner message="In the full app, an AI model (Claude) generates every bullet, summary, and skill section tailored to the job, and revises them live via chat instructions." />
+                    <DemoCapabilityBanner message="In the full app, an AI model (Claude) generates every bullet, summary, and skill section tailored to the job. Select mode lets you pick a bullet, entry, or section and revise it live via chat instructions; Edit mode lets you type changes in directly." />
                   )}
                   {resumeState.state === 'success' ? (
                     <div className='flex flex-col gap-2'>
@@ -917,7 +917,7 @@ export default function Home() {
               {tab === 'cover_letter' && (
                 <>
                   {demoMode && (
-                    <DemoCapabilityBanner message="In the full app, Claude writes a complete, tailored cover letter for each job, fully revisable via chat." />
+                    <DemoCapabilityBanner message="In the full app, Claude writes a complete, tailored cover letter for each job. Select mode lets you pick a paragraph and revise it live via chat instructions; Edit mode lets you type changes in directly." />
                   )}
                   {coverLetterState.state === 'success' ? (
                   <div className='flex flex-col gap-2'>

@@ -12,6 +12,7 @@ import { ToastContainer } from './components/Toast'
 import { HamburgerMenu } from './components/HamburgerMenu'
 import { ProfileView } from './components/ProfileView'
 import { DemoCapabilityBanner } from './components/DemoCapabilityBanner'
+import { ProgressBar } from './components/ProgressBar'
 import { demoApplication, demoDelay, demoProfile } from './lib/demo'
 import { useDemoMode } from './lib/DemoModeContext'
 import { demoResumeRefinements, demoCoverLetterRefinements } from './lib/demoFixtures/refinements'
@@ -91,6 +92,9 @@ type ProfileLoadState =
   | { state: 'error'; message: string }
 
 const MAX_HISTORY = 10
+// Observed duration for a real Generate call, used as the progress bar's
+// expected-completion estimate — see ProgressBar.tsx for how it's used.
+const GENERATE_EXPECTED_MS = 40_000
 
 function GenerateForm({
   jobDescription,
@@ -140,27 +144,49 @@ function GenerateForm({
           onChange={(e) => onAdditionalContextChange(e.target.value)}
         />
       </label>
-      <div className='flex flex-wrap items-center gap-3'>
-        {showResumeButton && (
-          <button
-            type='button'
-            onClick={onGenerateResume}
-            disabled={resumeGenerating || !canGenerate}
-            className='rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover) disabled:opacity-50'
-          >
-            {resumeGenerating ? 'Generating...' : 'Generate Resume'}
-          </button>
-        )}
-        {showCoverLetterButton && (
-          <button
-            type='button'
-            onClick={onGenerateCoverLetter}
-            disabled={coverLetterGenerating || !canGenerate}
-            className='rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover) disabled:opacity-50'
-          >
-            {coverLetterGenerating ? 'Generating...' : 'Generate Cover Letter'}
-          </button>
-        )}
+      <div className='flex flex-col items-center gap-3'>
+        <div className='flex flex-wrap justify-center gap-3'>
+          {showResumeButton && (
+            <button
+              type='button'
+              onClick={onGenerateResume}
+              disabled={resumeGenerating || !canGenerate}
+              className='rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover) disabled:opacity-50'
+            >
+              {resumeGenerating ? 'Generating...' : 'Generate Resume'}
+            </button>
+          )}
+          {showCoverLetterButton && (
+            <button
+              type='button'
+              onClick={onGenerateCoverLetter}
+              disabled={coverLetterGenerating || !canGenerate}
+              className='rounded bg-(--accent) px-4 py-2 text-sm font-medium text-(--surface) transition-colors hover:cursor-pointer hover:bg-(--accent-hover) disabled:opacity-50'
+            >
+              {coverLetterGenerating ? 'Generating...' : 'Generate Cover Letter'}
+            </button>
+          )}
+        </div>
+        {/* Sized against the whole form's width (matching the wide
+            Resume/Cover-Letter preview content column this form sits in
+            place of), not either button's own narrow footprint — each bar
+            still tracks its own independent generating state. */}
+        <div className='flex w-full flex-wrap justify-center gap-3'>
+          {showResumeButton && (
+            <ProgressBar
+              active={resumeGenerating}
+              expectedDurationMs={GENERATE_EXPECTED_MS}
+              className='w-full max-w-96 mx-auto'
+            />
+          )}
+          {showCoverLetterButton && (
+            <ProgressBar
+              active={coverLetterGenerating}
+              expectedDurationMs={GENERATE_EXPECTED_MS}
+              className='w-full max-w-96 mx-auto'
+            />
+          )}
+        </div>
       </div>
       {resumeError && (
         <p className='font-medium text-(--danger)'>Error generating resume: {resumeError}</p>

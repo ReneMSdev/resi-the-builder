@@ -2500,3 +2500,157 @@ reference view with the cleaned JD, Cover Letter tab still independently
 shows its own `GenerateForm` fallback (separate tab block, unaffected);
 cover-letter-only ready → symmetric; both ready → reference view (same
 outcome as the old `&&`). `tsc --noEmit` and `eslint app/` clean.
+
+---
+
+## Feature: Progress bar for Generate and Revise (2026-09-18)
+
+Real-app feature (not demo-specific), for the two long-running actions with
+no real progress events to report: Generate (~30s observed) and Revise
+(shorter). Not meant to be an accurate estimate — a "still working, getting
+closer" visual signal.
+
+### `components/ProgressBar.tsx`
+
+`{ active, expectedDurationMs }` props. Fills toward `ASYMPTOTE_CAP` (95,
+tuned from an initial 90 — see the tuning-pass note below) along
+`100 * (1 - e^(-elapsed/tau))`, with `tau` solved so the curve hits the cap
+exactly at `expectedDurationMs`
+(`tau = expectedDurationMs / ln(100/(100-ASYMPTOTE_CAP))`). Updates via `setInterval`
+every 100ms; a plain CSS `width` transition (150ms linear) smooths between
+ticks. On `active` going false, snaps straight to 100% and hides 400ms
+later (`opacity` transition, not unmounting) so the 100% state is visible
+before it disappears. A `wasActiveRef` guard skips the snap-and-hide logic
+on initial mount when `active` starts `false` and nothing was ever running.
+
+**Layout-shift requirement**: the outer track `<div>` always renders at a
+fixed height (`h-2`, tuned up from an initial `h-1` for visibility); only
+its `opacity` toggles between 0 and 1. Since
+opacity doesn't affect layout, the space is reserved identically whether the
+bar is mid-animation, freshly hidden, or has never run — no conditional
+mount/unmount, matching the project's existing zero-layout-shift bar
+(scrollbar-gutter, Save popover fixes) rather than reintroducing the class
+of bug those fixed.
+
+**Known property of the curve, not a bug**: the curve is already at ~99.75%
+by 2× the expected duration at the current `ASYMPTOTE_CAP = 95`
+(`e^(-2·ln(20)) ≈ 0.0025`; see the tuning-pass note for the figure at the
+original cap of 90). For requests that run substantially longer than
+expected, the bar will sit near-but-not-at 100% for a while rather than
+reading as "far from done" — an inherent property of this curve shape at
+this cap, acceptable given the feature is explicitly not meant to be an
+accurate estimate.
+
+### Placement
+
+- **Generate** (`GenerateForm` in `page.tsx`): restructured the button row
+  from two bare buttons in a flex row to two flex-column groups (button +
+  its own `ProgressBar` stacked underneath), `items-start` instead of
+  `items-center` on the row. `resumeGenerating`/`coverLetterGenerating` are
+  independently derived from `resumeState`/`coverLetterState` with no mutual
+  exclusion — both actions can genuinely be in flight at once (confirmed by
+  reading `handleGenerate`, which doesn't block one on the other) — so each
+  bar is bound to its own button's specific generating flag, not a single
+  shared bar. `GENERATE_EXPECTED_MS` started at `30_000` from the user's own
+  observed number, retuned to `40_000` after trying it locally — see the
+  tuning-pass note below.
+- **Revise** (`RevisionChat.tsx`): one bar below the chat input/Revise
+  button row, `active={loading}` (`reviseState.state === 'loading'`).
+  `REVISE_EXPECTED_MS = 9_000` — **an estimate, not a measured number**;
+  worth revisiting once there's real observed timing data for Revise calls,
+  the same way `GENERATE_EXPECTED_MS` is grounded in an actual observation.
+- Demo mode reuses the exact same component for both, with no special-casing
+  — `demoDelay()`'s ~700ms is far shorter than either constant's `tau`
+  (~13.4s for Generate, ~3s for Revise, at the tuned constants), so the bar only reaches a few
+  percent before snapping to 100% on the artificial delay's completion. This
+  reads as a quick flash rather than a real fill, which is expected and
+  accepted as low-stakes given how short the demo delay already is — not
+  something to special-case demo mode to work around.
+
+### Verification
+
+`tsc --noEmit` / `eslint app/` clean (one `eslint-disable-next-line
+react-hooks/set-state-in-effect` for the initial `setProgress(0)`/`setVisible(true)`
+reset when `active` turns true — same legitimate "sync from an external
+trigger" precedent as `DemoModeContext.tsx`'s mount effect).
+
+Given the explicit note that this is presentational/timing logic worth a
+visual check if unsure how the curve reads, ran one real end-to-end pass
+rather than only reasoning through it: typed a real JD on the local dev
+server (Live mode, real backend), clicked Generate Resume, and watched the
+bar across the full ~30s real call — filled smoothly (roughly 7% at 1s, 50%
+at 9s, 77% at 19s, matching the formula), Cover Letter's button/bar stayed
+untouched the whole time confirming per-button independence, and on real
+completion the bar disappeared with the JD tab correctly switching to its
+cleaned-JD reference view (per the earlier gate fix) with no leftover
+progress-bar artifacts or layout jump. Didn't repeat the same live pass for
+Revise — same component, shorter/lower-risk constant, verified by tracing
+the math instead.
+
+### Tuning pass, from the user trying it locally (2026-09-18)
+
+- `GENERATE_EXPECTED_MS`: `30_000` → `40_000` (`page.tsx`).
+- `ASYMPTOTE_CAP`: `90` → `95` (`ProgressBar.tsx`) — same tau-solving
+  approach, just a higher target; `REVISE_EXPECTED_MS` (`9_000`) is
+  untouched, this was specifically about the cap, not the duration
+  constants. The "known property of the curve" note above still applies at
+  the new cap, just shifted: `e^(-2·ln(20)) ≈ 0.0025`, so now ~99.75% by 2×
+  the expected duration instead of ~99%.
+- Bar height: `h-1` → `h-2`, visibly thicker.
+- Width: `w-full` → `w-1/2` with `mx-auto`, on `ProgressBar`'s own track
+  `<div>` — both the Generate and Revise bars get the same treatment
+  automatically from the one shared component, rather than each call site
+  needing its own sizing. For Generate this resolves to half the width of
+  each button's own flex-column wrapper (the same reference the old
+  full-width bar filled), not half of the wider form/tab content area — the
+  ask read as "half of whatever it previously filled 100% of," so no
+  restructuring of the button/bar column layout was needed, just the
+  component's own sizing.
+
+No verification pass run for this tuning round — the user is testing
+locally and will report back if something reads wrong (e.g. if the intended
+"content area" for Generate's width was the wider form, not the button's
+own column).
+
+### Follow-up: confirmed sizing correction + alignment split (2026-09-18)
+
+The guess above was wrong in one direction: "content area" for Generate did
+mean the wider Resume/Cover-Letter preview column, not either button's own
+narrow footprint. Since the two placements now genuinely need different
+width bases (Generate: half of the wide form/preview column; Revise: the
+existing `w-1/2` relative to its own already-correct container, per the
+user, just re-aligned), `ProgressBar`'s width/alignment stopped being baked
+in and became a required `className` prop instead — each call site now owns
+its own sizing rather than the component assuming one is right for both.
+
+- **`ProgressBar.tsx`**: dropped the hardcoded `mx-auto w-1/2` from the
+  track `<div>`'s className, replaced with a required `className` prop the
+  caller supplies (component keeps `h-2 overflow-hidden rounded-full
+  bg-(--border) transition-opacity duration-300` as its own fixed base).
+- **Generate (`GenerateForm` in `page.tsx`)**: restructured — the button row
+  and the bar row are now two separate flex rows stacked in a
+  `flex-col items-center` wrapper, rather than each button+bar nested
+  together in its own narrow column. The button row is
+  `flex flex-wrap justify-center gap-3` (centered, was left-aligned). Each
+  bar gets `className="w-full max-w-96 mx-auto"` — `max-w-96` is Tailwind's
+  `24rem`, and the form's own containing column elsewhere in the app is
+  `max-w-3xl` (`48rem`, confirmed by grepping the compiled CSS output on the
+  running dev server rather than assuming), so this is exactly half of that
+  content column, not an approximation. `w-full` lets it shrink below 24rem
+  on narrower viewports instead of overflowing. Both bars still
+  independently track their own generating flag — if both were
+  simultaneously active, `flex-wrap` lets the second one drop to its own
+  line rather than overlapping or overflowing, an acceptable graceful
+  fallback for what should be a rare case.
+- **Revise (`RevisionChat.tsx`)**: width unchanged
+  (`className="w-1/2"`, same fraction as before), just dropped `mx-auto` —
+  its parent (`<div className="mt-2">`) is a plain block element, so a
+  width-constrained child left-aligns automatically without it.
+
+**Sanity-checked the Tailwind class actually exists** rather than assuming
+(a typo'd or nonexistent utility class fails silently, with no build error,
+just missing styling) — curled the running dev server's compiled CSS chunk
+and confirmed both `.max-w-96 { max-width: calc(var(--spacing) * 96) }`
+(`--spacing: .25rem` → 24rem) and `--container-3xl: 48rem` are present and
+generated as expected. No further browser pass, per the user testing
+locally.

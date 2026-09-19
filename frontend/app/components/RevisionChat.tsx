@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Undo2 } from "lucide-react";
+import { ProgressBar } from "./ProgressBar";
+
+// Not a measured number — a starting estimate for a Revise call's typical
+// duration, worth revisiting once there's real observed timing data (see
+// GENERATE_EXPECTED_MS in page.tsx for the equivalent, measured constant).
+const REVISE_EXPECTED_MS = 9_000;
 
 function autoResize(el: HTMLTextAreaElement) {
   const { borderTopWidth, borderBottomWidth } = getComputedStyle(el);
@@ -129,6 +135,9 @@ export function RevisionChat({
           {loading ? "Revising..." : "Revise"}
         </button>
       </form>
+      <div className="mt-2">
+        <ProgressBar active={loading} expectedDurationMs={REVISE_EXPECTED_MS} className="w-1/2" />
+      </div>
       {errorMessage && (
         <p className="mt-1 text-xs font-medium text-[var(--danger)]">
           Error revising: {errorMessage}

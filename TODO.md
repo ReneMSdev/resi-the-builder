@@ -32,14 +32,26 @@ into a STATUS doc as completed work.
 
 ## Infrastructure, not yet started
 
-- **Cloudflare Tunnel** — stable hostname to expose the local backend so a Vercel-hosted
-  frontend could reach it. Not started.
-- **Vercel deployment** of the frontend — pushed off for now, user is happy running both
-  halves locally. Depends on the tunnel above if picked back up.
+- **Cloudflare Tunnel** — stable hostname to expose the *real* local backend so a
+  hosted frontend could reach it for genuine (non-demo) use away from the user's own
+  machine. Not started. Distinct from the Vercel demo deployment below, which
+  deliberately has no backend at all.
+
+## Done, no longer tracked here
+
+- ~~Vercel deployment of the frontend~~ — done, but not the originally-envisioned
+  real-backend deployment: a frontend-only, mocked-data portfolio demo
+  (`resi-the-builder.vercel.app`, see `ARCHITECTURE.md`). A real-backend-connected
+  deployment is still what the Cloudflare Tunnel item above would enable, if picked
+  back up.
 
 ## Known soft spots (not bugs, flagged for whoever touches that area next)
 
-None open currently — the one previously tracked here (`POST /resumes` having no
-server-side schema validation) was closed as a side effect of the `/applications`
-redesign: `/resumes` is gone, and its replacement uses real typed
-`Optional[Resume]`/`Optional[CoverLetter]` fields instead of a loose dict.
+- **Frontend types are hand-mirrored from `backend/app/models.py`, not
+  shared/generated** (`frontend/app/types.ts`). Every backend schema change (and
+  there have been many — meta/entry fields, skill items, links, summary pool, cover
+  letter salutation/sign-off, etc.) has required a matching manual edit here, and has
+  been kept in sync successfully every time, but there's no structural guarantee
+  against drift (e.g. via OpenAPI codegen). Flagged from early in the build, never
+  caused an actual bug — noted here only as forward-looking risk, not an active
+  problem.

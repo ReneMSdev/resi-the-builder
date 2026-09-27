@@ -8,11 +8,9 @@ revision, then download a formatted `.docx`/`.pdf`.
 on sample data with canned revisions; AI generation, downloads, and Auto Apply are
 disabled there.
 
-## Screenshots
+## Screenshot
 
 ![Resume with a bullet selected for chat revision](img/resume-chat-revision.jpg)
-
-![Generated cover letter](img/cover-letter.jpg)
 
 ## Features
 

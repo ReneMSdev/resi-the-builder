@@ -4,11 +4,89 @@ Personal tool to speed up job applications. Paste a job description, get a Claud
 resume or cover letter generated from a master profile, edit pieces via chat-scoped
 revision, then download a formatted `.docx`/`.pdf`.
 
-Monorepo: `backend/` (FastAPI + Anthropic) and `frontend/` (Next.js). See
-[`STATUS.md`](STATUS.md) for current project status, and each subproject's own
-`STATUS_BACKEND.md` / `STATUS_FRONTEND.md` for implementation detail.
+**Live demo:** [resi-the-builder.vercel.app](https://resi-the-builder.vercel.app) — runs
+on sample data with canned revisions; AI generation, downloads, and Auto Apply are
+disabled there.
 
-## Prerequisites
+## Screenshots
+
+![Resume with a bullet selected for chat revision](img/resume-chat-revision.jpg)
+
+![Generated cover letter](img/cover-letter.jpg)
+
+## Features
+
+- **Tailored generation** — Claude selects and rewrites content from a master profile to
+  fit each job description, for both resumes and cover letters.
+- **Chat-scoped revision** — select a bullet, entry, section, or paragraph and give an
+  instruction; only the selected pieces are rewritten, nothing else drifts.
+- **Inline editing** — switch to Edit mode to type changes in directly.
+- **Profile editing** — revise the master profile the same way, with an explicit "Apply to
+  Profile" write step.
+- **Export** — formatted `.docx`, or `.pdf` via headless LibreOffice.
+- **Saved applications** — save, reload, and update a full package (job description,
+  resume, cover letter) per job.
+- **Auto Apply** — assembles a Claude-in-Chrome prompt from a saved package that fills out
+  a job site's application form. Fill-only: it never submits.
+
+## Tech stack
+
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS v4
+- **Backend:** Python 3.13, FastAPI, Pydantic v2, pytest
+- **AI:** Anthropic Claude API (`claude-sonnet-4-6`) with prompt caching
+- **Documents:** python-docx, LibreOffice (headless, docx → pdf)
+- **Automation:** Claude Code + Claude in Chrome
+- **Hosting:** Vercel (demo only)
+
+## Architecture
+
+The real app runs locally as a full stack:
+
+```mermaid
+flowchart LR
+    UI["Next.js App<br/>(localhost:3000)"]
+
+    subgraph Backend["FastAPI Backend (localhost:8000)"]
+        Routes["Routes<br/>/health /profile /generate<br/>/revise /render /applications"]
+        LLM["llm.py<br/>(generate + revise prompts,<br/>prompt caching)"]
+        RenderSvc["render.py<br/>(docx templating)"]
+        Guard["usage_guard.py<br/>(daily call cap,<br/>input-length guard)"]
+    end
+
+    Anthropic[("Anthropic API<br/>claude-sonnet-4-6")]
+    LibreOffice[("LibreOffice<br/>(headless, docx→pdf)")]
+    Disk[("Local disk<br/>app/data/profile.json<br/>app/data/applications/*")]
+
+    UI -->|"fetch(NEXT_PUBLIC_API_URL)"| Routes
+    Routes --> LLM
+    Routes --> RenderSvc
+    LLM --> Guard
+    LLM -->|"generate / revise calls"| Anthropic
+    RenderSvc -->|"pdf conversion (subprocess)"| LibreOffice
+    Routes <-->|"read / write JSON"| Disk
+```
+
+The public demo at [resi-the-builder.vercel.app](https://resi-the-builder.vercel.app) is
+frontend-only, serving static fixtures with no backend or API key:
+
+```mermaid
+flowchart LR
+    Visitor(["Portfolio visitor"])
+
+    subgraph Vercel["Vercel — resi-the-builder.vercel.app<br/>(Root Directory: frontend/, no backend deployed)"]
+        UI2["Next.js App<br/>NEXT_PUBLIC_DEMO_MODE=true"]
+        Fixtures[("Static fixtures<br/>lib/demoFixtures/*.json<br/>lib/demoFixtures/refinements.ts")]
+    end
+
+    Visitor -->|"browser"| UI2
+    UI2 -->|"reads (no network call)"| Fixtures
+```
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full breakdown.
+
+## Running locally
+
+### Prerequisites
 
 - Python 3.13 (not 3.14 or 3.12 — see `backend/STATUS_BACKEND.md` for why)
 - Node.js (for the frontend)
@@ -18,7 +96,7 @@ Monorepo: `backend/` (FastAPI + Anthropic) and `frontend/` (Next.js). See
 
 Both servers run locally. Start the backend first, then the frontend.
 
-## 1. Backend
+### 1. Backend
 
 ```bash
 cd backend
@@ -42,7 +120,7 @@ uvicorn app.main:app --reload --port 8000
 Open `http://127.0.0.1:8000/docs` for the interactive Swagger UI to test endpoints
 directly. See `backend/README.md` for more.
 
-## 2. Frontend
+### 2. Frontend
 
 In a separate terminal:
 
@@ -73,3 +151,10 @@ Open `http://localhost:3000` in your browser. See `frontend/README.md` for more.
 - The backend enforces a daily call cap and input-length limits as guardrails against
   runaway API spend — see `backend/STATUS_BACKEND.md` for details. Set a spend limit in
   the Anthropic console as the real backstop.
+
+## Project docs
+
+- [`STATUS.md`](STATUS.md) — current project status; each subproject has its own
+  `STATUS_BACKEND.md` / `STATUS_FRONTEND.md` for implementation detail.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — both deployment topologies in depth.
+- [`TODO.md`](TODO.md) — backlog and deferred scope.

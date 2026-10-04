@@ -152,7 +152,8 @@ Open `http://localhost:3000` in your browser. See `frontend/README.md` for more.
 
 ## Project docs
 
-- [`STATUS.md`](STATUS.md) — current project status; each subproject has its own
-  `STATUS_BACKEND.md` / `STATUS_FRONTEND.md` for implementation detail.
+- [`docs/STATUS.md`](docs/STATUS.md): current project status, with verification evidence.
+  `backend/STATUS_BACKEND.md` and `frontend/STATUS_FRONTEND.md` hold implementation detail.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — both deployment topologies in depth.
-- [`TODO.md`](TODO.md) — backlog and deferred scope.
+- [`docs/TODO.md`](docs/TODO.md): backlog and deferred scope.
+- [`docs/decisions.md`](docs/decisions.md): decisions and the reasons behind them.

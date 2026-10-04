@@ -22,3 +22,7 @@ backend/.env
 
 # OS
 .DS_Store
+
+# Claude Code local files
+**/.claude/settings.local.json
+**/CLAUDE.local.md

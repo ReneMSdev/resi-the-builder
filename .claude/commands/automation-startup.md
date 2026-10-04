@@ -23,7 +23,7 @@ Read, in this order:
 1. `AUTOMATION_NOTES.md` (repo root) — hard constraints, current status, known open questions,
    and per-site findings from prior trials. This is your blackboard doc; treat it as more
    current than your own memory of past conversations.
-2. `TODO.md` and `STATUS.md` (repo root) — check whether Auto Apply's scope or status has moved
+2. `docs/TODO.md` and `docs/STATUS.md` — check whether Auto Apply's scope or status has moved
    since `AUTOMATION_NOTES.md` was last updated.
 3. `frontend/app/lib/autoApplyPrompt.ts` — the prompt-assembly logic that generates what a real
    Auto Apply run hands to a Claude-in-Chrome session (pure text templating, no LLM call).

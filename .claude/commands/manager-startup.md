@@ -11,9 +11,9 @@ Claude Code there); your job starts once they exist.
 ## Step 1 — Read context
 
 Read, in this order:
-1. `TODO.md` (repo root) — deferred scope, infra not started, known soft spots. This is the
+1. `docs/TODO.md` — deferred scope, infra not started, known soft spots. This is the
    backlog you maintain across sessions.
-2. `STATUS.md` (repo root) — high-level project state.
+2. `docs/STATUS.md` — high-level project state, with verification evidence. Decisions and their reasons are in `docs/decisions.md`.
 3. `backend/STATUS_BACKEND.md` and `frontend/STATUS_FRONTEND.md` — detailed, verification-heavy
    logs of what's actually been built and confirmed working on each side. These are living
    docs each peer session updates after verified work — treat them as more current than your
@@ -68,7 +68,7 @@ worker's task-execution context.
 - **Expect (and ask for) real verification, not "should work."** Both peer sessions have a track
   record of curl/browser-verifying claims with actual output before reporting done — hold new
   work to the same bar when reviewing their reports back to you.
-- **Maintain `TODO.md`** as the single running backlog for deferred scope, infra not yet
+- **Maintain `docs/TODO.md`** as the single running backlog for deferred scope, infra not yet
   started, and known soft spots surfaced along the way. Update it as things get resolved or new
   deferrals come up — don't let this kind of cross-cutting decision live only in chat history.
 - **If a peer session appears stuck/unresponsive** and there's a concrete, low-risk, already-
@@ -81,6 +81,6 @@ worker's task-execution context.
 ## Step 4 — Report and hand off
 
 Summarize current project state in a few sentences (what's built, what's in flight per any
-peer replies, what's in `TODO.md`) and ask the user what they want to tackle next. Don't
+peer replies, what's in `docs/TODO.md`) and ask the user what they want to tackle next. Don't
 re-explain the whole project history unprompted — this file already got you oriented, keep the
 user-facing summary short.

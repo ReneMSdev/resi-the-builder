@@ -5,7 +5,7 @@ plus standing gotchas worth remembering. This is not a build log — for *why* t
 project is shaped the way it is, see `backend/CLAUDE_CODE_CONTEXT.md` (the original
 spec); for the two deployment topologies (local full-stack vs. the Vercel demo) and the
 file/component map, see `ARCHITECTURE.md`; for backlog/deferred-scope items, see
-`TODO.md`. This file assumes you've read `ARCHITECTURE.md` first and goes one level
+`docs/TODO.md`. This file assumes you've read `ARCHITECTURE.md` first and goes one level
 deeper into feature *behavior* than that file does.
 
 The app was built in six phases (connectivity → generate → styled preview + selection →
@@ -86,7 +86,7 @@ most sections here went through several iterations that aren't narrated individu
   links (pills — click to edit inline, hover reveals a fading ✕, trailing "+ Add"
   ghost pill). No structural add/remove (whole entries/sections) — deliberately out
   of scope. Cover Letter has no leaf-list add/remove, only scalar paragraph editing.
-- **Deliberate known gap** (tracked in `TODO.md`): no manual-edit-vs-chat-revision
+- **Deliberate known gap** (tracked in `docs/TODO.md`): no manual-edit-vs-chat-revision
   provenance tracking. A manually edited field can be silently overwritten by a later
   broad chat-scoped revise, or vice versa — nothing flags or protects either
   direction. Shipped without it on purpose, to revisit only if it proves to be a real
@@ -243,7 +243,7 @@ mechanism; this is the per-feature behavioral detail that file doesn't cover.
 
 ## Known gaps / stale references
 
-- See `TODO.md` for the tracked backlog (manual-edit provenance, structural
+- See `docs/TODO.md` for the tracked backlog (manual-edit provenance, structural
   add/remove, etc.) — not duplicated here.
 - The Resume Link-patching gap and Revise expected-duration estimate above are
   implementation-state notes worth knowing, not formally tracked elsewhere.

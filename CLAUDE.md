@@ -12,9 +12,21 @@ is on Vercel (`resi-the-builder.vercel.app`).
 - `ARCHITECTURE.md`: current-state reference for both deployment topologies.
 - `AUTOMATION_NOTES.md`: Auto Apply (Claude-in-Chrome) findings log and hard constraints.
 - `backend/CLAUDE_CODE_CONTEXT.md`: original spec. Background only, not current state.
-- `backend/STATUS_BACKEND.md`, `frontend/STATUS_FRONTEND.md`: historical build logs and
-  implementation detail. Current state lives in `docs/STATUS.md`.
+- `backend/STATUS_BACKEND.md`, `frontend/STATUS_FRONTEND.md`: per-side detail,
+  written by the worker sessions. The project-wide summary lives in `docs/STATUS.md`.
 - `.claude/commands/`: `/manager-startup` and `/automation-startup` role prompts.
+
+## Roles
+
+- **Feature work** (spans both sides, or is substantial): a manager window runs
+  `/manager-startup` at the repo root. Workers are background agents by default
+  (`.claude/agents/backend.md`, `frontend.md`). Open a window in `backend/` or `frontend/` to
+  control a side yourself; the manager checks for windows first. Workers update their
+  `STATUS_<side>.md`. The manager owns `docs/` and runs `/wrapup`.
+- **Minor edits** (copy, styling, small fixes): one plain session at the repo root, with no
+  startup command. Check only the side you touched and run `/wrapup` at the end. Don't
+  write to `STATUS_<side>.md`; git history covers it.
+- **Auto Apply**: `/automation-startup` or the `auto-apply` agent.
 
 ## Commands
 

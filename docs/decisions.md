@@ -70,3 +70,14 @@ as reference.
 folding.
 **Why:** The user's standard workflow (`/new-project`, `/wrapup`) expects these three files.
 The subfolder STATUS files still hold implementation detail worth keeping.
+
+## 2026-10-04: Background agents are the default workers; windows are opt-in
+
+**Decision:** The manager starts background `backend`/`frontend` agents
+(`.claude/agents/*.md`) by default. Before each task it checks `ListAgents`, and if the user
+has opened a window for a side, it uses that window instead of starting an agent.
+**Alternatives:** Always use user-opened windows (the previous setup), or always use
+background agents.
+**Why:** Background agents remove the manual window setup while keeping the manager's
+planning context separate from worker execution. Windows stay available for features the
+user wants to watch or steer directly. Not yet tried on a real feature.

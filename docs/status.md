@@ -1,6 +1,6 @@
 # Status
 
-_Last verified: 2026-10-04 at 1621a36 (plus uncommitted config/test-guard fixes)_
+_Last verified: 2026-10-04 at 06fbbac_
 
 The project is feature-complete. The real app runs locally (Next.js + FastAPI + Anthropic
 API), and a mocked, frontend-only demo is on Vercel. Next step: the first real Auto Apply
@@ -16,9 +16,9 @@ skipped unless `RUN_LIVE=1` is set.
 
 | Check | Result | Evidence |
 |---|---|---|
-| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 58 passed, 4 deselected, 14 warnings (1621a36 + RUN_LIVE guard, 2026-10-04) |
-| `live` guard | working | `-m live`, `-m ""`, `-o addopts=`, and repo-root runs without `RUN_LIVE=1`: 3 skipped (uncommitted, 2026-10-04) |
-| `slow` test (PDF export) | **mixed** | `cd backend && .venv/bin/pytest -m slow`: 1 passed in 16s in the verifier subagent's run, but failed twice in the main session (`test_render_resume_pdf` 500 after ~30s), 2026-10-04 (uncommitted). LibreOffice is installed. Likely the main session's sandbox; unconfirmed |
+| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 58 passed, 4 deselected, 14 warnings (06fbbac, 2026-10-04) |
+| `live` guard | working | `env -u RUN_LIVE .venv/bin/pytest -m live`: 3 skipped, and a repo-root run skips them too (06fbbac, 2026-10-04) |
+| `slow` test (PDF export) | **mixed** | `cd backend && .venv/bin/pytest -m slow`: 1 passed in both verifier-subagent runs (10–16s), but failed in both main-session runs (`test_render_resume_pdf` 500 after ~30s), 2026-10-04. LibreOffice is installed. Points to the main session's sandbox; unconfirmed until run in a normal terminal |
 | `live` tests | **unverified** | Not run: they spend real tokens |
 
 **Known issues:** `datetime.utcnow()` is deprecated in Python 3.13 and used twice in
@@ -34,8 +34,8 @@ toggle.
 
 | Check | Result | Evidence |
 |---|---|---|
-| Lint | passing | `npm run lint`: exit 0, no output (c102d0d, 2026-10-04) |
-| Type-check | passing | `npx tsc --noEmit`: exit 0 (c102d0d, 2026-10-04) |
+| Lint | passing | `npm run lint`: exit 0, no output (06fbbac, 2026-10-04) |
+| Type-check | passing | `npx tsc --noEmit`: exit 0 (06fbbac, 2026-10-04) |
 | Production build | **unverified** | `npm run build` not run this session |
 | Live demo site | **unverified** | Not checked this session |
 

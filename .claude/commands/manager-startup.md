@@ -59,7 +59,8 @@ user's planning context here never mixes with a worker's task-execution context.
 - **Sequence dependent work explicitly.** When frontend's task depends on a backend schema/API
   change (or vice versa), say so in the message and tell the waiting side you'll ping them when
   the blocker clears — don't let them start against a moving target.
-- **You make the commits; workers never do.** Committing is not a code edit. Once a feature has
+- **You make the commits; workers never do** (the one exception: the user tells a window
+  worker to commit directly). Committing is not a code edit. Once a feature has
   passed the verifier and the user approves, commit the workers' files and any `docs/` changes
   yourself, staging the explicit file list from the workers' reports (`git add <files>`), never
   `git add -A`: a user-opened window may have uncommitted work in the same tree. Pushes need

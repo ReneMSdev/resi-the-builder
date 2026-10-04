@@ -124,3 +124,12 @@ entries here keep the old names as written.
 `decisions.md`).
 **Why:** The user wanted consistent names. Lowercase with hyphens is the common convention
 inside docs folders. Changed at the same time in the global config (`~/Dev/claude-config`).
+
+## 2026-10-04: Window workers may commit when the user tells them to directly
+
+**Decision:** Clarifies "Manager makes all commits": a worker in a window the user is driving
+directly follows the user's own instruction to commit. Background workers never commit.
+**Alternatives:** No exception, so the user would have to route every commit through the
+manager.
+**Why:** A window exists so the user can control that side directly. The agent files already
+said this, and `/manager-startup` now matches them.

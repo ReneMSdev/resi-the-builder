@@ -7,8 +7,9 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
-- [ ] Confirm `pytest -m slow` (PDF export) passes in a normal terminal. It passed once and
-      failed twice (500) in Claude sessions on 2026-10-04, probably a sandbox limit.
+- [ ] Confirm `pytest -m slow` (PDF export) passes in a normal terminal. On 2026-10-04 it
+      passed in both verifier-subagent runs and failed (500) in both main-session runs,
+      probably a sandbox limit.
 - [ ] Replace deprecated `datetime.utcnow()` (2 uses in `backend/app/routes/applications.py`)
       with `datetime.now(timezone.utc)` (the file imports the `datetime` class, so
       `datetime.UTC` won't work).
@@ -30,3 +31,9 @@
 <!-- /wrapup moves finished items here with a date. Keep about the last 10. -->
 - [x] Point `README.md`, `docs/architecture.md`, `automation-notes.md`, the startup commands, and
       `frontend/STATUS_FRONTEND.md` at `docs/`. Removed root `STATUS.md`/`TODO.md` (2026-10-04)
+- [x] Project setup: state docs, root/backend/frontend `CLAUDE.md`, worker and auto-apply
+      agents, permission rules (61d6ec9, 1621a36, 2026-10-04)
+- [x] `RUN_LIVE=1` guard so live tests can't run by accident; verifier findings on roles and
+      doc facts fixed (85d5905, 2026-10-04)
+- [x] Moved `architecture.md` and `automation-notes.md` into `docs/` and switched all `docs/`
+      names to lowercase, here and in the global config (6553aa6, 06fbbac, 2026-10-04)

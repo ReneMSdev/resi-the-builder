@@ -1,7 +1,7 @@
 # Architecture
 
 Current-state reference for how this project is actually built and deployed, as of
-2026-09-18. Unlike `docs/STATUS.md` (current state with evidence), `backend/STATUS_BACKEND.md`
+2026-09-18. Unlike `docs/status.md` (current state with evidence), `backend/STATUS_BACKEND.md`
 (a dated build log), `frontend/STATUS_FRONTEND.md` (feature-behavior detail), or
 `backend/CLAUDE_CODE_CONTEXT.md` (the original spec — why things were designed a certain
 way), this file is a snapshot: it should be edited/replaced as the architecture changes,

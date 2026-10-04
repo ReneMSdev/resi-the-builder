@@ -80,7 +80,7 @@ flowchart LR
     UI2 -->|"reads (no network call)"| Fixtures
 ```
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full breakdown.
+See [`docs/architecture.md`](docs/architecture.md) for the full breakdown.
 
 ## Running locally
 
@@ -152,8 +152,8 @@ Open `http://localhost:3000` in your browser. See `frontend/README.md` for more.
 
 ## Project docs
 
-- [`docs/STATUS.md`](docs/STATUS.md): current project status, with verification evidence.
+- [`docs/status.md`](docs/status.md): current project status, with verification evidence.
   `backend/STATUS_BACKEND.md` and `frontend/STATUS_FRONTEND.md` hold implementation detail.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — both deployment topologies in depth.
-- [`docs/TODO.md`](docs/TODO.md): backlog and deferred scope.
+- [`docs/architecture.md`](docs/architecture.md) — both deployment topologies in depth.
+- [`docs/todo.md`](docs/todo.md): backlog and deferred scope.
 - [`docs/decisions.md`](docs/decisions.md): decisions and the reasons behind them.

@@ -9,11 +9,11 @@ is on Vercel (`resi-the-builder.vercel.app`).
 
 - `backend/`: FastAPI service (Python 3.13). Has its own `CLAUDE.md`.
 - `frontend/`: Next.js 16 app, used for both the real app and the demo build. Has its own `CLAUDE.md`.
-- `docs/ARCHITECTURE.md`: current-state reference for both deployment topologies.
-- `docs/AUTOMATION_NOTES.md`: Auto Apply (Claude-in-Chrome) findings log and hard constraints.
+- `docs/architecture.md`: current-state reference for both deployment topologies.
+- `docs/automation-notes.md`: Auto Apply (Claude-in-Chrome) findings log and hard constraints.
 - `backend/CLAUDE_CODE_CONTEXT.md`: original spec. Background only, not current state.
 - `backend/STATUS_BACKEND.md`, `frontend/STATUS_FRONTEND.md`: per-side detail,
-  written by the worker sessions. The project-wide summary lives in `docs/STATUS.md`.
+  written by the worker sessions. The project-wide summary lives in `docs/status.md`.
 - `.claude/commands/`: `/manager-startup` and `/automation-startup` role prompts.
 
 ## Roles
@@ -58,4 +58,4 @@ is on Vercel (`resi-the-builder.vercel.app`).
 
 ## State
 
-Current state: `docs/STATUS.md`. Backlog: `docs/TODO.md`. Decisions: `docs/decisions.md`.
+Current state: `docs/status.md`. Backlog: `docs/todo.md`. Decisions: `docs/decisions.md`.

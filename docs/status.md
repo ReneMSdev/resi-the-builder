@@ -44,12 +44,12 @@ toggle.
 ## Auto Apply automation
 
 **State:** The prompt template exists (`frontend/app/lib/autoApplyPrompt.ts`). No real
-trial yet, and `docs/AUTOMATION_NOTES.md` has no per-site findings. File handoff (saving the
+trial yet, and `docs/automation-notes.md` has no per-site findings. File handoff (saving the
 `/render` output to disk for Chrome's upload tool) is untested.
 
 <!--
 Rules for this file:
 - Rewrite it to describe the current state. It isn't a log; history lives in git.
 - Every "passing" or "works" claim needs evidence from a run, or it's marked unverified.
-- Future work goes in TODO.md, and reasons in decisions.md.
+- Future work goes in todo.md, and reasons in decisions.md.
 -->

@@ -4,7 +4,7 @@ _Last updated: 2026-10-04_
 
 Dated log of backend work, oldest first. Backend workers add a new dated section **at the
 end** after verified work and update the line above. The project-wide current state is in
-`docs/STATUS.md`, and the backlog is in `docs/TODO.md`. Early sections describe the state at
+`docs/status.md`, and the backlog is in `docs/todo.md`. Early sections describe the state at
 the time they were written (e.g. "frontend not started"), not today.
 
 ## What's built and verified working
@@ -1412,6 +1412,6 @@ Full suite: 58 passed (was 57 after Part 11).
 ## Not yet built / open questions (retired 2026-10-04)
 
 These two closing sections were stale (the frontend was finished, and the Cloudflare Tunnel
-was decided against). Open items now live in `docs/TODO.md`. The original text is in git
+was decided against). Open items now live in `docs/todo.md`. The original text is in git
 history at c102d0d.
 

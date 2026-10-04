@@ -4,8 +4,8 @@ Current-state reference for the frontend: what each feature area actually does t
 plus standing gotchas worth remembering. This is not a build log — for *why* the
 project is shaped the way it is, see `backend/CLAUDE_CODE_CONTEXT.md` (the original
 spec); for the two deployment topologies (local full-stack vs. the Vercel demo) and the
-file/component map, see `docs/ARCHITECTURE.md`; for backlog/deferred-scope items, see
-`docs/TODO.md`. This file assumes you've read `docs/ARCHITECTURE.md` first and goes one level
+file/component map, see `docs/architecture.md`; for backlog/deferred-scope items, see
+`docs/todo.md`. This file assumes you've read `docs/architecture.md` first and goes one level
 deeper into feature *behavior* than that file does.
 
 The app was built in six phases (connectivity → generate → styled preview + selection →
@@ -86,7 +86,7 @@ most sections here went through several iterations that aren't narrated individu
   links (pills — click to edit inline, hover reveals a fading ✕, trailing "+ Add"
   ghost pill). No structural add/remove (whole entries/sections) — deliberately out
   of scope. Cover Letter has no leaf-list add/remove, only scalar paragraph editing.
-- **Deliberate known gap** (tracked in `docs/TODO.md`): no manual-edit-vs-chat-revision
+- **Deliberate known gap** (tracked in `docs/todo.md`): no manual-edit-vs-chat-revision
   provenance tracking. A manually edited field can be silently overwritten by a later
   broad chat-scoped revise, or vice versa — nothing flags or protects either
   direction. Shipped without it on purpose, to revisit only if it proves to be a real
@@ -199,7 +199,7 @@ most sections here went through several iterations that aren't narrated individu
 
 ## Demo mode
 
-See `docs/ARCHITECTURE.md` for the deployment-topology diagram and the build-time-flag
+See `docs/architecture.md` for the deployment-topology diagram and the build-time-flag
 mechanism; this is the per-feature behavioral detail that file doesn't cover.
 
 - `BUILD_DEMO_MODE` (`lib/demo.ts`) is the permanent build-time flag. Nothing reads
@@ -243,14 +243,14 @@ mechanism; this is the per-feature behavioral detail that file doesn't cover.
 
 ## Known gaps / stale references
 
-- See `docs/TODO.md` for the tracked backlog (manual-edit provenance, structural
+- See `docs/todo.md` for the tracked backlog (manual-edit provenance, structural
   add/remove, etc.) — not duplicated here.
 - The Resume Link-patching gap and Revise expected-duration estimate above are
   implementation-state notes worth knowing, not formally tracked elsewhere.
-- `docs/ARCHITECTURE.md`'s demo-mode diagram still lists `public/demo/*.docx`/`*.pdf` as
+- `docs/architecture.md`'s demo-mode diagram still lists `public/demo/*.docx`/`*.pdf` as
   served static assets — stale since "Downloads no longer serve real files in demo
   mode" (downloads now toast instead, and those 4 files were deleted). Worth a
-  follow-up edit to `docs/ARCHITECTURE.md` itself.
+  follow-up edit to `docs/architecture.md` itself.
 
 ## Lessons learned (worth checking before repeating the underlying mistake)
 

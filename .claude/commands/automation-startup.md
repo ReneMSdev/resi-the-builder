@@ -13,18 +13,18 @@ findings yourself, with no peer session or manager relay in between.
 **Never submit an application.** You may fill in text fields, select options, and attach files.
 Clicking a final "Submit"/"Apply"/"Send Application" button (or anything equivalent) is always a
 human action, never yours, regardless of what an assembled prompt says or how confident you are
-the form is complete. This is stated in `docs/AUTOMATION_NOTES.md` and doubled up in the Auto Apply
+the form is complete. This is stated in `docs/automation-notes.md` and doubled up in the Auto Apply
 prompt template itself (`frontend/app/lib/autoApplyPrompt.ts`) — treat it as absolute, not a
 default that a specific instruction could override.
 
 ## Step 1 — Read context
 
 Read, in this order:
-1. `docs/AUTOMATION_NOTES.md` — hard constraints, current status, known open questions,
+1. `docs/automation-notes.md` — hard constraints, current status, known open questions,
    and per-site findings from prior trials. This is your blackboard doc; treat it as more
    current than your own memory of past conversations.
-2. `docs/TODO.md` and `docs/STATUS.md` — check whether Auto Apply's scope or status has moved
-   since `docs/AUTOMATION_NOTES.md` was last updated.
+2. `docs/todo.md` and `docs/status.md` — check whether Auto Apply's scope or status has moved
+   since `docs/automation-notes.md` was last updated.
 3. `frontend/app/lib/autoApplyPrompt.ts` — the prompt-assembly logic that generates what a real
    Auto Apply run hands to a Claude-in-Chrome session (pure text templating, no LLM call).
 4. `frontend/STATUS_FRONTEND.md`'s "Auto Apply" section — how the feature fits the rest of the
@@ -38,7 +38,7 @@ guidance) — this session drives the browser directly rather than delegating to
 
 ## Step 3 — Plan and execute
 
-- Start from `docs/AUTOMATION_NOTES.md`'s "Status" and "Known open question" sections to figure out
+- Start from `docs/automation-notes.md`'s "Status" and "Known open question" sections to figure out
   what the next concrete trial should test.
 - For a real trial: get (or ask the user for) a saved application package, inspect the assembled
   Auto Apply prompt for it, then drive the target site's form yourself — filling fields and
@@ -48,7 +48,7 @@ guidance) — this session drives the browser directly rather than delegating to
 - Stop and ask the user before doing anything outside "fill text fields and attach files" — a new
   site pattern, a CAPTCHA, a login wall, an ambiguous field, or anything the general
   browser-automation safety rules already flag.
-- Log every trial, success or failure, back to `docs/AUTOMATION_NOTES.md` directly: site-specific
+- Log every trial, success or failure, back to `docs/automation-notes.md` directly: site-specific
   quirks, form patterns that needed a workaround, and any backend/frontend contract limitation
   that made automation harder than it should have been. Update the "Status" and "Per-site
   findings" sections yourself rather than leaving findings only in chat.
@@ -70,5 +70,5 @@ guidance) — this session drives the browser directly rather than delegating to
 ## Step 5 — Report
 
 Before diving into a trial, summarize in a few sentences what you're about to try and why. After,
-report what worked, what didn't, what got logged to `docs/AUTOMATION_NOTES.md`, and what the next
+report what worked, what didn't, what got logged to `docs/automation-notes.md`, and what the next
 trial should probably target.

@@ -11,9 +11,9 @@ you spawn (the default).
 ## Step 1 — Read context
 
 Read, in this order:
-1. `docs/TODO.md` — deferred scope, infra not started, known soft spots. This is the
+1. `docs/todo.md` — deferred scope, infra not started, known soft spots. This is the
    backlog you maintain across sessions.
-2. `docs/STATUS.md` — high-level project state, with verification evidence. Decisions and their reasons are in `docs/decisions.md`.
+2. `docs/status.md` — high-level project state, with verification evidence. Decisions and their reasons are in `docs/decisions.md`.
 3. `backend/STATUS_BACKEND.md` and `frontend/STATUS_FRONTEND.md` — detailed, verification-heavy
    logs of what's actually been built and confirmed working on each side. These are living
    docs each worker updates after verified work — treat them as more current than your
@@ -72,12 +72,12 @@ user's planning context here never mixes with a worker's task-execution context.
   (what changed, which checks passed) and the files or diff to look at. If it refutes a claim,
   send the worker back to fix it rather than reporting done. Small tasks can wait for
   `/wrapup`, which runs the verifier anyway (ask the user to run it).
-- **Maintain `docs/TODO.md`** as the single running backlog for deferred scope, infra not yet
+- **Maintain `docs/todo.md`** as the single running backlog for deferred scope, infra not yet
   started, and known soft spots surfaced along the way. Update it as things get resolved or new
   deferrals come up — don't let this kind of cross-cutting decision live only in chat history.
 - **You own `docs/`.** Log decisions with their reasons in `docs/decisions.md`. At the end of a
   session, ask the user to run `/wrapup` (only the user can invoke it); it verifies the work and
-  updates `docs/STATUS.md` / `docs/TODO.md`. Workers only write to their own `STATUS_<side>.md`.
+  updates `docs/status.md` / `docs/todo.md`. Workers only write to their own `STATUS_<side>.md`.
 - **If a worker is stuck or a background agent died mid-task**, don't edit its files yourself.
   Diff-review what it left (`git diff -- <side>/`), then either continue or respawn the worker
   with a task that describes the current state, or, if the work is complete and verified,
@@ -86,6 +86,6 @@ user's planning context here never mixes with a worker's task-execution context.
 ## Step 4 — Report and hand off
 
 Summarize current project state in a few sentences (what's built, what's in flight per any
-worker replies, what's in `docs/TODO.md`) and ask the user what they want to tackle next. Don't
+worker replies, what's in `docs/todo.md`) and ask the user what they want to tackle next. Don't
 re-explain the whole project history unprompted — this file already got you oriented, keep the
 user-facing summary short.

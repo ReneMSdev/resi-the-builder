@@ -113,3 +113,14 @@ Earlier entries in this file that cite them by their old root paths are left as 
 **Alternatives:** Leave them at the root.
 **Why:** They're reference docs agents maintain, like the rest of `docs/`. `decisions.md`
 stays lowercase because the user's global `/wrapup` and `/new-project` expect that exact path.
+
+## 2026-10-04: Lowercase file names in docs/
+
+**Decision:** Every file in `docs/` uses a lowercase, hyphenated name (`status.md`, `todo.md`,
+`decisions.md`, `architecture.md`, ...). A root `ARCHITECTURE.md` moves to
+`docs/architecture.md`. `README.md` and `CLAUDE.md` stay uppercase at the root. Earlier
+entries here keep the old names as written.
+**Alternatives:** Keep the mixed casing (uppercase `STATUS.md`/`TODO.md`, lowercase
+`decisions.md`).
+**Why:** The user wanted consistent names. Lowercase with hyphens is the common convention
+inside docs folders. Changed at the same time in the global config (`~/Dev/claude-config`).

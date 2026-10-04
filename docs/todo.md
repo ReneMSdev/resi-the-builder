@@ -2,8 +2,14 @@
 
 ## Now
 <!-- What's actively being worked on. Keep this to a few items. -->
-- [ ] First real Auto Apply trial against an actual job posting. Log findings in
-      `docs/automation-notes.md`, including whether the `/render` → disk → upload handoff works.
+- [ ] Restructure the work-history data in `backend/app/data/profile.json` before live Auto
+      Apply testing with real applications. Draw new bullets from the portfolio case studies
+      (`~/Dev/portfolio-website`, e.g. `src/data/projects.ts` and
+      `docs/portfolio-handoff/*/entry.md`), and revise exaggerated claims so every bullet is
+      accurate and defensible.
+- [ ] First real Auto Apply trial against an actual job posting, once the work history is
+      restructured. Log findings in `docs/automation-notes.md`, including whether the
+      `/render` → disk → upload handoff works.
 
 ## Next
 <!-- Planned soon, in priority order. -->

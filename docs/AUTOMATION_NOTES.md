@@ -2,8 +2,8 @@
 
 Living log of what's discovered while using Claude-in-Chrome to automate the job-application
 step (fill out an external job site's application form using a resume/cover letter generated
-by this project). Not a status report — see [`docs/STATUS.md`](docs/STATUS.md) and
-[`docs/TODO.md`](docs/TODO.md) for that. Append an entry here whenever an automation session hits
+by this project). Not a status report — see [`docs/STATUS.md`](STATUS.md) and
+[`docs/TODO.md`](TODO.md) for that. Append an entry here whenever an automation session hits
 something worth remembering for next time: a site-specific quirk, a form pattern that needed
 a workaround, or a limitation of the current backend/frontend contract that made automation
 harder than it should have been.

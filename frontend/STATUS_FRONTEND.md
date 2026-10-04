@@ -4,8 +4,8 @@ Current-state reference for the frontend: what each feature area actually does t
 plus standing gotchas worth remembering. This is not a build log — for *why* the
 project is shaped the way it is, see `backend/CLAUDE_CODE_CONTEXT.md` (the original
 spec); for the two deployment topologies (local full-stack vs. the Vercel demo) and the
-file/component map, see `ARCHITECTURE.md`; for backlog/deferred-scope items, see
-`docs/TODO.md`. This file assumes you've read `ARCHITECTURE.md` first and goes one level
+file/component map, see `docs/ARCHITECTURE.md`; for backlog/deferred-scope items, see
+`docs/TODO.md`. This file assumes you've read `docs/ARCHITECTURE.md` first and goes one level
 deeper into feature *behavior* than that file does.
 
 The app was built in six phases (connectivity → generate → styled preview + selection →
@@ -199,7 +199,7 @@ most sections here went through several iterations that aren't narrated individu
 
 ## Demo mode
 
-See `ARCHITECTURE.md` for the deployment-topology diagram and the build-time-flag
+See `docs/ARCHITECTURE.md` for the deployment-topology diagram and the build-time-flag
 mechanism; this is the per-feature behavioral detail that file doesn't cover.
 
 - `BUILD_DEMO_MODE` (`lib/demo.ts`) is the permanent build-time flag. Nothing reads
@@ -247,10 +247,10 @@ mechanism; this is the per-feature behavioral detail that file doesn't cover.
   add/remove, etc.) — not duplicated here.
 - The Resume Link-patching gap and Revise expected-duration estimate above are
   implementation-state notes worth knowing, not formally tracked elsewhere.
-- `ARCHITECTURE.md`'s demo-mode diagram still lists `public/demo/*.docx`/`*.pdf` as
+- `docs/ARCHITECTURE.md`'s demo-mode diagram still lists `public/demo/*.docx`/`*.pdf` as
   served static assets — stale since "Downloads no longer serve real files in demo
   mode" (downloads now toast instead, and those 4 files were deleted). Worth a
-  follow-up edit to `ARCHITECTURE.md` itself.
+  follow-up edit to `docs/ARCHITECTURE.md` itself.
 
 ## Lessons learned (worth checking before repeating the underlying mistake)
 

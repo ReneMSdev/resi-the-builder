@@ -44,7 +44,7 @@ toggle.
 ## Auto Apply automation
 
 **State:** The prompt template exists (`frontend/app/lib/autoApplyPrompt.ts`). No real
-trial yet, and `AUTOMATION_NOTES.md` has no per-site findings. File handoff (saving the
+trial yet, and `docs/AUTOMATION_NOTES.md` has no per-site findings. File handoff (saving the
 `/render` output to disk for Chrome's upload tool) is untested.
 
 <!--

@@ -3,7 +3,7 @@
 ## Now
 <!-- What's actively being worked on. Keep this to a few items. -->
 - [ ] First real Auto Apply trial against an actual job posting. Log findings in
-      `AUTOMATION_NOTES.md`, including whether the `/render` → disk → upload handoff works.
+      `docs/AUTOMATION_NOTES.md`, including whether the `/render` → disk → upload handoff works.
 
 ## Next
 <!-- Planned soon, in priority order. -->
@@ -13,7 +13,7 @@
       with `datetime.now(timezone.utc)` (the file imports the `datetime` class, so
       `datetime.UTC` won't work).
 - [ ] Remove the stale "Known gaps" bullet in `frontend/STATUS_FRONTEND.md` about
-      `ARCHITECTURE.md` listing `public/demo/*` assets. That was already fixed in ce76b6d.
+      `docs/ARCHITECTURE.md` listing `public/demo/*` assets. That was already fixed in ce76b6d.
 
 ## Later
 <!-- Ideas and deferred scope. It's fine for items to sit here. -->

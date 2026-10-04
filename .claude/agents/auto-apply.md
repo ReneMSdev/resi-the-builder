@@ -20,7 +20,7 @@ extension.
 
 ## Before starting
 
-1. Read `AUTOMATION_NOTES.md`: constraints, open questions, and per-site findings from
+1. Read `docs/AUTOMATION_NOTES.md`: constraints, open questions, and per-site findings from
    earlier trials.
 2. Read `frontend/app/lib/autoApplyPrompt.ts` to see what a real Auto Apply prompt contains.
 3. Load the Claude-in-Chrome tools in one ToolSearch call. Check open tabs first, then
@@ -36,7 +36,7 @@ extension.
 
 ## After a run
 
-- Log every trial, success or failure, in `AUTOMATION_NOTES.md` ("Status" and "Per-site
+- Log every trial, success or failure, in `docs/AUTOMATION_NOTES.md` ("Status" and "Per-site
   findings"): site quirks, workarounds, and contract gaps.
 - Put findings that need a code fix or a design decision in your report, not just the log.
 - You may edit `frontend/app/lib/autoApplyPrompt.ts` and related frontend files when a trial

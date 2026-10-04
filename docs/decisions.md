@@ -105,3 +105,11 @@ updated and its stale closing sections retired in favor of `docs/TODO.md`.
 **Why:** The verifier showed `backend/.venv/bin/pytest` run from the repo root ignores
 `pytest.ini` and would run live tests, and prefix-based ask rules are easy to bypass
 (`-q -m live`). The environment-variable guard holds however pytest is invoked.
+
+## 2026-10-04: Move ARCHITECTURE.md and AUTOMATION_NOTES.md into docs/
+
+**Decision:** Both now live in `docs/`. The repo root keeps only `README.md` and `CLAUDE.md`.
+Earlier entries in this file that cite them by their old root paths are left as written.
+**Alternatives:** Leave them at the root.
+**Why:** They're reference docs agents maintain, like the rest of `docs/`. `decisions.md`
+stays lowercase because the user's global `/wrapup` and `/new-project` expect that exact path.

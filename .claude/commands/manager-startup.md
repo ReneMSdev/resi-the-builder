@@ -52,41 +52,36 @@ user's planning context here never mixes with a worker's task-execution context.
 
 ## Step 3 — Established workflow conventions
 
-- **You give complete, self-contained instructions.** Peer sessions don't share this
+- **You give complete, self-contained instructions.** Workers don't share this
   conversation's context — every message to them needs enough background to act without
   guessing (what changed recently, why, what's already decided, what's explicitly out of
   scope).
 - **Sequence dependent work explicitly.** When frontend's task depends on a backend schema/API
   change (or vice versa), say so in the message and tell the waiting side you'll ping them when
   the blocker clears — don't let them start against a moving target.
-- **Never commit or push on a worker's behalf without asking the user first**, even if a worker
-  reports finished, verified work. Ask the user, then relay approval to the worker that owns the
-  change.
-- **Pathspec-scoped commits only.** Both workers operate in the same git working tree
-  (two subfolders of one repo, not two repos) — instruct whichever session is committing to
-  stage only its own known list of changed files (`git add <specific files>` / `git commit --
-  <files>`), never a blanket `git add -A`, since a bare commit could sweep up the other
-  session's uncommitted work.
-- **Expect (and ask for) real verification, not "should work."** Both workers have a track
-  record of curl/browser-verifying claims with actual output before reporting done — hold new
-  work to the same bar when reviewing their reports back to you.
+- **You make the commits; workers never do.** Committing is not a code edit. Once a feature has
+  passed the verifier and the user approves, commit the workers' files and any `docs/` changes
+  yourself, staging the explicit file list from the workers' reports (`git add <files>`), never
+  `git add -A`: a user-opened window may have uncommitted work in the same tree. Pushes need
+  separate approval.
+- **Expect (and ask for) real verification, not "should work."** Require each report to include
+  the commands run and their output (tests, lint, `tsc`, curl). Browser checks are for risky
+  async or visual changes only; the user tests UI themselves.
 - **Run the `verifier` subagent when a feature is done or a major task is completed**, before
   telling the user it's done or asking for commit approval. Send it the worker's claims
   (what changed, which checks passed) and the files or diff to look at. If it refutes a claim,
   send the worker back to fix it rather than reporting done. Small tasks can wait for
-  `/wrapup`, which runs the verifier anyway.
+  `/wrapup`, which runs the verifier anyway (ask the user to run it).
 - **Maintain `docs/TODO.md`** as the single running backlog for deferred scope, infra not yet
   started, and known soft spots surfaced along the way. Update it as things get resolved or new
   deferrals come up — don't let this kind of cross-cutting decision live only in chat history.
-- **You own `docs/`.** Log decisions with their reasons in `docs/decisions.md`, and run `/wrapup`
-  at the end of a session to verify work and update `docs/STATUS.md` / `docs/TODO.md`. Workers
-  only write to their own `STATUS_<side>.md`.
-- **If a worker appears stuck/unresponsive** and there's a concrete, low-risk, already-
-  approved action pending (e.g. committing already-completed and described work), you can act
-  directly on files in that worker's folder yourself rather than waiting — this has happened
-  before (frontend timed out mid-session with described, reviewed changes; the user asked the
-  manager to commit/push directly). Still confirm with the user before pushing, and diff-review
-  before staging.
+- **You own `docs/`.** Log decisions with their reasons in `docs/decisions.md`. At the end of a
+  session, ask the user to run `/wrapup` (only the user can invoke it); it verifies the work and
+  updates `docs/STATUS.md` / `docs/TODO.md`. Workers only write to their own `STATUS_<side>.md`.
+- **If a worker is stuck or a background agent died mid-task**, don't edit its files yourself.
+  Diff-review what it left (`git diff -- <side>/`), then either continue or respawn the worker
+  with a task that describes the current state, or, if the work is complete and verified,
+  commit it per the rule above.
 
 ## Step 4 — Report and hand off
 

@@ -12,9 +12,10 @@ harder than it should have been.
 
 - **Never submit an application automatically.** Automation may fill in text fields and
   attach files only. Clicking final "Submit"/"Apply" is always a human action.
-- Findings that require an actual code fix or a design decision should also be relayed live
-  to the manager session (cross-session message), not just logged here — this file is for
-  durable, reusable knowledge, not a substitute for getting something fixed.
+- Findings that require an actual code fix or a design decision should also be raised with
+  the user directly (or put in the report, when running as the `auto-apply` subagent), not just
+  logged here. This file is for durable, reusable knowledge, not a substitute for getting
+  something fixed.
 
 ## Status
 

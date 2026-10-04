@@ -2,8 +2,10 @@
 
 Python 3.13, FastAPI, Pydantic v2, Anthropic SDK, python-docx. Run commands from `backend/`.
 
-- Test: `.venv/bin/pytest`. `pytest.ini` excludes `live` (real API calls) and `slow`
-  (LibreOffice PDF) tests by default. Run them with `-m live` / `-m slow` only when asked.
+- Test: `.venv/bin/pytest`, run from `backend/` (from the repo root, `pytest.ini` isn't
+  picked up). `pytest.ini` excludes `live` (real API calls) and `slow` (LibreOffice PDF) tests.
+  `conftest.py` also skips `live` tests unless `RUN_LIVE=1` is set. Run `RUN_LIVE=1 pytest -m live`
+  or `pytest -m slow` only when asked.
 - Tests must not reach the real Anthropic client. `conftest.py` fails any unmarked test
   that tries to. Use the `mock_llm` fixture for canned responses.
 - Run: `.venv/bin/uvicorn app.main:app --reload --port 8000`. Swagger is at `/docs`.
@@ -15,8 +17,9 @@ Python 3.13, FastAPI, Pydantic v2, Anthropic SDK, python-docx. Run commands from
 - All Anthropic calls live in `app/services/llm.py`. Prompt caching depends on the shared
   system-prompt preamble staying identical across generate calls.
 - `app/services/render.py` does templating only, with no LLM calls. PDF export shells out
-  to LibreOffice at a hardcoded macOS Homebrew path.
-- `app/services/usage_guard.py`: daily call cap and input-length guard.
+  to LibreOffice at a hardcoded path (`/Applications/LibreOffice.app/...`, the cask install).
+- `app/services/usage_guard.py`: daily call cap. The input-length guard (`MAX_INPUT_CHARS`)
+  is in `llm.py`.
 - No database. Data is JSON on disk under `app/data/`.
 
 ## Pins (don't change without asking)

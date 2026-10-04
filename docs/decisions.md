@@ -42,8 +42,8 @@ Auto Apply prompt template.
 that serves static fixtures and canned revisions. There's no backend and no API key.
 **Alternatives:** Deploy the real backend publicly.
 **Why:** It costs nothing to host, keeps the API key away from the client, and the demo is
-meant as a portfolio showcase, not a route to the real app. Source: `STATUS.md`,
-`ARCHITECTURE.md`.
+meant as a portfolio showcase, not a route to the real app. Source: `STATUS.md` at
+c102d0d, `ARCHITECTURE.md`.
 
 ## (imported) 2026-09-18: No Cloudflare Tunnel / stable backend hostname
 
@@ -51,15 +51,15 @@ meant as a portfolio showcase, not a route to the real app. Source: `STATUS.md`,
 (`*`).
 **Alternatives:** Cloudflare Tunnel so a hosted frontend could reach the local backend.
 **Why:** Auto Apply already needs Claude Code running locally against this project, so
-the real backend never has to be reachable from anywhere else. Source: `STATUS.md`,
-`TODO.md`.
+the real backend never has to be reachable from anywhere else. Source: `STATUS.md` and
+`TODO.md` at c102d0d.
 
 ## (imported) Ship inline editing without manual-edit protection
 
 **Decision:** Inline editing shipped without tracking which fields were hand-edited.
 **Alternatives:** A provenance flag that protects hand edits from later chat revisions.
 **Why:** Keep it simple and revisit only if overwrites turn out to be a real problem.
-Source: `TODO.md`.
+Source: `TODO.md` at c102d0d.
 
 ## 2026-10-04: Adopt docs/STATUS.md, docs/TODO.md, docs/decisions.md
 
@@ -81,3 +81,27 @@ background agents.
 **Why:** Background agents remove the manual window setup while keeping the manager's
 planning context separate from worker execution. Windows stay available for features the
 user wants to watch or steer directly. Not yet tried on a real feature.
+
+## 2026-10-04: Manager makes all commits in manager mode
+
+**Decision:** Workers (background or window) never commit. After the verifier passes and the
+user approves, the manager commits worker files and `docs/` with explicit paths.
+**Alternatives:** Each worker commits its own files after the manager relays approval.
+**Why:** Matches `/wrapup` (the session running it proposes and makes the commit) and avoids
+relay round trips. Committing isn't a code edit, so the manager still makes no code changes.
+
+## 2026-10-04: Keep `backend/STATUS_BACKEND.md` as a live dated log
+
+**Decision:** Backend workers keep adding dated sections at the end of it. Its header was
+updated and its stale closing sections retired in favor of `docs/TODO.md`.
+**Alternatives:** Freeze it as history.
+**Why:** It holds per-feature verification detail that doesn't belong in `docs/STATUS.md`.
+
+## 2026-10-04: Live tests require `RUN_LIVE=1`
+
+**Decision:** `conftest.py` skips `live` tests unless `RUN_LIVE=1` is set, on top of
+`pytest.ini`'s `-m "not live"`.
+**Alternatives:** Rely on `pytest.ini` plus permission ask rules.
+**Why:** The verifier showed `backend/.venv/bin/pytest` run from the repo root ignores
+`pytest.ini` and would run live tests, and prefix-based ask rules are easy to bypass
+(`-q -m live`). The environment-variable guard holds however pytest is invoked.

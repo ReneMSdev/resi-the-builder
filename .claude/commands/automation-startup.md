@@ -53,7 +53,8 @@ guidance) — this session drives the browser directly rather than delegating to
   that made automation harder than it should have been. Update the "Status" and "Per-site
   findings" sections yourself rather than leaving findings only in chat.
 - If a finding needs an actual code fix or design decision (not just a note), raise it with the
-  user directly in this session — there's no manager to relay it through.
+  user directly in this session. This role runs outside the manager setup, so there's no manager
+  to relay it through.
 
 ## Step 4 — Code changes and commits
 
@@ -64,7 +65,7 @@ guidance) — this session drives the browser directly rather than delegating to
 - This session may share a git working tree with another open session (e.g. a UI-focused one).
   Stage and commit only the specific files you changed (`git add <files>` / `git commit --
   <files>`) — never a blanket `git add -A`.
-- Confirm with the user before pushing, same as any other session.
+- Commit only when the user asks or approves a proposed commit, and confirm before pushing.
 
 ## Step 5 — Report
 

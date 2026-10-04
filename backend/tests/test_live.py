@@ -1,9 +1,9 @@
 """Real-LLM smoke tests — actually call the Anthropic API and spend real tokens.
 
 Excluded from the default `pytest` run (see pytest.ini: `addopts = -m "not live and
-not slow"`). Run explicitly with:
+not slow"`), and skipped by conftest.py unless RUN_LIVE=1 is set. Run explicitly with:
 
-    pytest -m live
+    RUN_LIVE=1 pytest -m live
 
 These check that the live contract still works end-to-end (valid response shape,
 no crash) — they are not a substitute for the mocked contract tests, which cover

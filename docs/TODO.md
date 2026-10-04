@@ -7,8 +7,11 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
-- [ ] Replace deprecated `datetime.utcnow()` (4 uses under `backend/app/`) with
-      `datetime.now(datetime.UTC)`.
+- [ ] Confirm `pytest -m slow` (PDF export) passes in a normal terminal. It passed once and
+      failed twice (500) in Claude sessions on 2026-10-04, probably a sandbox limit.
+- [ ] Replace deprecated `datetime.utcnow()` (2 uses in `backend/app/routes/applications.py`)
+      with `datetime.now(timezone.utc)` (the file imports the `datetime` class, so
+      `datetime.UTC` won't work).
 - [ ] Remove the stale "Known gaps" bullet in `frontend/STATUS_FRONTEND.md` about
       `ARCHITECTURE.md` listing `public/demo/*` assets. That was already fixed in ce76b6d.
 

@@ -1,19 +1,11 @@
-# Resume Builder — Status Report
+# Resume Builder — Backend Log
 
-_Last updated: 2026-09-16_
+_Last updated: 2026-10-04_
 
-## What this project is
-
-Personal tool to speed up job applications. Paste a job description → FastAPI backend
-calls Claude to tailor a resume from a master profile → user edits pieces via chat-scoped
-revision → downloads a formatted .docx. See `CLAUDE_CODE_CONTEXT.md` for the full original
-spec/architecture doc this was built from.
-
-## Repo state
-
-- Monorepo: `/backend` (this folder, built) and `/frontend` (not started).
-- Private GitHub repo, `main` branch, pushed and up to date with `origin/main`.
-- Backend runs **locally only**, no database — `app/data/profile.json` is the persistence layer.
+Dated log of backend work, oldest first. Backend workers add a new dated section **at the
+end** after verified work and update the line above. The project-wide current state is in
+`docs/STATUS.md`, and the backlog is in `docs/TODO.md`. Early sections describe the state at
+the time they were written (e.g. "frontend not started"), not today.
 
 ## What's built and verified working
 
@@ -1417,37 +1409,9 @@ system and profile blocks while their tail blocks differ — this is the actual
 cross-type-sharing property being tested, not just "cache_control is present somewhere."
 Full suite: 58 passed (was 57 after Part 11).
 
-## Not yet built (explicitly deferred so far)
+## Not yet built / open questions (retired 2026-10-04)
 
-1. **Next.js frontend** — All 6 phases complete (connectivity, generate view, styled
-   preview + selection, chat-scoped revision, cover letter mode, download). See above and
-   `frontend/STATUS_FRONTEND.md` for details.
-2. **Cloudflare Tunnel** — stable hostname to expose the local backend to the
-   Vercel-hosted frontend. Not started.
+These two closing sections were stale (the frontend was finished, and the Cloudflare Tunnel
+was decided against). Open items now live in `docs/TODO.md`. The original text is in git
+history at c102d0d.
 
-## Open questions worth strategizing on
-
-- **Everything in the original plan is now complete**, confirmed 2026-09-12 by the
-  frontend session (`frontend-2c`) after its own end-to-end browser verification:
-  `/generate`, `/revise`, and `/render` all support both resumes and cover letters
-  (generate, revise — including section-level resume revision — and render/download),
-  alongside `/profile` and the usage guardrails; the frontend covers connectivity,
-  generate, styled preview + selection (all three levels, including sections), chat-scoped
-  revision for both resumes and cover letters, cover letter mode, and download for both
-  document types. `frontend-2c` reported: section-level selection re-enabled (tested a
-  2-entry/9-bullet section revise, all 9 updated correctly), cover letter revision wired
-  up (single-paragraph revise confirmed), and cover letter download added (docx + pdf both
-  200, real downloads) — no contract mismatches on either side. **Superseded 2026-09-15**:
-  this turned out to be incomplete — summary-id revision had never actually been curled
-  end-to-end (it happened to work, verified in the Backend Part 3 section above, but
-  "complete" shouldn't have been claimed without checking), and `sec_skills` selection was
-  a silent no-op the whole time. Both are now fixed/verified; see Backend Part 3 above.
-  Lesson for future status updates: "no open gaps" claims should be backed by an explicit
-  check of every previously-listed capability, not just the ones touched in that pass.
-- Frontend (`frontend-69`) still needs to build the skills-group/skills-section selection
-  UI against the new `{id, text}` skill-item shape (Backend Part 3) — the backend side of
-  that is done, this is a frontend follow-up, not a backend gap.
-- The only backend-complete remaining work is the Cloudflare Tunnel + Vercel deployment
-  infrastructure pass — not a feature gap, just deployment plumbing.
-- Whether to bump `MAX_INPUT_CHARS` or `DAILY_CALL_LIMIT` once real usage patterns are
-  known (e.g. a very long job posting, or heavier revise-loop iteration during editing).

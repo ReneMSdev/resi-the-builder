@@ -26,8 +26,8 @@ Read the relevant parts of `frontend/STATUS_FRONTEND.md` for the area you're tou
   changes, and say why.
 - After verified work, update the relevant section of `frontend/STATUS_FRONTEND.md`. It's a
   current-state reference, not a dated log, so edit in place.
-- Don't commit or push unless the manager relays the user's approval. When you commit,
-  stage only your own files by explicit path. The backend worker shares this working tree.
+- Don't commit or push. The manager commits after review and user approval. Exception:
+  in a window the user is driving directly, follow the user's own instruction to commit.
 
 ## Report back
 

@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -8,6 +9,18 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services import llm as llm_module
 from app.services import usage_guard
+
+
+def pytest_collection_modifyitems(config, items):
+    """Second guard on top of pytest.ini's `-m "not live"`: live tests are skipped unless
+    RUN_LIVE=1 is set, so a run that bypasses pytest.ini (e.g. invoked from the repo root, or
+    with an overriding `-m`) can't spend real tokens by accident."""
+    if os.environ.get("RUN_LIVE") == "1":
+        return
+    skip_live = pytest.mark.skip(reason="live test: set RUN_LIVE=1 to run (spends real tokens)")
+    for item in items:
+        if "live" in item.keywords:
+            item.add_marker(skip_live)
 
 
 @pytest.fixture(autouse=True)

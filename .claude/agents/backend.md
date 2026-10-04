@@ -19,12 +19,15 @@ you're touching.
   Don't make that change yourself.
 - Flag any change to request/response shapes in `app/models.py` explicitly. The frontend
   depends on them.
-- Verify with real output: run `.venv/bin/pytest`, and curl the endpoint when behavior
+- Verify with real output: run `cd backend && .venv/bin/pytest` (always from `backend/`;
+  run from the repo root it skips `pytest.ini`), and curl the endpoint when behavior
   changed. "Should work" isn't done.
-- Don't run `pytest -m live` (it spends real tokens) unless the task explicitly says to.
-- After verified work, add a dated entry to `backend/STATUS_BACKEND.md`.
-- Don't commit or push unless the manager relays the user's approval. When you commit,
-  stage only your own files by explicit path. The frontend worker shares this working tree.
+- Don't run live tests (`RUN_LIVE=1 ... -m live`, real token spend) unless the task explicitly
+  says to.
+- After verified work, add a dated entry at the end of `backend/STATUS_BACKEND.md` and update
+  its "Last updated" line.
+- Don't commit or push. The manager commits after review and user approval. Exception:
+  in a window the user is driving directly, follow the user's own instruction to commit.
 
 ## Report back
 

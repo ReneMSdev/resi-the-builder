@@ -22,10 +22,10 @@ is on Vercel (`resi-the-builder.vercel.app`).
   `/manager-startup` at the repo root. Workers are background agents by default
   (`.claude/agents/backend.md`, `frontend.md`). Open a window in `backend/` or `frontend/` to
   control a side yourself; the manager checks for windows first. Workers update their
-  `STATUS_<side>.md`. The manager owns `docs/` and runs `/wrapup`.
+  `STATUS_<side>.md`. The manager owns `docs/`, makes commits, and asks the user to run `/wrapup`.
 - **Minor edits** (copy, styling, small fixes): one plain session at the repo root, with no
-  startup command. Check only the side you touched and run `/wrapup` at the end. Don't
-  write to `STATUS_<side>.md`; git history covers it.
+  startup command. Check only the side you touched; the user runs `/wrapup` at the end.
+  Skip `STATUS_BACKEND.md`, but fix `STATUS_FRONTEND.md` if a behavior it describes changed.
 - **Auto Apply**: `/automation-startup` or the `auto-apply` agent.
 
 ## Commands
@@ -34,7 +34,7 @@ is on Vercel (`resi-the-builder.vercel.app`).
 |---|---|
 | Backend install | `cd backend && python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt` |
 | Backend run | `cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000` |
-| Backend test | `cd backend && .venv/bin/pytest` (excludes `live` and `slow`) |
+| Backend test | `cd backend && .venv/bin/pytest` (always from `backend/`; excludes `live` and `slow`) |
 | Frontend install | `cd frontend && npm install` |
 | Frontend run | `cd frontend && npm run dev` (needs `.env.local` with `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000`) |
 | Frontend lint | `cd frontend && npm run lint` |
@@ -45,7 +45,7 @@ is on Vercel (`resi-the-builder.vercel.app`).
 
 - **Auto Apply never submits an application.** Filling fields and attaching files only;
   clicking Submit/Apply is always a human action. This rule can't be overridden.
-- Don't run `pytest -m live` (it spends real Anthropic tokens) unless the user asks.
+- Don't run live tests (`RUN_LIVE=1 ... -m live`, real Anthropic tokens) unless the user asks.
 - `backend/app/data/profile.json` is the user's real master profile, tracked on purpose.
   `backend/app/data/applications/` is gitignored user data. Don't commit it.
 - `NEXT_PUBLIC_DEMO_MODE=true` is set only in Vercel's project settings, never locally.

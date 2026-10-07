@@ -13,6 +13,11 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
+- [ ] Update the public demo data (`frontend/app/lib/demoFixtures/`) once the work-history
+      changes are final. `profile.json` there is a copy of the pre-2026-10-07 profile, and
+      `application.json` and `refinements.ts` still contain the old claims (Cloud Run
+      deployment, Redis, multithreading, etc.). Hand-edit rather than regenerate, then push so
+      Vercel redeploys.
 - [ ] Confirm `pytest -m slow` (PDF export) passes in a normal terminal. On 2026-10-04 it
       passed in both verifier-subagent runs and failed (500) in both main-session runs,
       probably a sandbox limit.

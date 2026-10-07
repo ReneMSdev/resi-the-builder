@@ -37,11 +37,11 @@
       "summaries": [
         {
           "id": "summary_devops_1",
-          "text": "Software engineer with hands-on DevOps/cloud experience building and deploying production FastAPI services on GCP, backed by 8+ years of field telecom work."
+          "text": "Software engineer with backend and cloud experience (FastAPI, Node.js, Docker, GitHub Actions CI/CD, GCP), backed by 8+ years of field telecom work."
         },
         {
           "id": "summary_devops_2",
-          "text": "Solo technical founder and backend engineer specializing in FastAPI, GCP Cloud Run, and CI/CD pipelines, transitioning from telecom field work into cloud/software engineering."
+          "text": "Founder and software engineer specializing in tested FastAPI backends and CI/CD pipelines, transitioning from telecom field work into cloud/software engineering."
         }
       ]
     },
@@ -70,7 +70,7 @@
           "id": "entry_salolabs",
           "title": {
             "id": "entry_salolabs_title",
-            "text": "Software & DevOps Engineer"
+            "text": "Founder & Software Engineer"
           },
           "organization": {
             "id": "entry_salolabs_org",
@@ -82,72 +82,71 @@
           },
           "dates": {
             "id": "entry_salolabs_dates",
-            "text": "January 2026 - Present"
+            "text": "December 2025 - Present"
           },
           "bullets": [
             {
               "id": "b_salo_1",
-              "text": "Architected and built LinkLeaf, a QR code-based digital identity platform with a FastAPI backend, Flutter mobile frontend, and fully containerized GCP infrastructure.",
+              "text": "Co-founded LinkLeaf (originally Ghost Card), a QR-code digital business card platform, owning design and development while a co-founder led business and marketing; built a FastAPI/PostgreSQL backend (32 API endpoints) and a Flutter UI prototype.",
               "tags": [
                 "backend",
                 "mobile",
                 "architecture",
-                "gcp",
-                "fastapi"
+                "fastapi",
+                "founder"
               ]
             },
             {
               "id": "b_salo_2",
-              "text": "Designed and deployed a multi-service FastAPI backend to GCP Cloud Run, integrating Cloud SQL (PostgreSQL), dual GCS buckets with signed URL access controls, and Firebase Authentication across isolated dev/staging/production environments.",
+              "text": "Designed the backend as a FastAPI modular monolith with Firebase token verification and public/private GCS buckets, serving private files through 60-minute signed URLs.",
               "tags": [
-                "gcp",
                 "backend",
-                "cloud-run",
-                "postgresql",
-                "firebase"
+                "fastapi",
+                "gcp",
+                "security"
               ]
             },
             {
               "id": "b_salo_3",
-              "text": "Built a gated two-workflow GitHub Actions CI/CD pipeline: automated testing on push/PR with a live PostgreSQL service container, deployment to Cloud Run triggered only on passing merge to main.",
+              "text": "Wrote 133 async API tests (pytest, httpx) across 8 modules against a real PostgreSQL database, with Firebase and GCS mocked; CI enforces a 50% coverage floor (about 65% coverage).",
               "tags": [
-                "ci-cd",
-                "github-actions",
-                "testing"
+                "testing",
+                "pytest",
+                "backend"
               ]
             },
             {
               "id": "b_salo_4",
-              "text": "Containerized the application using a multi-stage Dockerfile with an entrypoint script handling database migrations before server startup.",
+              "text": "Built a GitHub Actions CI pipeline that applies Alembic migrations to a PostgreSQL 16 service container and runs the test suite on backend changes to main and on pull requests.",
               "tags": [
-                "docker",
-                "devops"
+                "ci-cd",
+                "devops",
+                "postgresql"
               ]
             },
             {
               "id": "b_salo_5",
-              "text": "Maintained 100+ passing pytest tests across 7 modules in a modular monolith architecture with GCS and Firebase fully mocked for testing; CI enforces minimum coverage threshold on every push.",
+              "text": "Integrated RevenueCat subscription webhooks that map purchase, renewal, cancellation and expiration events to plan changes, soft-deleting premium content with a 30-day restore window on expiration.",
               "tags": [
-                "testing",
-                "pytest",
-                "ci-cd"
+                "backend",
+                "integration",
+                "payments"
               ]
             },
             {
               "id": "b_salo_6",
-              "text": "Designed and executed comprehensive test cases and scenarios for LinkLeaf's core API endpoints, ensuring full coverage prior to deployment.",
+              "text": "Designed permanent QR links: an unchanging token redirects to the profile's current URL, and old URLs return a 301, so printed cards keep working after renames.",
               "tags": [
-                "testing",
-                "qa"
+                "backend",
+                "api-design"
               ]
             },
             {
               "id": "b_salo_7",
-              "text": "Leveraged structured logging alongside CI/CD pipelines to monitor system behavior, catch regressions early, and maintain release quality.",
+              "text": "Wrote a multi-stage Dockerfile (non-root runtime) with an entrypoint that runs database migrations before server startup.",
               "tags": [
-                "testing",
-                "ci-cd",
-                "observability"
+                "docker",
+                "devops"
               ]
             }
           ]
@@ -259,22 +258,6 @@
                 "frontend",
                 "performance"
               ]
-            },
-            {
-              "id": "b_fl_6",
-              "text": "Built a website for a professional life coach using vanilla JavaScript, HTML, and CSS.",
-              "tags": [
-                "frontend",
-                "javascript"
-              ]
-            },
-            {
-              "id": "b_fl_7",
-              "text": "Increased Calendly bookings by ~20% by redesigning the scheduling flow and embedding an on-page scheduler.",
-              "tags": [
-                "frontend",
-                "ux"
-              ]
             }
           ]
         },
@@ -299,7 +282,7 @@
           "bullets": [
             {
               "id": "b_polaris_1",
-              "text": "Contributed to Google Fiber's infrastructure deployment and quality assurance for network operations, supporting an estimated $2.3M in annual recurring revenue.",
+              "text": "Contributed to Google Fiber's infrastructure deployment and quality assurance for network operations.",
               "tags": [
                 "field-work",
                 "networking",
@@ -308,7 +291,7 @@
             },
             {
               "id": "b_polaris_2",
-              "text": "Configured and tested high-speed fiber circuits using OTDR and power meters, meeting Google Fiber's performance standards and reducing installation-related service issues by ~15%.",
+              "text": "Configured and tested high-speed fiber circuits using OTDR and power meters, meeting Google Fiber's performance standards.",
               "tags": [
                 "field-work",
                 "fiber",
@@ -430,7 +413,7 @@
           "id": "entry_weather",
           "title": {
             "id": "entry_weather_title",
-            "text": "Weather Alerts API Backend (Node.js, Express, TypeScript)"
+            "text": "Weather Alerts API & Mobile App (Node.js, Express, TypeScript, React Native)"
           },
           "organization": {
             "id": "entry_weather_org",
@@ -447,16 +430,17 @@
           "bullets": [
             {
               "id": "b_wa_1",
-              "text": "Built a production-ready REST API with PostgreSQL, Redis caching, and node cron background jobs for automated weather data sync, achieving ~40% faster response times.",
+              "text": "Built a REST API (Express 5, TypeScript, PostgreSQL with Drizzle ORM) that combines Google Geocoding with the National Weather Service API, storing each city's lookup so repeat requests skip two external calls.",
               "tags": [
                 "nodejs",
+                "typescript",
                 "postgresql",
-                "redis"
+                "backend"
               ]
             },
             {
               "id": "b_wa_2",
-              "text": "Deployed to Render via GitHub Actions: TypeScript compile gate on push/PR, automated deploy hook triggered on merge to main.",
+              "text": "Set up GitHub Actions CI/CD: a TypeScript build gate on every push and pull request to main, and a Render deploy hook that runs on main after the build passes.",
               "tags": [
                 "ci-cd",
                 "deployment"
@@ -464,64 +448,28 @@
             },
             {
               "id": "b_wa_3",
-              "text": "Provided REST API endpoints consumed by a cross-platform iOS/Android app built with React Native (Expo).",
+              "text": "Designed a normalized PostgreSQL schema (devices, locations and a many-to-many join) with versioned Drizzle migrations.",
               "tags": [
-                "react-native",
-                "mobile"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "entry_weather_mobile",
-          "title": {
-            "id": "entry_weather_mobile_title",
-            "text": "React Native Weather App (Expo, TypeScript)"
-          },
-          "organization": {
-            "id": "entry_weather_mobile_org",
-            "text": "Personal Project"
-          },
-          "location": {
-            "id": "entry_weather_mobile_location",
-            "text": "github.com/ReneMSdev/WeatherAlertsRN"
-          },
-          "dates": {
-            "id": "entry_weather_mobile_dates",
-            "text": ""
-          },
-          "bullets": [
-            {
-              "id": "b_wam_1",
-              "text": "Built a cross-platform iOS/Android mobile app using React Native and Expo.",
-              "tags": [
-                "react-native",
-                "mobile"
+                "postgresql",
+                "schema-design"
               ]
             },
             {
-              "id": "b_wam_2",
-              "text": "Integrated the app with a custom Node/Express backend for real-time weather retrieval and severe weather warnings.",
+              "id": "b_wa_4",
+              "text": "Proxied Google Places Autocomplete through the API with rate limiting, keeping the API key out of the mobile client.",
               "tags": [
-                "react-native",
-                "nodejs",
-                "backend-integration"
+                "backend",
+                "security",
+                "api-integration"
               ]
             },
             {
-              "id": "b_wam_3",
-              "text": "Implemented state management with React hooks and AsyncStorage for device and location persistence.",
+              "id": "b_wa_5",
+              "text": "Built a companion React Native app (Expo Router, TypeScript) with debounced city search, a forecast detail screen and light/dark theming.",
               "tags": [
                 "react-native",
-                "state-management"
-              ]
-            },
-            {
-              "id": "b_wam_4",
-              "text": "Improved data loading speed by ~55% by using multithreading to run API requests in parallel without blocking the UI.",
-              "tags": [
-                "react-native",
-                "performance"
+                "mobile",
+                "typescript"
               ]
             }
           ]
@@ -530,7 +478,7 @@
           "id": "entry_routeplanner",
           "title": {
             "id": "entry_routeplanner_title",
-            "text": "Route Planning Web App (Next.js, JavaScript)"
+            "text": "Route Planning Web App (Next.js, React, Leaflet)"
           },
           "organization": {
             "id": "entry_routeplanner_org",
@@ -547,7 +495,7 @@
           "bullets": [
             {
               "id": "b_rp_1",
-              "text": "Built a web app that allows users to input multiple addresses and returns the optimal route on an interactive map.",
+              "text": "Built a route planner that geocodes up to 25 typed or imported (CSV/Excel) addresses, orders them efficiently with the OpenRouteService optimization API, and draws the route on an interactive Leaflet map.",
               "tags": [
                 "frontend",
                 "nextjs",
@@ -556,7 +504,7 @@
             },
             {
               "id": "b_rp_2",
-              "text": "Supports Google Maps export for mobile navigation.",
+              "text": "Exported routes as a PDF or as a Google Maps link and QR code for turn-by-turn navigation on a phone.",
               "tags": [
                 "frontend",
                 "integration"
@@ -564,11 +512,28 @@
             },
             {
               "id": "b_rp_3",
-              "text": "Built with Next.js, JavaScript, Tailwind CSS, OpenCage API, and OpenRouteService API.",
+              "text": "Built with Next.js 15, React 19, JavaScript, Tailwind CSS, Leaflet, OpenRouteService and Nominatim (OpenStreetMap); deployed on Vercel.",
               "tags": [
                 "frontend",
                 "nextjs",
                 "api-integration"
+              ]
+            },
+            {
+              "id": "b_rp_4",
+              "text": "Kept API keys server-side by proxying requests through Next.js API routes, with same-origin checks and per-visitor rate limits (10 per minute, 100 per day).",
+              "tags": [
+                "backend",
+                "security",
+                "nextjs"
+              ]
+            },
+            {
+              "id": "b_rp_5",
+              "text": "Swapped geocoding and map tiles to keyless OpenStreetMap services (Nominatim, OSM tiles) after the original providers began rejecting requests.",
+              "tags": [
+                "api-integration",
+                "maintenance"
               ]
             }
           ]
@@ -577,7 +542,7 @@
           "id": "entry_atxwrenching",
           "title": {
             "id": "entry_atxwrenching_title",
-            "text": "ATX Reliable Wrenching \u2014 Marketing & Booking Website (Next.js)"
+            "text": "ATX Reliable Wrenching \u2014 Marketing Website (Next.js)"
           },
           "organization": {
             "id": "entry_atxwrenching_org",
@@ -594,16 +559,26 @@
           "bullets": [
             {
               "id": "b_atx_1",
-              "text": "Designed and built a responsive marketing website for a local mobile-mechanic business in Austin, TX, including a services showcase (check engine diagnostics, brake repair, coolant leak repair, suspension diagnostics, electrical, general maintenance, hybrid/diesel repair, minor body work), an about/credibility section, and embedded Google reviews.",
+              "text": "Designed the site in Figma, with a Carolina-blue palette tailored to the client, and built it as a responsive Next.js 16 / React 19 / TypeScript / Tailwind CSS marketing site for an Austin mobile-mechanic business, deployed on Vercel.",
               "tags": [
                 "frontend",
                 "nextjs",
+                "design",
                 "freelance"
               ]
             },
             {
               "id": "b_atx_2",
-              "text": "Integrated a booking flow via a third-party HousecallPro plugin to handle scheduling directly within the site's conversion funnel.",
+              "text": "Built a contact pipeline: a validated form posts to a Next.js API route that emails the business through Nodemailer and Brevo SMTP.",
+              "tags": [
+                "frontend",
+                "backend",
+                "integration"
+              ]
+            },
+            {
+              "id": "b_atx_3",
+              "text": "Routed online booking to the client's Housecall Pro scheduling page through Book Now buttons across the site.",
               "tags": [
                 "frontend",
                 "integration",
@@ -611,21 +586,12 @@
               ]
             },
             {
-              "id": "b_atx_3",
-              "text": "Implemented an image-optimized, mobile-first responsive layout suited for a local-service business, along with a contact form.",
+              "id": "b_atx_4",
+              "text": "Built a 9-service showcase carousel and a scrolling marquee of customer Google reviews, with motion disabled for users who prefer reduced motion.",
               "tags": [
                 "frontend",
-                "performance",
+                "accessibility",
                 "responsive-design"
-              ]
-            },
-            {
-              "id": "b_atx_4",
-              "text": "Deployed and hosted the production site on GoDaddy, managing a shared-hosting/DNS setup for a small-business client end-to-end from design through deployment.",
-              "tags": [
-                "deployment",
-                "freelance",
-                "devops"
               ]
             }
           ]
@@ -826,10 +792,6 @@
               "text": "GitHub Actions CI/CD"
             },
             {
-              "id": "item_devops_terraform",
-              "text": "Terraform"
-            },
-            {
               "id": "item_devops_linux",
               "text": "Linux"
             }
@@ -904,6 +866,10 @@
               "text": "React Native (Expo)"
             },
             {
+              "id": "item_mobile_flutter",
+              "text": "Flutter"
+            },
+            {
               "id": "item_mobile_mobile",
               "text": "Mobile UI"
             },
@@ -924,10 +890,6 @@
             {
               "id": "item_databases_mysql",
               "text": "MySQL"
-            },
-            {
-              "id": "item_databases_redis",
-              "text": "Redis"
             },
             {
               "id": "item_databases_drizzle",

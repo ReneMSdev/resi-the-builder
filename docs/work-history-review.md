@@ -69,6 +69,30 @@ _Repo: ~/Dev/atx-reliable-wrenching @ dev 7b291cd; inspected 2026-10-07_
 - I did not check whether the live site is up, its response, or its hosting (no external calls). Load atxreliablewrenching.com yourself before you say "live".
 - The 8.4 MB hero source image (`public/images/engine.jpg`) weakens any "image-optimized" claim. Compress it before using that wording.
 
+### Measurements (local production build, 2026-10-07)
+_`npm run build` + `next start` on localhost, `~/Dev/atx-reliable-wrenching` @ dev 7b291cd. Lighthouse 12.8.2, one run per mode, so expect a few points of variation between runs. Local, so no real network or CDN; Lighthouse's mobile mode simulates a slow 4G phone._
+
+| Metric | Mobile | Desktop |
+|---|---|---|
+| Performance score | 78 | 95 |
+| Accessibility score | 85 | 81 |
+| Best practices / SEO | 100 / 100 | 100 / 100 |
+| First Contentful Paint | 2.0 s | 0.3 s |
+| Largest Contentful Paint (hero image) | 4.2 s | 1.4 s |
+| Total Blocking Time | 110 ms | 100 ms |
+| Cumulative Layout Shift | 0 | 0 |
+| Speed Index | 6.3 s | 1.0 s |
+| Page weight | 667 KiB (27 requests) | 1,398 KiB (29 requests) |
+| Image bytes | 387 KiB (11 images) | 1,118 KiB (13 images) |
+| Hero image as delivered | 85 KiB (750 px) | 448 KiB (1920 px) |
+
+- **Correction to the image finding above:** visitors never download the 8.4 MB `engine.jpg`. `next/image` resizes it to 85 KiB on mobile and 448 KiB on desktop. The large source file costs build and storage, not page speed. The "image-optimized" claim is partly fair (next/image does resize and serve sized variants) but Lighthouse still flags "Serve images in next-gen formats" and "Properly size images".
+- **Source assets:** 11.5 MB in `public/`, of which the hero is 8.4 MB and the next largest is 672 KB.
+- **Main opportunities Lighthouse reports:** mobile LCP (4.2 s; Google's "good" threshold is 2.5 s), render-blocking resources, unused JavaScript, next-gen image formats, image sizing.
+- **Accessibility failures:** buttons without accessible names, insufficient color contrast, form fields without labels, and (desktop) links without discernible names.
+- **No analytics in the code:** no Vercel Analytics, Speed Insights, Google tag, Plausible or Umami (grep of `app/`, `package.json`).
+- Raw Lighthouse JSON was saved to the session scratchpad only, not the repo.
+
 ---
 
 ## Route Planning Web App

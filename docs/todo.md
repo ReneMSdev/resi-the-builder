@@ -13,6 +13,10 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
+- [ ] Add a Resume Builder entry to `backend/app/data/profile.json` (Projects). Draw bullets
+      from this repo and its portfolio case study (`~/Dev/portfolio-website`, slug
+      `resume-builder`), and check every claim against the code, as in
+      `docs/work-history-review.md`.
 - [ ] Update the public demo data (`frontend/app/lib/demoFixtures/`) once the work-history
       changes are final. `profile.json` there is a copy of the pre-2026-10-07 profile, and
       `application.json` and `refinements.ts` still contain the old claims (Cloud Run

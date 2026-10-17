@@ -9,15 +9,15 @@
 // existing graceful "nothing to refine" message rather than a silent no-op.
 export const demoResumeRefinements: Record<string, string> = {
   summary_main:
-    "Software engineer who owns backend systems end-to-end, from API design through CI/CD and production deployment, using Python and cloud infrastructure on AWS and GCP. Known for shipping reliable services and mentoring teammates along the way.",
-  b1: "Architected and shipped a multi-service Python backend on GCP Cloud Run, wiring up Cloud SQL and GCS storage across three isolated environments with zero manual deploy steps.",
-  b2: "Built a gated two-workflow CI/CD pipeline in GitHub Actions. Every push runs the full test suite, and deployment only fires on a passing merge to main.",
-  b3: "Grew and maintained a suite of 100+ pytest tests with an enforced minimum coverage threshold in CI, catching regressions before they ever reached production.",
-  b4: "Built a production-ready REST API on PostgreSQL with a Redis caching layer, cutting average response times by ~40%.",
-  b5: "Automated deployment to Render through GitHub Actions, gating every push behind a TypeScript compile check.",
+    "Software engineer who owns backend systems end-to-end, from API design and testing through CI, using Python, Node.js and Docker, with cloud experience on AWS and GCP.",
+  b1: "Architected LinkLeaf's FastAPI/PostgreSQL backend as a modular monolith, verifying Firebase tokens and serving private files from GCS through short-lived signed URLs.",
+  b2: "Built a GitHub Actions CI pipeline that spins up PostgreSQL 16, applies Alembic migrations and runs the full test suite on every pull request.",
+  b3: "Grew the API test suite to 133 async pytest tests across 8 modules, run against a real PostgreSQL database with a 50% coverage floor enforced in CI.",
+  b4: "Built a TypeScript/Express REST API on PostgreSQL that pairs Google Geocoding with the National Weather Service API, storing each city's lookup so repeat requests skip two external calls.",
+  b5: "Automated CI/CD with GitHub Actions: every push and pull request must pass a TypeScript build, and a Render deploy hook fires only from main.",
 }
 
 export const demoCoverLetterRefinements: Record<string, string> = {
   p1: "I'm excited to apply for the Software Engineer role at Justworks, a team that clearly values both the product and the people building it, and where I can own meaningful projects end-to-end.",
-  p2: "At Salo Labs, I designed and deployed a multi-service Python backend on GCP Cloud Run, built a CI/CD pipeline that gates every deploy behind a full test run, and grew our suite to 100+ passing tests. I'd be thrilled to bring that same hands-on ownership to Justworks' engineering team.",
+  p2: "At Salo Labs, I co-founded LinkLeaf and built its FastAPI and PostgreSQL backend, a CI pipeline that runs migrations and the full test suite on every pull request, and 133 API tests against a real database. I'd be thrilled to bring that same hands-on ownership to Justworks' engineering team.",
 }

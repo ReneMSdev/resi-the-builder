@@ -16,11 +16,11 @@
       },
       "email": {
         "id": "meta_email",
-        "text": "rene.salomone@gmail.com"
+        "text": "email@example.com"
       },
       "phone": {
         "id": "meta_phone",
-        "text": "+1 (512) 884-3571"
+        "text": "(555) 555-0100"
       },
       "links": [
         {
@@ -37,7 +37,7 @@
     },
     "summary": {
       "id": "summary_main",
-      "text": "Software engineer with hands-on experience building and deploying production backend services using Python and cloud infrastructure on AWS and GCP. Comfortable owning projects end-to-end, from API design through CI/CD and deployment."
+      "text": "Software engineer building tested Python (FastAPI) and Node.js backends with Docker and GitHub Actions CI/CD, with cloud experience on AWS and GCP. Comfortable owning projects end-to-end, from API design through testing and CI."
     },
     "sections": [
       {
@@ -49,7 +49,7 @@
             "id": "entry_salolabs",
             "title": {
               "id": "entry_salolabs_title",
-              "text": "Software Engineer"
+              "text": "Founder & Software Engineer"
             },
             "organization": {
               "id": "entry_salolabs_org",
@@ -61,12 +61,12 @@
             },
             "dates": {
               "id": "entry_salolabs_dates",
-              "text": "January 2026 - Present"
+              "text": "December 2025 - Present"
             },
             "bullets": [
               {
                 "id": "b1",
-                "text": "Designed and deployed a multi-service Python backend to GCP Cloud Run, integrating Cloud SQL and GCS storage across dev, staging, and production environments.",
+                "text": "Designed LinkLeaf's FastAPI/PostgreSQL backend as a modular monolith with Firebase token verification and public/private GCS buckets, serving private files through signed URLs.",
                 "tags": [
                   "backend",
                   "gcp"
@@ -74,14 +74,14 @@
               },
               {
                 "id": "b2",
-                "text": "Built a two-workflow GitHub Actions CI/CD pipeline with automated testing on every push and deployment gated on a passing merge to main.",
+                "text": "Built a GitHub Actions CI pipeline that applies Alembic migrations to a PostgreSQL 16 service container and runs the test suite on every pull request.",
                 "tags": [
                   "ci-cd"
                 ]
               },
               {
                 "id": "b3",
-                "text": "Maintained 100+ passing pytest tests across the codebase, with CI enforcing a minimum coverage threshold to catch regressions early.",
+                "text": "Wrote 133 async API tests (pytest, httpx) across 8 modules against a real PostgreSQL database; CI enforces a 50% coverage floor (about 65% coverage).",
                 "tags": [
                   "testing"
                 ]
@@ -100,7 +100,7 @@
             "id": "entry_weather",
             "title": {
               "id": "entry_weather_title",
-              "text": "Weather Alerts API Backend"
+              "text": "Weather Alerts API & Mobile App"
             },
             "organization": {
               "id": "entry_weather_org",
@@ -117,15 +117,15 @@
             "bullets": [
               {
                 "id": "b4",
-                "text": "Built a production-ready REST API with PostgreSQL and Redis caching, achieving ~40% faster response times.",
+                "text": "Built a REST API (Express 5, TypeScript, PostgreSQL with Drizzle ORM) that combines Google Geocoding with the National Weather Service API, storing each city's lookup so repeat requests skip two external calls.",
                 "tags": [
                   "postgresql",
-                  "redis"
+                  "typescript"
                 ]
               },
               {
                 "id": "b5",
-                "text": "Deployed to Render via GitHub Actions with a TypeScript compile gate on every push.",
+                "text": "Set up GitHub Actions CI/CD with a TypeScript build gate on every push and pull request, and a Render deploy hook that runs on main after the build passes.",
                 "tags": [
                   "ci-cd"
                 ]
@@ -270,12 +270,12 @@
                 "text": "PostgreSQL"
               },
               {
-                "id": "item_db_redis",
-                "text": "Redis"
-              },
-              {
                 "id": "item_db_sqlalchemy",
                 "text": "SQLAlchemy"
+              },
+              {
+                "id": "item_databases_drizzle",
+                "text": "Drizzle ORM"
               }
             ]
           }
@@ -292,11 +292,11 @@
       },
       "email": {
         "id": "cl_meta_email",
-        "text": "rene.salomone@gmail.com"
+        "text": "email@example.com"
       },
       "phone": {
         "id": "cl_meta_phone",
-        "text": "+1 (512) 884-3571"
+        "text": "(555) 555-0100"
       },
       "date": {
         "id": "cl_meta_date",
@@ -326,7 +326,7 @@
       },
       {
         "id": "p2",
-        "text": "At Salo Labs, I designed and deployed a multi-service Python backend on GCP Cloud Run, built a CI/CD pipeline with automated testing gating every deploy, and maintained a test suite of 100+ passing tests. I'd welcome the chance to bring that same ownership to Justworks' engineering team."
+        "text": "At Salo Labs, I built the FastAPI and PostgreSQL backend for LinkLeaf, a QR-code business card platform I co-founded, set up a CI pipeline that runs migrations and the full test suite on every pull request, and wrote 133 API tests against a real database. I'd welcome the chance to bring that same ownership to Justworks' engineering team."
       }
     ]
   }

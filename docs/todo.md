@@ -13,11 +13,6 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
-- [ ] Update the public demo data (`frontend/app/lib/demoFixtures/`) once the work-history
-      changes are final. `profile.json` there is a copy of the pre-2026-10-07 profile, and
-      `application.json` and `refinements.ts` still contain the old claims (Cloud Run
-      deployment, Redis, multithreading, etc.). Hand-edit rather than regenerate, then push so
-      Vercel redeploys.
 - [ ] Confirm `pytest -m slow` (PDF export) passes in a normal terminal. On 2026-10-04 it
       passed in both verifier-subagent runs and failed (500) in both main-session runs,
       probably a sandbox limit.
@@ -51,3 +46,5 @@
 - [x] Added a verifier-checked Resume Builder entry (first in Projects) and an AI skills group;
       measured prompt caching on real calls: 48% lower input-token cost over a 4-call session
       (2026-10-16)
+- [x] Updated the public demo data to the corrected work history, with placeholder email and
+      phone (2026-10-16). Live on Vercel only after it reaches the deployed branch.

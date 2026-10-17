@@ -32,16 +32,86 @@
   },
   "summary_pool": [
     {
+      "id": "role_software",
+      "role_type": "Software Engineer (Full-Stack)",
+      "summaries": [
+        {
+          "id": "summary_software_1",
+          "text": "Freelance software engineer building full-stack apps with Next.js, React, TypeScript, Python (FastAPI) and Node.js, from tested APIs and PostgreSQL schemas to responsive frontends deployed on Vercel."
+        },
+        {
+          "id": "summary_software_2",
+          "text": "Software engineer who builds end to end, including an AI-powered resume tool on the Claude API, a route-planning web app and client websites, bringing 5+ years of field telecom experience to software engineering."
+        }
+      ]
+    },
+    {
+      "id": "role_backend",
+      "role_type": "Backend",
+      "summaries": [
+        {
+          "id": "summary_backend_1",
+          "text": "Backend engineer building tested REST APIs with Python (FastAPI) and Node.js/TypeScript (Express), PostgreSQL, SQLAlchemy and Drizzle, with Docker and GitHub Actions CI."
+        },
+        {
+          "id": "summary_backend_2",
+          "text": "Freelance software engineer focused on backend systems: a FastAPI/PostgreSQL API with 32 endpoints and 133 tests, and a weather API combining Google Geocoding with the National Weather Service."
+        }
+      ]
+    },
+    {
+      "id": "role_frontend",
+      "role_type": "Frontend",
+      "summaries": [
+        {
+          "id": "summary_frontend_1",
+          "text": "Frontend-focused software engineer building responsive Next.js and React apps with TypeScript and Tailwind CSS, from client marketing sites designed in Figma to interactive maps and AI-powered editing interfaces."
+        },
+        {
+          "id": "summary_frontend_2",
+          "text": "Freelance software engineer who designs in Figma and ships with Next.js, React and Tailwind, with experience in interactive maps (Leaflet), drag-and-drop interfaces and connecting frontends to REST and AI backends."
+        }
+      ]
+    },
+    {
+      "id": "role_cloud",
+      "role_type": "Cloud",
+      "summaries": [
+        {
+          "id": "summary_cloud_1",
+          "text": "Software engineer with AWS Certified Cloud Practitioner and Linux Essentials certifications (AWS Solutions Architect in progress), building containerized FastAPI and Node.js services with PostgreSQL and CI/CD, backed by 5+ years of field network infrastructure work."
+        },
+        {
+          "id": "summary_cloud_2",
+          "text": "Freelance software engineer moving from telecom field work into cloud engineering, with AWS and GCP experience, Docker and GitHub Actions CI/CD, and an AWS Solutions Architect certification in progress."
+        }
+      ]
+    },
+    {
       "id": "role_devops",
       "role_type": "DevOps",
       "summaries": [
         {
           "id": "summary_devops_1",
-          "text": "Software engineer with backend and cloud experience (FastAPI, Node.js, Docker, GitHub Actions CI/CD, GCP), backed by 8+ years of field telecom work."
+          "text": "Software engineer with a DevOps focus: GitHub Actions CI pipelines with PostgreSQL service containers and coverage gates, multi-stage Docker images that run migrations on startup, and automated deploys to Render and Vercel, backed by Linux and 5+ years of field network infrastructure work."
         },
         {
           "id": "summary_devops_2",
-          "text": "Founder and software engineer specializing in tested FastAPI backends and CI/CD pipelines, transitioning from telecom field work into cloud/software engineering."
+          "text": "DevOps-minded software engineer who builds the delivery path alongside the code: CI build and test gates, Docker, environment-based configuration and permission guardrails for AI coding agents."
+        }
+      ]
+    },
+    {
+      "id": "role_ai",
+      "role_type": "AI",
+      "summaries": [
+        {
+          "id": "summary_ai_1",
+          "text": "Software engineer integrating LLMs into real products: built a Claude API resume and cover-letter tool with section-scoped chat revision and prompt caching that cut input-token cost 48%."
+        },
+        {
+          "id": "summary_ai_2",
+          "text": "Software engineer experienced in AI-assisted development, building with Claude Code through a multi-session workflow with shared project rules, permission guardrails and an independent verifier agent."
         }
       ]
     },
@@ -55,7 +125,7 @@
         },
         {
           "id": "summary_technician_2",
-          "text": "Field telecom technician and Apprentice Electrician with 8+ years of hands-on experience installing, testing, and troubleshooting fiber, coax, and low-voltage systems for providers including Google Fiber, AT&T, and Spectrum."
+          "text": "Field telecom technician and Apprentice Electrician with 5+ years of hands-on experience installing, testing, and troubleshooting fiber, coax, and low-voltage systems for providers including Google Fiber, AT&T, and Spectrum."
         }
       ]
     }
@@ -98,55 +168,21 @@
             },
             {
               "id": "b_salo_2",
-              "text": "Designed the backend as a FastAPI modular monolith with Firebase token verification and public/private GCS buckets, serving private files through 60-minute signed URLs.",
+              "text": "Designed and built the LinkLeaf backend as a FastAPI modular monolith with Firebase token verification, a GitHub Actions CI pipeline gated on a 50% coverage floor, and a multi-stage Dockerfile that runs migrations before startup.",
               "tags": [
                 "backend",
                 "fastapi",
-                "gcp",
-                "security"
+                "ci-cd",
+                "docker"
               ]
             },
             {
               "id": "b_salo_3",
-              "text": "Wrote 133 async API tests (pytest, httpx) across 8 modules against a real PostgreSQL database, with Firebase and GCS mocked; CI enforces a 50% coverage floor (about 65% coverage).",
-              "tags": [
-                "testing",
-                "pytest",
-                "backend"
-              ]
-            },
-            {
-              "id": "b_salo_4",
-              "text": "Built a GitHub Actions CI pipeline that applies Alembic migrations to a PostgreSQL 16 service container and runs the test suite on backend changes to main and on pull requests.",
-              "tags": [
-                "ci-cd",
-                "devops",
-                "postgresql"
-              ]
-            },
-            {
-              "id": "b_salo_5",
               "text": "Integrated RevenueCat subscription webhooks that map purchase, renewal, cancellation and expiration events to plan changes, soft-deleting premium content with a 30-day restore window on expiration.",
               "tags": [
                 "backend",
                 "integration",
                 "payments"
-              ]
-            },
-            {
-              "id": "b_salo_6",
-              "text": "Designed permanent QR links: an unchanging token redirects to the profile's current URL, and old URLs return a 301, so printed cards keep working after renames.",
-              "tags": [
-                "backend",
-                "api-design"
-              ]
-            },
-            {
-              "id": "b_salo_7",
-              "text": "Wrote a multi-stage Dockerfile (non-root runtime) with an entrypoint that runs database migrations before server startup.",
-              "tags": [
-                "docker",
-                "devops"
               ]
             }
           ]
@@ -493,6 +529,81 @@
                 "fullstack",
                 "frontend",
                 "backend"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entry_linkleaf",
+          "title": {
+            "id": "entry_linkleaf_title",
+            "text": "LinkLeaf \u2014 QR-Code Digital Business Card (FastAPI, PostgreSQL, Flutter)"
+          },
+          "organization": {
+            "id": "entry_linkleaf_org",
+            "text": "Co-founded Startup"
+          },
+          "location": {
+            "id": "entry_linkleaf_location",
+            "text": "github.com/ReneMSdev/linkleaf-mono"
+          },
+          "dates": {
+            "id": "entry_linkleaf_dates",
+            "text": ""
+          },
+          "bullets": [
+            {
+              "id": "b_ll_1",
+              "text": "Built a 32-endpoint FastAPI API (Python 3.12, async SQLAlchemy 2, PostgreSQL 16, Pydantic v2) for profiles, links, media uploads, themes and subscriptions, with public/private GCS buckets serving private files through 60-minute signed URLs.",
+              "tags": [
+                "backend",
+                "fastapi",
+                "python",
+                "postgresql",
+                "gcp"
+              ]
+            },
+            {
+              "id": "b_ll_2",
+              "text": "Wrote 133 async API tests (pytest, httpx) across 8 modules against a real PostgreSQL database, with Firebase and GCS mocked; about 65% coverage.",
+              "tags": [
+                "testing",
+                "pytest",
+                "backend"
+              ]
+            },
+            {
+              "id": "b_ll_3",
+              "text": "Built a GitHub Actions CI pipeline that applies Alembic migrations to a PostgreSQL 16 service container and runs the test suite on backend changes to main and on pull requests.",
+              "tags": [
+                "ci-cd",
+                "devops",
+                "postgresql"
+              ]
+            },
+            {
+              "id": "b_ll_4",
+              "text": "Designed permanent QR links that survive profile renames (old URLs return a 301 to the current one) and a public Save Contact vCard download visitors can add to their phone.",
+              "tags": [
+                "backend",
+                "api-design"
+              ]
+            },
+            {
+              "id": "b_ll_5",
+              "text": "Built a server-side image pipeline: Pillow converts uploads to WebP, file types are checked from the file bytes (python-magic), and uploads are size-limited by type.",
+              "tags": [
+                "backend",
+                "security",
+                "media"
+              ]
+            },
+            {
+              "id": "b_ll_6",
+              "text": "Built a Flutter UI prototype with an animated QR code, a draggable profile card and an edit mode, running on mock data.",
+              "tags": [
+                "mobile",
+                "flutter"
               ]
             }
           ]

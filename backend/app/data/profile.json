@@ -237,7 +237,7 @@
           "id": "entry_freelance",
           "title": {
             "id": "entry_freelance_title",
-            "text": "Freelance Full-Stack Engineer"
+            "text": "Freelance Web Developer"
           },
           "organization": {
             "id": "entry_freelance_org",
@@ -253,43 +253,28 @@
           },
           "bullets": [
             {
-              "id": "b_fl_1",
-              "text": "Integrated an AWS RDS PostgreSQL database for a startup's (Ecobridge) Shopify plugin, modeling merchant accounts, configuration settings, and cache data, improving sync reliability and reducing Shopify API calls by ~30%.",
+              "id": "b_fl_6",
+              "text": "Designed in Figma and built a Next.js marketing site for a paid client (ATX Reliable Wrenching), deployed on Vercel.",
               "tags": [
-                "aws",
-                "postgresql",
-                "backend"
-              ]
-            },
-            {
-              "id": "b_fl_2",
-              "text": "Implemented a reliable Shopify OAuth flow in Node.js (Express) and TypeScript to securely handle app installation, token exchange, and merchant authentication, reducing auth-related errors by ~10%.",
-              "tags": [
-                "nodejs",
-                "typescript",
-                "oauth"
-              ]
-            },
-            {
-              "id": "b_fl_3",
-              "text": "Leveraged modern AI coding tools (Cursor, GPT) to accelerate prototyping and documentation, reducing development time by ~25%.",
-              "tags": [
-                "ai-tools",
-                "productivity"
+                "frontend",
+                "nextjs",
+                "design",
+                "freelance"
               ]
             },
             {
               "id": "b_fl_4",
-              "text": "Built a startup's (Ecobridge) landing page using Next.js, TypeScript, and Tailwind CSS.",
+              "text": "Designed and built the marketing site for Ecobridge, a startup, using Next.js, TypeScript and Tailwind CSS.",
               "tags": [
                 "frontend",
                 "nextjs",
-                "typescript"
+                "typescript",
+                "design"
               ]
             },
             {
               "id": "b_fl_5",
-              "text": "Compressed images to WebP format and implemented lazy loading for off-screen assets, reducing page load time by ~30%.",
+              "text": "Optimized page load by converting images to WebP and lazy-loading off-screen assets.",
               "tags": [
                 "frontend",
                 "performance"

@@ -258,3 +258,30 @@ _Repo: ~/Dev/linkleaf-mono @ working c169dc4; inspected 2026-10-07_
 - **Undersold real work.** Every project has accurate, specific material that isn't on the resume: LinkLeaf's 133 tests, 32 endpoints, QR permalinks and RevenueCat webhooks; Route Planner's API protection and provider swap; ATX's contact email pipeline; the weather backend's schema and NWS integration.
 
 **Not reviewed by any agent:** the freelance bullets (b_fl_1–7: Ecobridge, the life-coach site) and the technician roles (SandCastle, Polaris, Unmuted, DCOMM). Polaris and Unmuted bullets contain specific numbers ($2.3M ARR, ~15%, 400+ homes, 20+ incidents) that only the user can confirm.
+
+---
+
+## Resume Builder: prompt-caching measurement (2026-10-16)
+
+_Real API calls through the app's own `generate_resume` / `generate_cover_letter` (`backend/app/services/llm.py`, unchanged), current `profile.json`, model `claude-sonnet-4-6`, run back to back on 2026-10-16. Inputs were two real saved job descriptions (raw text as pasted): a Justworks Software Engineer posting (~11K chars) and an early-career Frontend Engineer posting in Austin (~6K chars). A wrapper recorded `response.usage` for each call. Prices: input $3, 5-minute cache write $3.75, cache read $0.30, output $15 per million tokens (Sonnet 4.6 list prices; write = 1.25×, read = 0.1×). Total spend for the run: $0.26._
+
+| Call | Uncached input | Cache write | Cache read | Prompt total | Read share | Output | Time |
+|---|---|---|---|---|---|---|---|
+| Justworks resume (cold) | 2,342 | 9,780 | 0 | 12,122 | 0% | 4,792 | 77.6 s |
+| Justworks cover letter | 2,342 | 1,144 | 8,330 | 11,816 | 70.5% | 1,681 | 40.4 s |
+| Frontend resume (new job) | 1,320 | 0 | 9,780 | 11,100 | 88.1% | 4,739 | 70.2 s |
+| Frontend cover letter | 1,320 | 0 | 9,474 | 10,794 | 87.8% | 1,262 | 26.3 s |
+
+| Cost | With caching | Without caching | Saving |
+|---|---|---|---|
+| Input tokens, all 4 calls | $0.0712 | $0.1375 | **48.2%** |
+| Input tokens, the 3 calls after the first | | | **72.8%** |
+| Input + output, all 4 calls | $0.2583 | $0.3246 | **20.4%** |
+
+**Reading the numbers:**
+- After the first call, each call read 70–88% of its ~11–12K-token prompt from cache. The cover letter right after a resume for the same job reads less (70.5%) because its cover-letter instructions weren't cached yet; a resume for a second job reads 88% because the whole resume prefix is reused.
+- The first call pays a cache-write premium, so savings grow with the number of generations in one sitting. The 4-call session is a realistic minimum (two jobs, resume plus cover letter each).
+- Output tokens aren't cached and make up most of the total cost here (about 72%), so the total-cost saving (20%) is much smaller than the input-cost saving. Quote input cost when describing caching.
+- No uncached latency baseline was run, so this measurement supports no speed claim.
+
+**Bullet wording this supports:** "…so later calls in a session read 70–88% of their ~11–12K-token prompts from cache, cutting input-token cost 48% across a 4-call session (73% after the first call), measured with real job descriptions."

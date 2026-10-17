@@ -410,6 +410,94 @@
       "type": "projects",
       "entries": [
         {
+          "id": "entry_resumebuilder",
+          "title": {
+            "id": "entry_resumebuilder_title",
+            "text": "Resume Builder \u2014 AI Resume & Cover Letter Tool (Next.js, FastAPI, Claude API)"
+          },
+          "organization": {
+            "id": "entry_resumebuilder_org",
+            "text": "Personal Project"
+          },
+          "location": {
+            "id": "entry_resumebuilder_location",
+            "text": "resi-the-builder.vercel.app"
+          },
+          "dates": {
+            "id": "entry_resumebuilder_dates",
+            "text": ""
+          },
+          "bullets": [
+            {
+              "id": "b_rb_1",
+              "text": "Built a full-stack app (Next.js 16, React 19, FastAPI, Python) that tailors a resume and cover letter to each job description from a master profile and exports formatted .docx and .pdf (headless LibreOffice) files.",
+              "tags": [
+                "fullstack",
+                "nextjs",
+                "fastapi",
+                "python"
+              ]
+            },
+            {
+              "id": "b_rb_2",
+              "text": "Integrated the Claude API (Anthropic SDK) for generation and chat-based revision scoped to the selected bullet, field, entry or section, with the model returning structured JSON updates keyed by stable IDs.",
+              "tags": [
+                "ai",
+                "llm",
+                "claude-api",
+                "backend"
+              ]
+            },
+            {
+              "id": "b_rb_3",
+              "text": "Designed prompt caching for the Claude API calls, cutting input-token cost 48% across a typical generation session (measured on real job descriptions).",
+              "tags": [
+                "ai",
+                "llm",
+                "prompt-caching",
+                "cost-optimization"
+              ]
+            },
+            {
+              "id": "b_rb_4",
+              "text": "Built with Claude Code using a manager session that coordinated separate frontend and backend agent sessions, with shared project rules (CLAUDE.md), per-side status logs and permission guardrails; later added an independent verifier agent that caught a gap letting live API tests run by accident.",
+              "tags": [
+                "ai-tools",
+                "claude-code",
+                "workflow"
+              ]
+            },
+            {
+              "id": "b_rb_5",
+              "text": "Added cost and safety guardrails: a 50-call daily API cap, a 20K-character input limit, and a 58-test mocked pytest suite where any real Claude API call fails the test; live tests run only with an explicit opt-in flag.",
+              "tags": [
+                "testing",
+                "pytest",
+                "backend",
+                "cost-optimization"
+              ]
+            },
+            {
+              "id": "b_rb_6",
+              "text": "Shipped a frontend-only public demo on Vercel (static fixtures and canned revisions, no backend, no API key in the client), selected by a build-time flag so one codebase serves both the real app and the demo.",
+              "tags": [
+                "frontend",
+                "nextjs",
+                "deployment"
+              ]
+            },
+            {
+              "id": "b_rb_7",
+              "text": "Added saved application packages (job description, resume and cover letter per job) and chat or inline editing of the master profile with a confirm-before-save step.",
+              "tags": [
+                "fullstack",
+                "frontend",
+                "backend"
+              ]
+            }
+          ]
+        },
+        {
           "id": "entry_weather",
           "title": {
             "id": "entry_weather_title",
@@ -824,6 +912,28 @@
             {
               "id": "item_backend_rest",
               "text": "REST APIs"
+            }
+          ]
+        },
+        {
+          "id": "skill_ai",
+          "label": "AI",
+          "items": [
+            {
+              "id": "item_ai_claude_api",
+              "text": "Claude API (Anthropic SDK)"
+            },
+            {
+              "id": "item_ai_claude_code",
+              "text": "Claude Code"
+            },
+            {
+              "id": "item_ai_prompt_caching",
+              "text": "Prompt Caching"
+            },
+            {
+              "id": "item_ai_llm_integration",
+              "text": "LLM Integration"
             }
           ]
         },

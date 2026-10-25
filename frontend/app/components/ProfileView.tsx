@@ -254,7 +254,11 @@ export function ProfileView({
           {!demoMode && (
             <ModeToggle
               mode={previewMode}
-              onChange={setPreviewMode}
+              onChange={(mode) => {
+                setPreviewMode(mode)
+                // Clear Revise-with-AI selections when switching to manual Edit mode.
+                if (mode === 'edit') setSelectedIds(new Set())
+              }}
             />
           )}
           <button

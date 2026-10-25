@@ -448,6 +448,16 @@ export default function Home() {
     })
   }
 
+  // Selections only mean something for Revise with AI; clear them when switching to
+  // manual Edit mode so the highlights don't linger.
+  function handlePreviewModeChange(mode: PreviewMode) {
+    setPreviewMode(mode)
+    if (mode === 'edit') {
+      setResumeSelectedIds(new Set())
+      setClSelectedIds(new Set())
+    }
+  }
+
   function handleRevert() {
     if (tab === 'resume') {
       if (resumeHistory.length === 0) return
@@ -937,7 +947,7 @@ export default function Home() {
                         <div className='flex items-center gap-2'>
                           <ModeToggle
                             mode={previewMode}
-                            onChange={setPreviewMode}
+                            onChange={handlePreviewModeChange}
                           />
                           <SaveButton
                             jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}
@@ -1041,7 +1051,7 @@ export default function Home() {
                         <div className='flex items-center gap-2'>
                           <ModeToggle
                             mode={previewMode}
-                            onChange={setPreviewMode}
+                            onChange={handlePreviewModeChange}
                           />
                           <SaveButton
                             jobDescription={{ raw: jobDescription, cleaned: cleanedJobDescription }}

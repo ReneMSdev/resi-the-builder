@@ -187,3 +187,16 @@ no AI involvement; an explicit "Select whole document" button; including the pro
 validated list keeps the AI from deleting outside the selection. The user chose
 nothing-selected-means-whole-document and resume + cover letter only. The master profile
 stays write-protected except through its own Apply step.
+
+## 2026-10-24: Certifications and education sorted newest first after generation
+
+**Decision:** After `/generate` returns a resume, certification and education entries are
+sorted newest first (`backend/app/services/resume_order.py`). "In Progress", "Present" and
+similar count as newest; undated entries go last; same-date entries keep the model's order.
+A date range sorts by its end date. Experience and projects keep the model's order.
+**Alternatives:** Let the user reorder through AI (a validated "new order" list in
+`/revise`); manual reorder controls; leaving the order to the model.
+**Why:** The user couldn't reorder certifications, and newest-first is the usual
+convention. A fixed rule is predictable and free, unlike an AI call per reorder. It
+overrides the model's relevance-based ordering for these two sections, which the user
+accepted. Resumes generated before this change keep their old order.

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.models import GenerateRequest, GenerateResponse
 from app.services.llm import generate_resume, generate_cover_letter
+from app.services.resume_order import sort_dated_sections
 from app.routes.llm_errors import anthropic_http_exception
 
 router = APIRouter()
@@ -31,6 +32,8 @@ def generate(req: GenerateRequest):
         else:
             result = generate_resume(profile, req.job_description, req.additional_context)
             cleaned_jd = result.pop("cleaned_job_description", None)
+            # Certifications and education come out newest first, whatever order the model chose.
+            result = sort_dated_sections(result)
             return {"resume": result, "cleaned_job_description": cleaned_jd}
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))

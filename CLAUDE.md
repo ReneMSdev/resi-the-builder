@@ -47,7 +47,7 @@ is on Vercel (`resi-the-builder.vercel.app`).
   clicking Submit/Apply is always a human action. This rule can't be overridden.
 - Don't run live tests (`RUN_LIVE=1 ... -m live`, real Anthropic tokens) unless the user asks.
 - `backend/app/data/profile.json` is the user's real master profile, tracked on purpose.
-  `backend/app/data/applications/` is gitignored user data. Don't commit it.
+  `backend/app/data/job_applications/` is gitignored user data. Don't commit it.
 - `NEXT_PUBLIC_DEMO_MODE=true` is set only in Vercel's project settings, never locally.
   Preview demo mode locally with the Live/Demo toggle instead.
 - `frontend/app/types.ts` mirrors `backend/app/models.py` by hand. Change both together.

@@ -1,14 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Application, CoverLetter, Profile, Resume } from './types'
+import { Pencil } from 'lucide-react'
+import { Application, ApplicationSummary, CoverLetter, Profile, Resume } from './types'
 import { ResumePreview } from './components/ResumePreview'
 import { CoverLetterPreview } from './components/CoverLetterPreview'
 import { RevisionChat } from './components/RevisionChat'
 import { DownloadButtons } from './components/DownloadButtons'
 import { SaveButton } from './components/SaveButton'
 import { SavedTab } from './components/SavedTab'
-import { ToastContainer } from './components/Toast'
+import { RenameModal } from './components/RenameModal'
+import { ToastContainer, showToast } from './components/Toast'
 import { HamburgerMenu } from './components/HamburgerMenu'
 import { ProfileView } from './components/ProfileView'
 import { DemoCapabilityBanner } from './components/DemoCapabilityBanner'
@@ -221,6 +223,7 @@ export default function Home() {
   const [loadedApplication, setLoadedApplication] = useState<{ id: string; name: string } | null>(
     null,
   )
+  const [renamingLoaded, setRenamingLoaded] = useState(false)
   // Deliberately separate from loadedApplication rather than reusing it for
   // this: loadedApplication also drives SaveButton's Save-vs-Update label
   // (isUpdate = applicationId !== null), and a freshly generated-but-never-
@@ -589,6 +592,20 @@ export default function Home() {
     setReviseState({ state: 'idle' })
   }
 
+  function startRenameLoaded() {
+    if (demoMode) {
+      showToast("Renaming isn't available in this demo")
+      return
+    }
+    setRenamingLoaded(true)
+  }
+
+  function handleLoadedRenamed(summary: ApplicationSummary) {
+    setLoadedApplication((prev) =>
+      prev && prev.id === summary.id ? { ...prev, name: summary.name } : prev,
+    )
+  }
+
   function handleSaved(application: Application) {
     setLoadedApplication({ id: application.id, name: application.name })
   }
@@ -727,6 +744,32 @@ export default function Home() {
           {demoMode && <DemoIntroBanner />}
           {isContentTab && (
             <div className='w-full border-b border-(--border) pb-6'>
+              {loadedApplication && (
+                <div className='mb-4 flex justify-center'>
+                  <button
+                    type='button'
+                    onClick={startRenameLoaded}
+                    title='Rename'
+                    className='group flex max-w-full items-center gap-2 text-lg font-semibold text-foreground hover:cursor-pointer'
+                  >
+                    <span className='truncate'>
+                      {loadedApplication.name}
+                    </span>
+                    <Pencil
+                      aria-hidden
+                      className='h-4 w-4 shrink-0 text-(--muted) opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'
+                    />
+                  </button>
+                  {renamingLoaded && (
+                    <RenameModal
+                      applicationId={loadedApplication.id}
+                      currentName={loadedApplication.name}
+                      onClose={() => setRenamingLoaded(false)}
+                      onRenamed={handleLoadedRenamed}
+                    />
+                  )}
+                </div>
+              )}
               <div className='flex gap-2 justify-center'>
                 <button
                   type='button'
@@ -758,7 +801,7 @@ export default function Home() {
               {demoMode && (
                 <DemoCapabilityBanner message='In the full app, save and manage multiple job-application packages, each bundling its job description, tailored resume, and cover letter for quick reuse.' />
               )}
-              <SavedTab onLoad={handleLoadApplication} />
+              <SavedTab onLoad={handleLoadApplication} onRenamed={handleLoadedRenamed} />
             </>
           )}
 

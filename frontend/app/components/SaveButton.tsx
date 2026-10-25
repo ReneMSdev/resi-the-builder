@@ -5,7 +5,7 @@ import { Application, CoverLetter, JobDescription, Resume } from '../types'
 import { SaveIcon } from './icons'
 import { showToast } from './Toast'
 import { useDemoMode } from '../lib/DemoModeContext'
-import { responseError } from '../lib/api'
+import { APPLICATION_NAME_MAX, responseError } from '../lib/api'
 
 type SaveState =
   | { state: 'idle' }
@@ -62,12 +62,13 @@ export function SaveButton({
 
     try {
       const res = await fetch(
-        isUpdate ? `${apiUrl}/applications/${applicationId}` : `${apiUrl}/applications`,
+        isUpdate ? `${apiUrl}/job-applications/${applicationId}` : `${apiUrl}/job-applications`,
         {
           method: isUpdate ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: name.trim() || null,
+            // Update keeps the current name; renaming has its own modal.
+            name: isUpdate ? initialName || null : name.trim() || null,
             job_description: jobDescription,
             resume,
             cover_letter: coverLetter,
@@ -116,18 +117,26 @@ export function SaveButton({
 
       {isOpen && (
         <div className='absolute left-0 top-full z-20 mt-2 flex w-64 flex-col gap-2 rounded border border-(--border) bg-(--surface) p-3 shadow-lg'>
-          <label className='flex flex-col gap-1'>
-            <span className='text-xs font-medium text-foreground'>Name (optional)</span>
-            <input
-              type='text'
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder='Untitled application'
-              autoFocus
-              disabled={saveState.state === 'saving'}
-              className='rounded border border-(--border) bg-background px-2 py-1 text-sm text-foreground'
-            />
-          </label>
+          {isUpdate ? (
+            <p className='text-sm text-foreground'>
+              Save your current changes to{' '}
+              <span className='font-medium'>{initialName || 'this application'}</span>?
+            </p>
+          ) : (
+            <label className='flex flex-col gap-1'>
+              <span className='text-xs font-medium text-foreground'>Name (optional)</span>
+              <input
+                type='text'
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder='Untitled application'
+                maxLength={APPLICATION_NAME_MAX}
+                autoFocus
+                disabled={saveState.state === 'saving'}
+                className='rounded border border-(--border) bg-background px-2 py-1 text-sm text-foreground'
+              />
+            </label>
+          )}
           <div className='flex justify-end gap-2'>
             <button
               type='button'

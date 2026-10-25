@@ -6,19 +6,25 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Response
 
-from app.models import Application, CreateApplicationRequest
+from app.models import (
+    APPLICATION_NAME_MAX,
+    Application,
+    ApplicationSummary,
+    CreateApplicationRequest,
+    RenameApplicationRequest,
+)
 from app.services.render import render_resume_docx, render_cover_letter_docx
 
 router = APIRouter()
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "applications"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "job_applications"
 
 
 def _dir_for(item_id: str) -> Path:
     return DATA_DIR / item_id
 
 
-def _default_name(cover_letter: dict | None, created_at: str) -> str:
+def _default_name_uncapped(cover_letter: dict | None, created_at: str) -> str:
     if cover_letter:
         meta = cover_letter.get("meta", {}) or {}
         company = ((meta.get("company") or {}).get("text") or "").strip()
@@ -34,7 +40,12 @@ def _default_name(cover_letter: dict | None, created_at: str) -> str:
     return f"Application — {created.strftime('%Y-%m-%d %H:%M')}"
 
 
-@router.post("/applications", response_model=Application)
+def _default_name(cover_letter: dict | None, created_at: str) -> str:
+    # Capped so an automatic name never exceeds the limit that Save/Update/Rename enforce.
+    return _default_name_uncapped(cover_letter, created_at)[:APPLICATION_NAME_MAX]
+
+
+@router.post("/job-applications", response_model=Application)
 def create_application(req: CreateApplicationRequest):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -88,7 +99,7 @@ def create_application(req: CreateApplicationRequest):
     }
 
 
-@router.get("/applications")
+@router.get("/job-applications")
 def list_applications():
     if not DATA_DIR.exists():
         return []
@@ -111,7 +122,7 @@ def list_applications():
     return summaries
 
 
-@router.get("/applications/{item_id}", response_model=Application)
+@router.get("/job-applications/{item_id}", response_model=Application)
 def get_application(item_id: str):
     folder = _dir_for(item_id)
     meta_path = folder / "meta.json"
@@ -150,7 +161,7 @@ def get_application(item_id: str):
     }
 
 
-@router.put("/applications/{item_id}", response_model=Application)
+@router.put("/job-applications/{item_id}", response_model=Application)
 def update_application(item_id: str, req: CreateApplicationRequest):
     folder = _dir_for(item_id)
     meta_path = folder / "meta.json"
@@ -227,7 +238,41 @@ def update_application(item_id: str, req: CreateApplicationRequest):
     }
 
 
-@router.delete("/applications/{item_id}", status_code=204)
+@router.patch("/job-applications/{item_id}", response_model=ApplicationSummary)
+def rename_application(item_id: str, req: RenameApplicationRequest):
+    """Rename only: rewrites meta.json's name and nothing else, so the stored content,
+    the .docx snapshots and updated_at are untouched."""
+    folder = _dir_for(item_id)
+    meta_path = folder / "meta.json"
+    if not meta_path.exists():
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    with open(meta_path, "r") as f:
+        meta = json.load(f)
+
+    name = req.name.strip() if req.name else ""
+    if not name:
+        cover_letter = None
+        cl_path = folder / "cover_letter.json"
+        if cl_path.exists():
+            with open(cl_path, "r") as f:
+                cover_letter = json.load(f)
+        name = _default_name(cover_letter, meta["created_at"])
+
+    meta["name"] = name
+    with open(meta_path, "w") as f:
+        json.dump(meta, f, indent=2)
+
+    return {
+        "id": meta["id"],
+        "name": name,
+        "created_at": meta["created_at"],
+        "has_resume": (folder / "resume.json").exists(),
+        "has_cover_letter": (folder / "cover_letter.json").exists(),
+    }
+
+
+@router.delete("/job-applications/{item_id}", status_code=204)
 def delete_application(item_id: str):
     folder = _dir_for(item_id)
     if not folder.exists():

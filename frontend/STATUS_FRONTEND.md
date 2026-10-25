@@ -117,7 +117,7 @@ most sections here went through several iterations that aren't narrated individu
 ## Save / Update / Saved tab
 
 - `SaveButton` posts the *whole current session* — job description + resume + cover
-  letter, whichever exist — as one `/applications` package, never per-document.
+  letter, whichever exist — as one `/job-applications` package, never per-document.
 - `loadedApplication` (`{id, name} | null`, in `page.tsx`) tracks which package (if
   any) is currently checked out; its presence decides `POST` (new) vs. `PUT`
   (update-in-place) in `SaveButton`, and drives that button's own label
@@ -160,7 +160,7 @@ most sections here went through several iterations that aren't narrated individu
   full resume/cover-letter body text (formatted prose, not raw JSON), both raw and
   cleaned job description, and a backend-reference section with the live API URL.
   No LLM call, no backend write — pure text templating from data already available
-  via `GET /applications/{id}`.
+  via `GET /job-applications/{id}`.
 
 ## Progress bar
 

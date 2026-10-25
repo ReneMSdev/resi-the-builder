@@ -26,7 +26,7 @@ flowchart LR
     UI["Next.js App<br/>(localhost:3000)"]
 
     subgraph Backend["FastAPI Backend (localhost:8000)"]
-        Routes["Routes<br/>/health /profile /generate<br/>/revise /render /applications"]
+        Routes["Routes<br/>/health /profile /generate<br/>/revise /render /job-applications"]
         LLM["llm.py<br/>(generate + revise prompts,<br/>prompt caching)"]
         RenderSvc["render.py<br/>(docx templating)"]
         Guard["usage_guard.py<br/>(daily call cap,<br/>input-length guard)"]
@@ -34,7 +34,7 @@ flowchart LR
 
     Anthropic[("Anthropic API<br/>claude-sonnet-4-6")]
     LibreOffice[("LibreOffice<br/>(headless, docx→pdf)")]
-    Disk[("Local disk<br/>app/data/profile.json<br/>app/data/applications/*")]
+    Disk[("Local disk<br/>app/data/profile.json<br/>app/data/job_applications/*")]
 
     UI -->|"fetch(NEXT_PUBLIC_API_URL)"| Routes
     Routes --> LLM
@@ -64,7 +64,7 @@ flowchart LR
   max-input-length guard, both supplementary to (not a replacement for) an Anthropic
   console spend limit.
 - **Storage**: no database. `app/data/profile.json` is the master profile (git-tracked).
-  `app/data/applications/{id}/` (gitignored) holds one folder per saved package: JD
+  `app/data/job_applications/{id}/` (gitignored) holds one folder per saved package: JD
   text (raw + cleaned), `resume.json`/`cover_letter.json`, and pre-rendered
   `resume.docx`/`cover_letter.docx` snapshots written at save time.
 
@@ -74,7 +74,7 @@ flowchart LR
   `fetch(process.env.NEXT_PUBLIC_API_URL)`.
 - `components/` — `ResumePreview`/`CoverLetterPreview`/`ProfilePreview` (selection +
   inline editing), `RevisionChat` (chat-scoped revise), `SavedTab`/`SaveButton`
-  (`/applications` CRUD), `DownloadButtons` (`/render`), `HamburgerMenu` → Profile/Saved.
+  (`/job-applications` CRUD), `DownloadButtons` (`/render`), `HamburgerMenu` → Profile/Saved.
 - `lib/` — pure functions operating on the `Resume`/`CoverLetter`/`Profile` JSON shapes
   (`resume.ts`, `profile.ts`), plus `autoApplyPrompt.ts` (assembles the Claude-in-Chrome
   automation prompt for the Auto Apply feature — pure text templating, no LLM call).

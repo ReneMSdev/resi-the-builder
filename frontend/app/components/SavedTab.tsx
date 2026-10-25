@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { Pencil } from 'lucide-react'
 import { Application, ApplicationSummary } from '../types'
 import { buildAutoApplyPrompt } from '../lib/autoApplyPrompt'
 import { demoApplication, demoApplications } from '../lib/demo'
 import { useDemoMode } from '../lib/DemoModeContext'
 import { showToast } from './Toast'
 import { DemoCapabilityBanner } from './DemoCapabilityBanner'
+import { RenameModal } from './RenameModal'
 import { responseError } from '../lib/api'
 
 type ListState =
@@ -37,7 +39,13 @@ function formatDate(iso: string) {
 const pillClass =
   'rounded-full border border-(--border) bg-(--accent-soft) px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent) hover:text-(--surface)'
 
-export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: Tab) => void }) {
+export function SavedTab({
+  onLoad,
+  onRenamed,
+}: {
+  onLoad: (application: Application, tab: Tab) => void
+  onRenamed?: (summary: ApplicationSummary) => void
+}) {
   const { demoMode } = useDemoMode()
   const [listState, setListState] = useState<ListState>(() => {
     if (demoMode) return { state: 'success', items: demoApplications }
@@ -47,6 +55,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   })
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [renamingItem, setRenamingItem] = useState<ApplicationSummary | null>(null)
 
   const [autoApplyId, setAutoApplyId] = useState<string | null>(null)
   const [autoApplyUrl, setAutoApplyUrl] = useState('')
@@ -55,8 +64,28 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
   const [copied, setCopied] = useState(false)
   const autoApplyPopoverRef = useRef<HTMLDivElement>(null)
 
+  function startRename(item: ApplicationSummary) {
+    if (demoMode) {
+      showToast("Renaming isn't available in this demo")
+      return
+    }
+    setRenamingItem(item)
+  }
+
+  function handleRenamed(summary: ApplicationSummary) {
+    onRenamed?.(summary)
+    setListState((prev) =>
+      prev.state === 'success'
+        ? {
+            state: 'success',
+            items: prev.items.map((it) => (it.id === summary.id ? { ...it, name: summary.name } : it)),
+          }
+        : prev,
+    )
+  }
+
   function runFetch(apiUrl: string) {
-    fetch(`${apiUrl}/applications`)
+    fetch(`${apiUrl}/job-applications`)
       .then(async (res) => {
         if (!res.ok) {
           throw await responseError(res)
@@ -117,7 +146,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
 
     setPendingId(id)
     try {
-      const res = await fetch(`${apiUrl}/applications/${id}`)
+      const res = await fetch(`${apiUrl}/job-applications/${id}`)
       if (!res.ok) {
         throw await responseError(res)
       }
@@ -140,7 +169,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     setConfirmingId(null)
     setPendingId(id)
     try {
-      const res = await fetch(`${apiUrl}/applications/${id}`, { method: 'DELETE' })
+      const res = await fetch(`${apiUrl}/job-applications/${id}`, { method: 'DELETE' })
       if (!res.ok) {
         throw await responseError(res)
       }
@@ -192,7 +221,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
 
     setAutoApplyState({ state: 'loading' })
     try {
-      const res = await fetch(`${apiUrl}/applications/${id}`)
+      const res = await fetch(`${apiUrl}/job-applications/${id}`)
       if (!res.ok) {
         throw await responseError(res)
       }
@@ -260,8 +289,22 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
               isPending ? 'pointer-events-none opacity-50' : ''
             }`}
           >
-            <div className='flex flex-col gap-1'>
-              <span className='text-sm font-medium text-foreground'>{item.name}</span>
+            <div className='flex min-w-0 flex-col gap-1'>
+              <button
+                type='button'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  startRename(item)
+                }}
+                title='Rename'
+                className='group flex w-fit max-w-full items-center gap-1.5 text-left text-sm font-medium text-foreground hover:cursor-pointer'
+              >
+                <span className='min-w-0 wrap-break-word'>{item.name}</span>
+                <Pencil
+                  aria-hidden
+                  className='h-3.5 w-3.5 shrink-0 text-(--muted) opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'
+                />
+              </button>
               <div className='flex flex-wrap items-center gap-1.5'>
                 <button
                   type='button'
@@ -450,6 +493,14 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
           </div>
         )
       })}
+      {renamingItem && (
+        <RenameModal
+          applicationId={renamingItem.id}
+          currentName={renamingItem.name}
+          onClose={() => setRenamingItem(null)}
+          onRenamed={handleRenamed}
+        />
+      )}
     </div>
   )
 }

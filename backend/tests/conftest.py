@@ -212,8 +212,8 @@ def minimal_cover_letter():
 
 @pytest.fixture
 def tmp_applications(tmp_path, monkeypatch):
-    """Points the /applications routes at a scratch directory instead of the real
-    app/data/applications, so tests never touch real saved data."""
+    """Points the /job-applications routes at a scratch directory instead of the real
+    app/data/job_applications, so tests never touch real saved data."""
     from app.routes import applications as applications_module
 
     monkeypatch.setattr(applications_module, "DATA_DIR", tmp_path)

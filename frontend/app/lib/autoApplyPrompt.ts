@@ -52,7 +52,7 @@ export function buildAutoApplyPrompt({
   apiUrl: string;
 }): string {
   const contactSource = application.resume?.meta ?? application.cover_letter?.meta;
-  const dataDir = `backend/app/data/applications/${application.id}`;
+  const dataDir = `backend/app/data/job_applications/${application.id}`;
   const lines: string[] = [];
 
   lines.push("# Job application fill-in task");
@@ -128,7 +128,7 @@ export function buildAutoApplyPrompt({
   lines.push("## Backend reference");
   lines.push(
     `The resume-builder backend is running at ${apiUrl}. If you need to re-fetch this ` +
-      `package directly: GET ${apiUrl}/applications/${application.id}`,
+      `package directly: GET ${apiUrl}/job-applications/${application.id}`,
   );
   lines.push("");
 

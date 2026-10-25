@@ -29,7 +29,7 @@ Read, in this order:
    Auto Apply run hands to a Claude-in-Chrome session (pure text templating, no LLM call).
 4. `frontend/STATUS_FRONTEND.md`'s "Auto Apply" section — how the feature fits the rest of the
    app (per-card button in `SavedTab`, own popover, pulls a saved application package fresh via
-   `GET /applications/{id}`, deliberately not routed through the main workspace state).
+   `GET /job-applications/{id}`, deliberately not routed through the main workspace state).
 
 ## Step 2 — Load browser tools
 

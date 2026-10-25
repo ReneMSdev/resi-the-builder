@@ -45,7 +45,7 @@ flowchart LR
     UI["Next.js App<br/>(localhost:3000)"]
 
     subgraph Backend["FastAPI Backend (localhost:8000)"]
-        Routes["Routes<br/>/health /profile /generate<br/>/revise /render /applications"]
+        Routes["Routes<br/>/health /profile /generate<br/>/revise /render /job-applications"]
         LLM["llm.py<br/>(generate + revise prompts,<br/>prompt caching)"]
         RenderSvc["render.py<br/>(docx templating)"]
         Guard["usage_guard.py<br/>(daily call cap,<br/>input-length guard)"]
@@ -53,7 +53,7 @@ flowchart LR
 
     Anthropic[("Anthropic API<br/>claude-sonnet-4-6")]
     LibreOffice[("LibreOffice<br/>(headless, docx→pdf)")]
-    Disk[("Local disk<br/>app/data/profile.json<br/>app/data/applications/*")]
+    Disk[("Local disk<br/>app/data/profile.json<br/>app/data/job_applications/*")]
 
     UI -->|"fetch(NEXT_PUBLIC_API_URL)"| Routes
     Routes --> LLM

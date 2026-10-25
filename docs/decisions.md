@@ -133,3 +133,17 @@ directly follows the user's own instruction to commit. Background workers never 
 manager.
 **Why:** A window exists so the user can control that side directly. The agent files already
 said this, and `/manager-startup` now matches them.
+
+## 2026-10-24: Rename saved applications through a name-only endpoint
+
+**Decision:** Renaming uses `PATCH /job-applications/{id}`, which rewrites only the name in
+`meta.json`; content, `.docx` snapshots and `updated_at` are untouched. It's reached from a
+Rename modal, opened by clicking the name (hover pencil) on Saved cards or the title in the
+JD/Resume/Cover Letter tabs. The Update popover no longer has a name field and always keeps
+the current name. Names are trimmed and limited to 120 characters on Save, Update and Rename,
+and automatic names are capped the same way. Demo mode shows a "not available" toast.
+**Alternatives:** Rename through the existing full `PUT`; inline editing instead of a modal;
+keeping the name field in the Update popover.
+**Why:** A full `PUT` re-saves and re-renders everything just to change a label, and Update
+with a blank name silently reset custom names to the default. The user chose the modal and
+the hover pencil.

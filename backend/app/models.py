@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, StringConstraints
+from typing import Annotated, Optional
 
 
 class IdText(BaseModel):
@@ -172,8 +172,20 @@ class ApplicationSummary(BaseModel):
     has_cover_letter: bool
 
 
+# Application names are trimmed before the length check, so surrounding spaces don't
+# count toward the limit. The frontend mirrors the limit (APPLICATION_NAME_MAX).
+APPLICATION_NAME_MAX = 120
+ApplicationName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=APPLICATION_NAME_MAX)]
+
+
+class RenameApplicationRequest(BaseModel):
+    """PATCH /job-applications/{id}: changes only the name. Blank falls back to the same
+    automatic name that saving uses."""
+    name: Optional[ApplicationName] = None
+
+
 class CreateApplicationRequest(BaseModel):
-    name: Optional[str] = None
+    name: Optional[ApplicationName] = None
     job_description: JobDescription
     resume: Optional[Resume] = None
     cover_letter: Optional[CoverLetter] = None

@@ -8,7 +8,7 @@ def _extract_text(path) -> str:
 
 def test_create_jd_and_resume_only(client, tmp_applications, minimal_resume):
     resp = client.post(
-        "/applications",
+        "/job-applications",
         json={
             "job_description": {"raw": "Raw posting text.", "cleaned": "Cleaned posting text."},
             "resume": minimal_resume,
@@ -34,7 +34,7 @@ def test_create_with_all_three_uses_cover_letter_for_default_name(
     client, tmp_applications, minimal_resume, minimal_cover_letter
 ):
     resp = client.post(
-        "/applications",
+        "/job-applications",
         json={
             "job_description": {"raw": "Raw posting text."},
             "resume": minimal_resume,
@@ -52,7 +52,7 @@ def test_create_with_all_three_uses_cover_letter_for_default_name(
 
 def test_create_with_explicit_name_overrides_default(client, tmp_applications, minimal_resume):
     resp = client.post(
-        "/applications",
+        "/job-applications",
         json={
             "job_description": {"raw": "Raw posting text."},
             "resume": minimal_resume,
@@ -66,7 +66,7 @@ def test_create_with_explicit_name_overrides_default(client, tmp_applications, m
 
 def test_create_jd_only_no_resume_no_cover_letter(client, tmp_applications):
     resp = client.post(
-        "/applications",
+        "/job-applications",
         json={"job_description": {"raw": "Raw posting text."}},
     )
 
@@ -85,7 +85,7 @@ def test_create_renders_real_openable_docx_snapshots(
     client, tmp_applications, minimal_resume, minimal_cover_letter
 ):
     resp = client.post(
-        "/applications",
+        "/job-applications",
         json={
             "job_description": {"raw": "Raw posting text."},
             "resume": minimal_resume,
@@ -107,11 +107,11 @@ def test_list_applications_returns_summaries_with_pill_flags(
     client, tmp_applications, minimal_resume, minimal_cover_letter
 ):
     a = client.post(
-        "/applications",
+        "/job-applications",
         json={"job_description": {"raw": "JD one."}, "resume": minimal_resume},
     ).json()
     b = client.post(
-        "/applications",
+        "/job-applications",
         json={
             "job_description": {"raw": "JD two."},
             "resume": minimal_resume,
@@ -119,7 +119,7 @@ def test_list_applications_returns_summaries_with_pill_flags(
         },
     ).json()
 
-    resp = client.get("/applications")
+    resp = client.get("/job-applications")
 
     assert resp.status_code == 200
     items = {item["id"]: item for item in resp.json()}
@@ -134,7 +134,7 @@ def test_list_applications_returns_summaries_with_pill_flags(
 
 def test_get_application_round_trip(client, tmp_applications, minimal_resume, minimal_cover_letter):
     created = client.post(
-        "/applications",
+        "/job-applications",
         json={
             "job_description": {"raw": "Raw posting.", "cleaned": "Cleaned posting."},
             "resume": minimal_resume,
@@ -142,14 +142,14 @@ def test_get_application_round_trip(client, tmp_applications, minimal_resume, mi
         },
     ).json()
 
-    resp = client.get(f"/applications/{created['id']}")
+    resp = client.get(f"/job-applications/{created['id']}")
 
     assert resp.status_code == 200
     assert resp.json() == created
 
 
 def test_get_missing_application_returns_404(client, tmp_applications):
-    resp = client.get("/applications/does-not-exist")
+    resp = client.get("/job-applications/does-not-exist")
 
     assert resp.status_code == 404
 
@@ -158,22 +158,22 @@ def test_delete_application_removes_folder_and_get_returns_404(
     client, tmp_applications, minimal_resume
 ):
     created = client.post(
-        "/applications",
+        "/job-applications",
         json={"job_description": {"raw": "Raw posting."}, "resume": minimal_resume},
     ).json()
     folder = tmp_applications / created["id"]
     assert folder.exists()
 
-    delete_resp = client.delete(f"/applications/{created['id']}")
+    delete_resp = client.delete(f"/job-applications/{created['id']}")
     assert delete_resp.status_code == 204
     assert not folder.exists()
 
-    get_resp = client.get(f"/applications/{created['id']}")
+    get_resp = client.get(f"/job-applications/{created['id']}")
     assert get_resp.status_code == 404
 
 
 def test_delete_missing_application_returns_404(client, tmp_applications):
-    resp = client.delete("/applications/does-not-exist")
+    resp = client.delete("/job-applications/does-not-exist")
 
     assert resp.status_code == 404
 
@@ -182,7 +182,7 @@ def test_update_application_replaces_content_and_reflects_in_get(
     client, tmp_applications, minimal_resume, minimal_cover_letter
 ):
     created = client.post(
-        "/applications",
+        "/job-applications",
         json={"job_description": {"raw": "Original JD."}, "resume": minimal_resume},
     ).json()
 
@@ -202,7 +202,7 @@ def test_update_application_replaces_content_and_reflects_in_get(
     ] + minimal_resume["sections"][1:]
 
     put_resp = client.put(
-        f"/applications/{created['id']}",
+        f"/job-applications/{created['id']}",
         json={
             "job_description": {"raw": "Updated JD.", "cleaned": "Updated cleaned JD."},
             "resume": updated_resume,
@@ -229,7 +229,7 @@ def test_update_application_replaces_content_and_reflects_in_get(
     assert "Rewrote this bullet entirely." in resume_docx_text
     assert "Built things." not in resume_docx_text
 
-    get_resp = client.get(f"/applications/{created['id']}")
+    get_resp = client.get(f"/job-applications/{created['id']}")
     assert get_resp.json() == body
 
 
@@ -237,7 +237,7 @@ def test_update_application_with_null_field_deletes_that_content(
     client, tmp_applications, minimal_resume, minimal_cover_letter
 ):
     created = client.post(
-        "/applications",
+        "/job-applications",
         json={
             "job_description": {"raw": "JD."},
             "resume": minimal_resume,
@@ -249,7 +249,7 @@ def test_update_application_with_null_field_deletes_that_content(
     assert (folder / "cover_letter.docx").exists()
 
     put_resp = client.put(
-        f"/applications/{created['id']}",
+        f"/job-applications/{created['id']}",
         json={"job_description": {"raw": "JD."}, "resume": minimal_resume},
     )
 
@@ -261,8 +261,107 @@ def test_update_application_with_null_field_deletes_that_content(
 
 def test_update_missing_application_returns_404(client, tmp_applications, minimal_resume):
     resp = client.put(
-        "/applications/does-not-exist",
+        "/job-applications/does-not-exist",
         json={"job_description": {"raw": "JD."}, "resume": minimal_resume},
     )
 
     assert resp.status_code == 404
+
+
+def test_rename_application_changes_only_the_name(
+    client, tmp_applications, minimal_resume, minimal_cover_letter
+):
+    created = client.post(
+        "/job-applications",
+        json={
+            "name": "Original name",
+            "job_description": {"raw": "A JD."},
+            "resume": minimal_resume,
+            "cover_letter": minimal_cover_letter,
+        },
+    ).json()
+    folder = tmp_applications / created["id"]
+    docx_mtime = (folder / "resume.docx").stat().st_mtime_ns
+    resume_json = (folder / "resume.json").read_text()
+
+    resp = client.patch(f"/job-applications/{created['id']}", json={"name": "  Acme — Staff Engineer  "})
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["name"] == "Acme — Staff Engineer"
+    assert body["has_resume"] is True and body["has_cover_letter"] is True
+
+    fetched = client.get(f"/job-applications/{created['id']}").json()
+    assert fetched["name"] == "Acme — Staff Engineer"
+    assert fetched["updated_at"] == created["updated_at"]
+    assert (folder / "resume.json").read_text() == resume_json
+    assert (folder / "resume.docx").stat().st_mtime_ns == docx_mtime
+
+
+def test_rename_blank_falls_back_to_default_name(
+    client, tmp_applications, minimal_resume, minimal_cover_letter
+):
+    created = client.post(
+        "/job-applications",
+        json={
+            "name": "Custom",
+            "job_description": {"raw": "A JD."},
+            "resume": minimal_resume,
+            "cover_letter": minimal_cover_letter,
+        },
+    ).json()
+
+    resp = client.patch(f"/job-applications/{created['id']}", json={"name": "   "})
+
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Acme Corp — Senior Engineer"
+
+
+def test_rename_missing_application_returns_404(client, tmp_applications):
+    resp = client.patch("/job-applications/does-not-exist", json={"name": "Anything"})
+    assert resp.status_code == 404
+
+
+def test_rename_rejects_names_over_120_characters(client, tmp_applications, minimal_resume):
+    created = client.post(
+        "/job-applications", json={"job_description": {"raw": "A JD."}, "resume": minimal_resume}
+    ).json()
+
+    resp = client.patch(f"/job-applications/{created['id']}", json={"name": "x" * 121})
+
+    assert resp.status_code == 422
+    assert client.get(f"/job-applications/{created['id']}").json()["name"] == created["name"]
+
+
+def test_create_rejects_names_over_120_characters(client, tmp_applications, minimal_resume):
+    resp = client.post(
+        "/job-applications",
+        json={"name": "x" * 121, "job_description": {"raw": "A JD."}, "resume": minimal_resume},
+    )
+    assert resp.status_code == 422
+
+
+def test_rename_trims_before_checking_length(client, tmp_applications, minimal_resume):
+    created = client.post(
+        "/job-applications", json={"job_description": {"raw": "A JD."}, "resume": minimal_resume}
+    ).json()
+
+    resp = client.patch(f"/job-applications/{created['id']}", json={"name": "   " + "x" * 120 + "   "})
+
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "x" * 120
+
+
+def test_default_name_is_capped_at_120_characters(
+    client, tmp_applications, minimal_resume, minimal_cover_letter
+):
+    long_cl = {**minimal_cover_letter, "meta": {**minimal_cover_letter["meta"]}}
+    long_cl["meta"]["company"] = {**long_cl["meta"]["company"], "text": "C" * 200}
+
+    resp = client.post(
+        "/job-applications",
+        json={"job_description": {"raw": "A JD."}, "resume": minimal_resume, "cover_letter": long_cl},
+    )
+
+    assert resp.status_code == 200
+    assert len(resp.json()["name"]) == 120

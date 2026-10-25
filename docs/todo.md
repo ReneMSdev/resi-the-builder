@@ -48,3 +48,5 @@
       (2026-10-16)
 - [x] Updated the public demo data to the corrected work history, with placeholder email and
       phone (2026-10-16). Live on Vercel only after it reaches the deployed branch.
+- [x] Clear errors for Anthropic API failures instead of "Failed to fetch" (044cbb2, 2026-10-24)
+- [x] Rename saved applications from the Saved list and the application screens (2026-10-24)

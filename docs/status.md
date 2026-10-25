@@ -10,13 +10,13 @@ trial against an actual job posting.
 
 **State:** FastAPI service with `GET /health`, `GET`/`PUT /profile`, `GET /usage`,
 `POST /generate`, `POST /revise`, `POST /render` (docx, plus pdf via LibreOffice), and
-`/applications` (create, list, get, update, delete). Generation uses prompt caching. A daily
+`/job-applications` (create, list, get, update, delete). Generation uses prompt caching. A daily
 call cap and an input-length guard are in place. Storage is JSON on disk. `live` tests are
 skipped unless `RUN_LIVE=1` is set.
 
 | Check | Result | Evidence |
 |---|---|---|
-| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 68 passed, 4 deselected, 14 warnings (1db93de + uncommitted Anthropic error-handling fix, 2026-10-24) |
+| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 75 passed, 4 deselected, 19 warnings (044cbb2 + uncommitted rename feature, 2026-10-24) |
 | `live` guard | working | `env -u RUN_LIVE .venv/bin/pytest -m live`: 3 skipped, and a repo-root run skips them too (06fbbac, 2026-10-04) |
 | `slow` test (PDF export) | **mixed** | `cd backend && .venv/bin/pytest -m slow`: 1 passed in both verifier-subagent runs (10–16s), but failed in both main-session runs (`test_render_resume_pdf` 500 after ~30s), 2026-10-04. LibreOffice is installed. Points to the main session's sandbox; unconfirmed until run in a normal terminal |
 | `live` tests | **unverified** | Not run: they spend real tokens |

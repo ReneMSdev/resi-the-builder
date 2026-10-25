@@ -1,7 +1,9 @@
+import anthropic
 from fastapi import APIRouter, HTTPException
 
 from app.models import ReviseRequest, ReviseResponse
 from app.services.llm import revise_resume, revise_cover_letter, revise_profile
+from app.routes.llm_errors import anthropic_http_exception
 
 router = APIRouter()
 
@@ -33,5 +35,7 @@ def revise(req: ReviseRequest):
         raise HTTPException(status_code=502, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=429, detail=str(e))
+    except anthropic.APIError as e:
+        raise anthropic_http_exception(e)
 
     return result

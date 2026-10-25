@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
+import anthropic
 from fastapi import APIRouter, HTTPException
 
 from app.models import GenerateRequest, GenerateResponse
 from app.services.llm import generate_resume, generate_cover_letter
+from app.routes.llm_errors import anthropic_http_exception
 
 router = APIRouter()
 
@@ -34,3 +36,5 @@ def generate(req: GenerateRequest):
         raise HTTPException(status_code=502, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=429, detail=str(e))
+    except anthropic.APIError as e:
+        raise anthropic_http_exception(e)

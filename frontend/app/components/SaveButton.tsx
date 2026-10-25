@@ -5,6 +5,7 @@ import { Application, CoverLetter, JobDescription, Resume } from '../types'
 import { SaveIcon } from './icons'
 import { showToast } from './Toast'
 import { useDemoMode } from '../lib/DemoModeContext'
+import { responseError } from '../lib/api'
 
 type SaveState =
   | { state: 'idle' }
@@ -75,8 +76,7 @@ export function SaveButton({
       )
 
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`${res.status}: ${body}`)
+        throw await responseError(res)
       }
 
       const application: Application = await res.json()

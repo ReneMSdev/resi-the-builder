@@ -507,12 +507,23 @@ def _generate_content_blocks(
     return [profile_block, tail_block, job_block]
 
 
+def _require_api_key() -> None:
+    # The SDK raises a plain TypeError at request time when no key is configured, which
+    # would escape the routes' error handling. Fail early with a clear message instead,
+    # before the daily-cap counter is incremented.
+    if not client.api_key:
+        raise ValueError(
+            "ANTHROPIC_API_KEY is not set. Add it to backend/.env and restart the backend."
+        )
+
+
 def generate_resume(profile: dict, job_description: str, additional_context: str | None = None) -> dict:
     if len(job_description) > MAX_INPUT_CHARS:
         raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
     if additional_context and len(additional_context) > MAX_INPUT_CHARS:
         raise ValueError(f"additional_context exceeds the {MAX_INPUT_CHARS}-character limit.")
 
+    _require_api_key()
     check_and_increment()
 
     response = client.messages.create(
@@ -539,6 +550,7 @@ def generate_cover_letter(profile: dict, job_description: str, additional_contex
     if additional_context and len(additional_context) > MAX_INPUT_CHARS:
         raise ValueError(f"additional_context exceeds the {MAX_INPUT_CHARS}-character limit.")
 
+    _require_api_key()
     check_and_increment()
 
     response = client.messages.create(
@@ -567,6 +579,7 @@ def revise_resume(
     if job_description and len(job_description) > MAX_INPUT_CHARS:
         raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
 
+    _require_api_key()
     check_and_increment()
 
     user_content = f"""CURRENT RESUME JSON:
@@ -600,6 +613,7 @@ def revise_cover_letter(
     if job_description and len(job_description) > MAX_INPUT_CHARS:
         raise ValueError(f"job_description exceeds the {MAX_INPUT_CHARS}-character limit.")
 
+    _require_api_key()
     check_and_increment()
 
     user_content = f"""CURRENT COVER LETTER JSON:
@@ -631,6 +645,7 @@ def revise_profile(profile: dict, selected_ids: list[str], instruction: str) -> 
     if len(instruction) > MAX_INPUT_CHARS:
         raise ValueError(f"instruction exceeds the {MAX_INPUT_CHARS}-character limit.")
 
+    _require_api_key()
     check_and_increment()
 
     user_content = f"""CURRENT PROFILE JSON:

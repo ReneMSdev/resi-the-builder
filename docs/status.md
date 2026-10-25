@@ -16,7 +16,7 @@ skipped unless `RUN_LIVE=1` is set.
 
 | Check | Result | Evidence |
 |---|---|---|
-| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 58 passed, 4 deselected, 14 warnings (06fbbac, 2026-10-04) |
+| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 68 passed, 4 deselected, 14 warnings (1db93de + uncommitted Anthropic error-handling fix, 2026-10-24) |
 | `live` guard | working | `env -u RUN_LIVE .venv/bin/pytest -m live`: 3 skipped, and a repo-root run skips them too (06fbbac, 2026-10-04) |
 | `slow` test (PDF export) | **mixed** | `cd backend && .venv/bin/pytest -m slow`: 1 passed in both verifier-subagent runs (10–16s), but failed in both main-session runs (`test_render_resume_pdf` 500 after ~30s), 2026-10-04. LibreOffice is installed. Points to the main session's sandbox; unconfirmed until run in a normal terminal |
 | `live` tests | **unverified** | Not run: they spend real tokens |

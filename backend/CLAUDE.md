@@ -14,6 +14,8 @@ Python 3.13, FastAPI, Pydantic v2, Anthropic SDK, python-docx. Run commands from
 ## Conventions
 
 - `app/routes/` stays thin: parse, call a service, map errors to HTTP status codes.
+  Anthropic SDK errors go through `app/routes/llm_errors.py`, so the browser gets a readable
+  502/429/504 instead of a CORS-less 500 ("Failed to fetch").
 - All Anthropic calls live in `app/services/llm.py`. Prompt caching depends on the shared
   system-prompt preamble staying identical across generate calls.
 - `app/services/render.py` does templating only, with no LLM calls. PDF export shells out

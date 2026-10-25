@@ -7,6 +7,7 @@ import { demoApplication, demoApplications } from '../lib/demo'
 import { useDemoMode } from '../lib/DemoModeContext'
 import { showToast } from './Toast'
 import { DemoCapabilityBanner } from './DemoCapabilityBanner'
+import { responseError } from '../lib/api'
 
 type ListState =
   | { state: 'loading' }
@@ -58,8 +59,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     fetch(`${apiUrl}/applications`)
       .then(async (res) => {
         if (!res.ok) {
-          const body = await res.text()
-          throw new Error(`${res.status}: ${body}`)
+          throw await responseError(res)
         }
         return res.json()
       })
@@ -119,8 +119,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     try {
       const res = await fetch(`${apiUrl}/applications/${id}`)
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`${res.status}: ${body}`)
+        throw await responseError(res)
       }
       const application: Application = await res.json()
       onLoad(application, tab)
@@ -143,8 +142,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     try {
       const res = await fetch(`${apiUrl}/applications/${id}`, { method: 'DELETE' })
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`${res.status}: ${body}`)
+        throw await responseError(res)
       }
       setListState((prev) =>
         prev.state === 'success'
@@ -196,8 +194,7 @@ export function SavedTab({ onLoad }: { onLoad: (application: Application, tab: T
     try {
       const res = await fetch(`${apiUrl}/applications/${id}`)
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`${res.status}: ${body}`)
+        throw await responseError(res)
       }
       const application: Application = await res.json()
       const prompt = buildAutoApplyPrompt({

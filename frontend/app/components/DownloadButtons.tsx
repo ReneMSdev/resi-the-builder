@@ -5,6 +5,7 @@ import { CoverLetter, Resume } from '../types'
 import { DownloadIcon } from './icons'
 import { useDemoMode } from '../lib/DemoModeContext'
 import { showToast } from './Toast'
+import { responseError } from '../lib/api'
 
 type DownloadState =
   | { state: 'idle' }
@@ -48,8 +49,7 @@ export function DownloadButtons({
       })
 
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`${res.status}: ${body}`)
+        throw await responseError(res)
       }
 
       const disposition = res.headers.get('Content-Disposition') ?? ''

@@ -46,6 +46,9 @@ def block_real_llm_calls(request, monkeypatch):
         )
 
     monkeypatch.setattr(llm_module.client.messages, "create", _guard)
+    # No real call can happen here, so a placeholder key keeps _require_api_key() from
+    # depending on whether backend/.env has one.
+    monkeypatch.setattr(llm_module.client, "api_key", "test-key")
 
 
 @pytest.fixture

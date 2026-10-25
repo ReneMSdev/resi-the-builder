@@ -21,6 +21,7 @@ import {
   addSummaryItem,
   removeSummaryItem,
 } from '../lib/profile'
+import { responseError } from '../lib/api'
 
 type PreviewMode = 'select' | 'edit'
 
@@ -189,8 +190,7 @@ export function ProfileView({
       })
 
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`${res.status}: ${body}`)
+        throw await responseError(res)
       }
 
       const data: { updates: { id: string; text: string }[] } = await res.json()
@@ -226,8 +226,7 @@ export function ProfileView({
       })
 
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`${res.status}: ${body}`)
+        throw await responseError(res)
       }
 
       setHistory([])

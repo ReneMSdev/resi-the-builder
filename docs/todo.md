@@ -2,14 +2,10 @@
 
 ## Now
 <!-- What's actively being worked on. Keep this to a few items. -->
-- [ ] Restructure the work-history data in `backend/app/data/profile.json` before live Auto
-      Apply testing with real applications. Draw new bullets from the portfolio case studies
-      (`~/Dev/portfolio-website`, e.g. `src/data/projects.ts` and
-      `docs/portfolio-handoff/*/entry.md`), and revise exaggerated claims so every bullet is
-      accurate and defensible.
-- [ ] First real Auto Apply trial against an actual job posting, once the work history is
-      restructured. Log findings in `docs/automation-notes.md`, including whether the
-      `/render` → disk → upload handoff works.
+- [ ] First real Auto Apply trial against an actual job posting (the work history is now
+      restructured). Log findings in `docs/automation-notes.md`, including whether the
+      `/render` → disk → upload handoff works. Regenerate any Auto Apply prompt copied before
+      2026-10-24, since those use the old `/applications` URL.
 
 ## Next
 <!-- Planned soon, in priority order. -->
@@ -19,6 +15,7 @@
 - [ ] Replace deprecated `datetime.utcnow()` (2 uses in `backend/app/routes/applications.py`)
       with `datetime.now(timezone.utc)` (the file imports the `datetime` class, so
       `datetime.UTC` won't work).
+- [ ] Add rename to the Saved applications line in `README.md` ("save, reload, and update").
 - [ ] Remove the stale "Known gaps" bullet in `frontend/STATUS_FRONTEND.md` about
       `docs/architecture.md` listing `public/demo/*` assets. That was already fixed in ce76b6d.
 
@@ -35,18 +32,19 @@
 
 ## Done recently
 <!-- /wrapup moves finished items here with a date. Keep about the last 10. -->
-- [x] Point `README.md`, `docs/architecture.md`, `automation-notes.md`, the startup commands, and
-      `frontend/STATUS_FRONTEND.md` at `docs/`. Removed root `STATUS.md`/`TODO.md` (2026-10-04)
-- [x] Project setup: state docs, root/backend/frontend `CLAUDE.md`, worker and auto-apply
-      agents, permission rules (61d6ec9, 1621a36, 2026-10-04)
-- [x] `RUN_LIVE=1` guard so live tests can't run by accident; verifier findings on roles and
-      doc facts fixed (85d5905, 2026-10-04)
 - [x] Moved `architecture.md` and `automation-notes.md` into `docs/` and switched all `docs/`
       names to lowercase, here and in the global config (6553aa6, 06fbbac, 2026-10-04)
-- [x] Added a verifier-checked Resume Builder entry (first in Projects) and an AI skills group;
-      measured prompt caching on real calls: 48% lower input-token cost over a 4-call session
-      (2026-10-16)
-- [x] Updated the public demo data to the corrected work history, with placeholder email and
-      phone (2026-10-16). Live on Vercel only after it reaches the deployed branch.
+- [x] Work-history review: per-project claim checks and measurements logged in
+      `docs/work-history-review.md` (3b3c02e, 5832b24, 2026-10-07)
+- [x] Restructured `profile.json`: unsupported claims removed, accurate bullets from the code
+      and case studies, Founder & Software Engineer title, LinkLeaf Projects entry, frontend-only
+      freelance role (ed03b40, be7b22f, 1db93de, 2026-10-07 to 2026-10-17)
+- [x] Resume Builder entry (first in Projects) and AI skills group; prompt caching measured on
+      real calls: 48% lower input-token cost over a 4-call session (d064cc7, 2026-10-16)
+- [x] Summary pool rebuilt around 7 target roles, "5+ years" corrected (be7b22f, 2026-10-17)
+- [x] Public demo data updated to the corrected work history, with placeholder email and phone
+      (01de781 and later syncs, 2026-10-16 to 2026-10-24). Live on Vercel once deployed;
+      deployment not checked by Claude
 - [x] Clear errors for Anthropic API failures instead of "Failed to fetch" (044cbb2, 2026-10-24)
-- [x] Rename saved applications from the Saved list and the application screens (2026-10-24)
+- [x] Rename saved applications from the Saved list and the application screens; data folder
+      and API renamed to `job_applications` / `/job-applications` (570c669, 2026-10-24)

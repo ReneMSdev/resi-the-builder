@@ -147,3 +147,27 @@ keeping the name field in the Update popover.
 **Why:** A full `PUT` re-saves and re-renders everything just to change a label, and Update
 with a blank name silently reset custom names to the default. The user chose the modal and
 the hover pencil.
+
+## 2026-10-24: Saved data and API renamed to "job applications"
+
+**Decision:** The saved-data folder is `backend/app/data/job_applications/` and the API prefix
+is `/job-applications` (hyphenated, the usual URL style). The route module keeps the name
+`routes/applications.py`, and the demo fixture keeps `applications.json`.
+**Alternatives:** Keep `applications`; use `/job_applications` to match the folder exactly.
+**Why:** The user asked for the clearer name. Hyphens are conventional in URLs; underscores
+stay in the folder name.
+
+## 2026-10-07 to 2026-10-17: Work-history content rules (recorded 2026-10-24)
+
+**Decision:** Every resume claim must be backed by code, a recorded measurement, or the
+user's own confirmation; unmeasured percentages were removed. Salo Labs LLC is titled
+"Founder & Software Engineer", but summaries don't use "Founder" wording. LinkLeaf appears
+twice: role-level bullets under Salo Labs and technical detail as a Projects entry. GCP stays
+in skills even though LinkLeaf was never deployed (it was planned, and the user has used GCP
+elsewhere). The public demo uses the real profile with placeholder email and phone.
+**Alternatives:** Keep the original claims; a single LinkLeaf entry; real contact details in
+the demo.
+**Why:** The resume goes to real employers through Auto Apply, so claims must hold up in an
+interview. The split lets generation feature LinkLeaf as a project without repeating
+bullets. Placeholders keep the user's phone and email off the public demo. Details are in
+`docs/work-history-review.md`.

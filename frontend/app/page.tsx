@@ -32,6 +32,9 @@ import {
   addLink,
   removeLink,
   editLink,
+  applyRemovals,
+  applyCoverLetterRemovals,
+  collectIds,
 } from './lib/resume'
 import { responseError } from './lib/api'
 
@@ -497,6 +500,34 @@ export default function Home() {
   const handleEditLink = (linkId: string, label: string, url: string) =>
     updateResume((resume) => editLink(resume, linkId, label, url))
 
+  // Drops selected ids that no longer exist in the document (after a removal).
+  function keepExistingIds(prev: Set<string>, doc: Resume | CoverLetter) {
+    const ids = collectIds(doc)
+    const next = new Set([...prev].filter((id) => ids.has(id)))
+    return next.size === prev.size ? prev : next
+  }
+
+  // Removals only change the document being edited; saving stores this application's
+  // copy, and the master profile is never written from here.
+  function removeFromResume(ids: string[]) {
+    if (resumeState.state !== 'success') return
+    const next = applyRemovals(resumeState.resume, ids)
+    pushResumeHistory(resumeState.resume)
+    setResumeState({ state: 'success', resume: next })
+    setResumeSelectedIds((prev) => keepExistingIds(prev, next))
+  }
+
+  const handleRemoveSection = (sectionId: string) => removeFromResume([sectionId])
+  const handleRemoveEntry = (entryId: string) => removeFromResume([entryId])
+
+  function handleRemoveParagraph(paragraphId: string) {
+    if (coverLetterState.state !== 'success') return
+    const next = applyCoverLetterRemovals(coverLetterState.coverLetter, [paragraphId])
+    pushClHistory(coverLetterState.coverLetter)
+    setCoverLetterState({ state: 'success', coverLetter: next })
+    setClSelectedIds((prev) => keepExistingIds(prev, next))
+  }
+
   async function handleRevise(instruction: string) {
     if (tab === 'resume' ? resumeState.state !== 'success' : coverLetterState.state !== 'success') {
       return
@@ -541,23 +572,30 @@ export default function Home() {
         throw await responseError(res)
       }
 
-      const data: { updates: { id: string; text: string }[] } = await res.json()
+      const data: { updates: { id: string; text: string }[]; removals?: string[] } =
+        await res.json()
+      const removals = data.removals ?? []
+      const changed = data.updates.length > 0 || removals.length > 0
 
       if (tab === 'resume' && resumeState.state === 'success') {
-        if (data.updates.length > 0) {
+        if (changed) {
+          const next = applyRemovals(
+            applyRevisionUpdates(resumeState.resume, data.updates),
+            removals,
+          )
           pushResumeHistory(resumeState.resume)
-          setResumeState({
-            state: 'success',
-            resume: applyRevisionUpdates(resumeState.resume, data.updates),
-          })
+          setResumeState({ state: 'success', resume: next })
+          setResumeSelectedIds((prev) => keepExistingIds(prev, next))
         }
       } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
-        if (data.updates.length > 0) {
+        if (changed) {
+          const next = applyCoverLetterRemovals(
+            applyCoverLetterUpdates(coverLetterState.coverLetter, data.updates),
+            removals,
+          )
           pushClHistory(coverLetterState.coverLetter)
-          setCoverLetterState({
-            state: 'success',
-            coverLetter: applyCoverLetterUpdates(coverLetterState.coverLetter, data.updates),
-          })
+          setCoverLetterState({ state: 'success', coverLetter: next })
+          setClSelectedIds((prev) => keepExistingIds(prev, next))
         }
       }
       setReviseState({ state: 'idle' })
@@ -891,9 +929,9 @@ export default function Home() {
                       <div className='flex items-center justify-between gap-2'>
                         <p className='text-xs text-(--muted)'>
                           {previewMode === 'edit'
-                            ? 'Edit mode: click any field to edit it.'
+                            ? 'Edit mode: click any field to edit it, or ✕ to remove a section or entry.'
                             : selectedIds.size === 0
-                              ? 'Click a bullet, entry, or section to select it.'
+                              ? 'Click a bullet, entry, or section to select it, or revise the whole resume below.'
                               : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
                         </p>
                         <div className='flex items-center gap-2'>
@@ -924,6 +962,8 @@ export default function Home() {
                         onEditField={handleEditField}
                         onAddBullet={handleAddBullet}
                         onRemoveBullet={handleRemoveBullet}
+                        onRemoveSection={handleRemoveSection}
+                        onRemoveEntry={handleRemoveEntry}
                         onAddSkillItem={handleAddSkillItem}
                         onRemoveSkillItem={handleRemoveSkillItem}
                         onEditSkillItem={handleEditSkillItem}
@@ -940,6 +980,7 @@ export default function Home() {
                       <RevisionChat
                         selectionSummary={describeSelection(resumeState.resume, selectedIds)}
                         selectionCount={selectedIds.size}
+                        wholeDocumentLabel='whole resume'
                         loading={reviseState.state === 'loading'}
                         errorMessage={reviseState.state === 'error' ? reviseState.message : null}
                         onSubmit={handleRevise}
@@ -992,9 +1033,9 @@ export default function Home() {
                       <div className='flex items-center justify-between gap-2'>
                         <p className='text-xs text-(--muted)'>
                           {previewMode === 'edit'
-                            ? 'Edit mode: click any field to edit it.'
+                            ? 'Edit mode: click any field to edit it, or ✕ to remove a paragraph.'
                             : selectedIds.size === 0
-                              ? 'Click a paragraph to select it.'
+                              ? 'Click a paragraph to select it, or revise the whole letter below.'
                               : `Selected: ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}`}
                         </p>
                         <div className='flex items-center gap-2'>
@@ -1021,6 +1062,7 @@ export default function Home() {
                         onToggle={toggleSelected}
                         mode={previewMode}
                         onEditField={handleEditField}
+                        onRemoveParagraph={handleRemoveParagraph}
                       />
                       <details className='text-xs text-(--muted)'>
                         <summary className='cursor-pointer select-none'>Raw JSON</summary>
@@ -1034,6 +1076,7 @@ export default function Home() {
                           selectedIds,
                         )}
                         selectionCount={selectedIds.size}
+                        wholeDocumentLabel='whole cover letter'
                         loading={reviseState.state === 'loading'}
                         errorMessage={reviseState.state === 'error' ? reviseState.message : null}
                         onSubmit={handleRevise}

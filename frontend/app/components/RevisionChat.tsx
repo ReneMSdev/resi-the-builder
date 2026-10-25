@@ -27,6 +27,7 @@ export function RevisionChat({
   demoMode = false,
   demoPillAvailable = false,
   onApplyDemoRefinement,
+  wholeDocumentLabel,
 }: {
   selectionSummary: string;
   selectionCount: number;
@@ -38,13 +39,17 @@ export function RevisionChat({
   demoMode?: boolean;
   demoPillAvailable?: boolean;
   onApplyDemoRefinement?: () => void;
+  // When set (e.g. "whole resume"), an empty selection revises the whole document
+  // instead of disabling the chat. Left unset for the profile editor.
+  wholeDocumentLabel?: string;
 }) {
   const [instruction, setInstruction] = useState("");
   const nothingSelected = selectionCount === 0;
   // In demo mode the free-text input/button are inert — the suggested-edit
   // pill below is the only trigger — kept visible rather than removed so the
   // layout still matches the real app.
-  const disabled = demoMode || nothingSelected;
+  const wholeDocument = nothingSelected && wholeDocumentLabel !== undefined;
+  const disabled = demoMode || (nothingSelected && !wholeDocument);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -78,9 +83,11 @@ export function RevisionChat({
         </div>
       )}
       <p className="mb-1 text-xs text-[var(--muted)]">
-        {nothingSelected
-          ? "Select an item above to start editing."
-          : `Editing: ${selectionSummary}`}
+        {wholeDocument && !demoMode
+          ? `Editing: ${wholeDocumentLabel} (select items above to narrow it)`
+          : nothingSelected
+            ? "Select an item above to start editing."
+            : `Editing: ${selectionSummary}`}
       </p>
       {demoMode && !nothingSelected && (
         <div className="mb-2">
@@ -113,7 +120,9 @@ export function RevisionChat({
               ? "Free text is disabled in this demo — use the suggested edit above."
               : disabled
                 ? "Nothing selected"
-                : "e.g. make this more concise, emphasize leadership..."
+                : wholeDocument
+                  ? "e.g. tailor this for a frontend role and drop anything irrelevant..."
+                  : "e.g. make this more concise, emphasize leadership..."
           }
           className="max-h-[50vh] flex-1 resize-none overflow-y-auto rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--foreground)] disabled:opacity-50"
         />

@@ -171,3 +171,19 @@ the demo.
 interview. The split lets generation feature LinkLeaf as a project without repeating
 bullets. Placeholders keep the user's phone and email off the public demo. Details are in
 `docs/work-history-review.md`.
+
+## 2026-10-24: Removing sections and revising the whole document
+
+**Decision:** Edit mode gets remove controls for resume sections and entries and for
+cover-letter paragraphs. `/revise` can return a separate `removals` list of IDs next to
+`updates`; the backend keeps only removable IDs inside the selection (sections, entries,
+bullets, skill groups and items, links, cover-letter paragraphs; never the summary, meta
+or entry fields) and drops text updates for anything removed. An empty selection means the
+whole resume or cover letter. The profile editor is excluded: it still needs a selection
+and never returns removals. Removals only change the document being edited.
+**Alternatives:** Blank text updates as deletions; a remove button on the selection with
+no AI involvement; an explicit "Select whole document" button; including the profile.
+**Why:** Sections and entries have no single text field to blank, and an explicit,
+validated list keeps the AI from deleting outside the selection. The user chose
+nothing-selected-means-whole-document and resume + cover letter only. The master profile
+stays write-protected except through its own Apply step.

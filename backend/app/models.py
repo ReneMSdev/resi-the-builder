@@ -137,6 +137,9 @@ class ReviseUpdate(BaseModel):
 
 class ReviseResponse(BaseModel):
     updates: list[ReviseUpdate]
+    # IDs to delete from the document sent with the request (resume/cover letter only;
+    # always empty for profile revisions). Filtered server-side to the selection's scope.
+    removals: list[str] = []
 
 
 class RenderRequest(BaseModel):

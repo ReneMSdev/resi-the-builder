@@ -22,6 +22,8 @@ export function ResumePreview({
   onEditField,
   onAddBullet,
   onRemoveBullet,
+  onRemoveSection,
+  onRemoveEntry,
   onAddSkillItem,
   onRemoveSkillItem,
   onEditSkillItem,
@@ -36,6 +38,8 @@ export function ResumePreview({
   onEditField: (id: string, text: string) => void;
   onAddBullet: (entryId: string, text: string) => void;
   onRemoveBullet: (bulletId: string) => void;
+  onRemoveSection: (sectionId: string) => void;
+  onRemoveEntry: (entryId: string) => void;
   onAddSkillItem: (groupId: string, text: string) => void;
   onRemoveSkillItem: (groupId: string, itemId: string) => void;
   onEditSkillItem: (groupId: string, itemId: string, text: string) => void;
@@ -148,11 +152,26 @@ export function ResumePreview({
             mode={mode}
             hoveredId={hoveredId}
             onHover={setHoveredId}
-            className="mt-2 p-1"
+            className="group/section mt-2 p-1"
           >
-            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">
-              {section.title}
-            </h3>
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <h3 className="text-sm font-bold uppercase tracking-wide">
+                {section.title}
+              </h3>
+              {mode === "edit" && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveSection(section.id);
+                  }}
+                  aria-label={`Remove ${section.title} section`}
+                  className="shrink-0 text-xs text-(--danger) opacity-0 transition-opacity hover:cursor-pointer group-hover/section:opacity-100 focus-visible:opacity-100"
+                >
+                  ✕ Remove section
+                </button>
+              )}
+            </div>
 
             {section.type === "skills" &&
               section.groups?.map((group) => (
@@ -200,8 +219,10 @@ export function ResumePreview({
                   mode={mode}
                   hoveredId={hoveredId}
                   onHover={setHoveredId}
-                  className="p-1 text-sm"
+                  className="group/entry p-1 text-sm"
                 >
+                  <div className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 flex-1">
                   <JoinedFields
                     mode={mode}
                     onSave={onEditField}
@@ -231,6 +252,22 @@ export function ResumePreview({
                       },
                     ]}
                   />
+                  </span>
+                  {mode === "edit" && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveEntry(entry.id);
+                      }}
+                      aria-label="Remove entry"
+                      title="Remove entry"
+                      className="shrink-0 text-xs text-(--danger) opacity-0 transition-opacity hover:cursor-pointer group-hover/entry:opacity-100 focus-visible:opacity-100"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  </div>
                 </Selectable>
               ))}
 
@@ -246,7 +283,7 @@ export function ResumePreview({
                   mode={mode}
                   hoveredId={hoveredId}
                   onHover={setHoveredId}
-                  className="mt-1 p-1"
+                  className="group/entry mt-1 p-1"
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="text-sm font-bold">
@@ -276,6 +313,20 @@ export function ResumePreview({
                           mode={mode}
                         />
                       </p>
+                    )}
+                    {mode === "edit" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveEntry(entry.id);
+                        }}
+                        aria-label="Remove entry"
+                        title="Remove entry"
+                        className="shrink-0 text-xs text-(--danger) opacity-0 transition-opacity hover:cursor-pointer group-hover/entry:opacity-100 focus-visible:opacity-100"
+                      >
+                        ✕
+                      </button>
                     )}
                   </div>
                   {(entry.location.text || mode === "edit") && (

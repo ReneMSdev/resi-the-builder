@@ -154,7 +154,7 @@ Each selected ID refers to something in the resume JSON:
 - An entry ID (e.g. "entry_salolabs") — this means "revise this whole job/project block."
   In this case, apply the instruction across ALL bullets currently under that entry, and
   return one update per bullet using each bullet's OWN id (not the entry's id) — the
-  entry id itself is not a directly revisable field and must not appear in your output.
+  entry id itself is not a directly revisable field and must not appear in "updates".
   If the entry has no bullets (e.g. an education or certification entry with an empty
   bullets list), there is nothing to revise — skip that id entirely, do not invent bullets.
   (Note: this bullet-expansion behavior is unchanged — an entry ID never implicitly pulls
@@ -172,7 +172,7 @@ Each selected ID refers to something in the resume JSON:
   under this section." Apply the instruction across ALL bullets in ALL entries belonging
   to that section, and return one update per bullet using each bullet's OWN id (not the
   section's id, and not any entry id either) — the section id itself must not appear in
-  your output. If the section has no bullet-bearing entries (e.g. an "education"/
+  "updates". If the section has no bullet-bearing entries (e.g. an "education"/
   "certifications" section whose entries have no bullets), there is nothing to revise —
   skip that id entirely, do not invent bullets.
 - A "skills"-type section ID (e.g. "sec_skills", identified by that section's "type"
@@ -180,12 +180,28 @@ Each selected ID refers to something in the resume JSON:
   the instruction across ALL groups belonging to that section, and return one update per
   group using each group's OWN id, following the same comma-separated-string convention
   described above for a single skill group ID. The section id itself must not appear in
-  your output.
+  "updates".
+
+An EMPTY selected IDs list means the user selected nothing and wants the instruction
+applied to the WHOLE resume: the summary, every bullet in every entry, and every skill
+group are in scope (entry fields like titles and dates, meta fields and links are only
+changed if the instruction explicitly asks for it). For a whole-resume request, return
+updates only for items whose text actually changes, not for every item.
+
+Removals: return a "removals" list ONLY when the instruction asks to remove, delete, drop
+or cut content (explicitly, or by asking to remove whatever doesn't meet some criterion,
+e.g. "drop anything not relevant to this job"). Never remove anything as a side effect of
+rewording, shortening or tightening. Removable IDs are section IDs, entry IDs, bullet IDs,
+skill group IDs, skill item IDs and link IDs, and only within the selection (or anywhere
+for a whole-resume request). Prefer the largest matching unit: remove an entry rather than
+each of its bullets, and a section rather than each of its entries. Never remove the
+summary, meta fields or entry fields. An ID listed in "removals" must not also appear in
+"updates".
 
 Rules:
-- Only touch the text of the exact IDs implied above. Never modify, rewrite, or return
-  anything for IDs that were not selected (directly or via an entry/group/section
-  expansion).
+- Only touch the text of the exact IDs implied above (or, for an empty selection, the
+  whole-resume scope described above). Never modify, rewrite, or return anything for IDs
+  outside that scope.
 - Do not fabricate new facts, numbers, skills, or experience not already present in the
   resume JSON's existing content. Only rephrase/restructure what's already there — the
   one exception is a skill group/section instruction that explicitly names a new skill to
@@ -207,12 +223,15 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
   "updates": [
     { "id": "b_salo_2", "text": "revised text here" },
     { "id": "skill_devops", "text": "Docker, GitHub Actions CI/CD, Terraform, Linux, Kubernetes" }
-  ]
+  ],
+  "removals": []
 }
 
 If none of the selected IDs have anything to revise (e.g. every selected id was an
-education/certifications section or entry with no bullets), return {"updates": []} —
-always include the "updates" key, even when it's an empty list.
+education/certifications section or entry with no bullets), return
+{"updates": [], "removals": []}. Always include both keys, even when a list is empty.
+For a removal request, e.g. the user selected "sec_projects" and asked to remove it,
+return {"updates": [], "removals": ["sec_projects"]}.
 """
 
 
@@ -409,9 +428,22 @@ Each selected ID refers to something in the cover letter JSON:
   field's "text" per the instruction (e.g. "address it to Jane Smith by name" on
   "cl_salutation" should produce something like "Dear Jane Smith,").
 
+An EMPTY selected IDs list means the user selected nothing and wants the instruction
+applied to the WHOLE letter: every paragraph, the salutation and the sign-off are in scope
+(meta fields are only changed if the instruction explicitly asks for it). For a
+whole-letter request, return updates only for items whose text actually changes.
+
+Removals: return a "removals" list ONLY when the instruction asks to remove, delete, drop
+or cut content (explicitly, or by asking to remove whatever doesn't meet some criterion).
+Never remove anything as a side effect of rewording or shortening. Only paragraph IDs are
+removable, and only within the selection (or any paragraph for a whole-letter request).
+Never remove the salutation, sign-off or meta fields. An ID listed in "removals" must not
+also appear in "updates".
+
 Rules:
-- Only touch the text of the exact IDs selected. Never modify, rewrite, or return
-  anything for IDs that were not selected.
+- Only touch the text of the exact IDs selected (or, for an empty selection, the
+  whole-letter scope described above). Never modify, rewrite, or return anything outside
+  that scope.
 - Do not fabricate new facts, numbers, skills, or experience not already present in the
   cover letter JSON's existing content. Only rephrase/restructure what's already there.
 - Preserve the existing tone/voice of the letter unless the instruction says otherwise.
@@ -427,11 +459,12 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
 {
   "updates": [
     { "id": "p2", "text": "revised text here" }
-  ]
+  ],
+  "removals": []
 }
 
-If none of the selected IDs have anything to revise, return {"updates": []} — always
-include the "updates" key, even when it's an empty list.
+If none of the selected IDs have anything to revise, return {"updates": [], "removals": []}.
+Always include both keys, even when a list is empty.
 """
 
 
@@ -466,6 +499,7 @@ def _normalize_revise_result(result: dict) -> dict:
     sometimes returns bare {} instead of {"updates": []} when there's nothing to
     revise — don't rely on prompt wording alone to guarantee this shape."""
     result.setdefault("updates", [])
+    result.setdefault("removals", [])
     return result
 
 
@@ -596,7 +630,7 @@ INSTRUCTION:
 
     response = client.messages.create(
         model=MODEL,
-        max_tokens=2048,
+        max_tokens=8192,
         system=REVISE_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )
@@ -630,7 +664,7 @@ INSTRUCTION:
 
     response = client.messages.create(
         model=MODEL,
-        max_tokens=2048,
+        max_tokens=8192,
         system=COVER_LETTER_REVISE_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )

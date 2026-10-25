@@ -19,6 +19,11 @@
 - [ ] Remove the stale "Known gaps" bullet in `frontend/STATUS_FRONTEND.md` about
       `docs/architecture.md` listing `public/demo/*` assets. That was already fixed in ce76b6d.
 
+- [ ] A manual edit or remove made while an AI revise is still running is overwritten when
+      the response arrives (`handleRevise` applies its result to the document captured at
+      request time). Pre-existing, but removals make it easier to hit. Apply the response to
+      the latest document instead, or disable editing while a revise runs.
+
 ## Later
 <!-- Ideas and deferred scope. It's fine for items to sit here. -->
 - [ ] Manual-edit protection during chat revision (a "manually edited" provenance flag).

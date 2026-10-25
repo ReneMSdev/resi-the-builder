@@ -11,12 +11,14 @@ export function CoverLetterPreview({
   onToggle,
   mode,
   onEditField,
+  onRemoveParagraph,
 }: {
   coverLetter: CoverLetter;
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
   mode: "select" | "edit";
   onEditField: (id: string, text: string) => void;
+  onRemoveParagraph: (paragraphId: string) => void;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const { meta } = coverLetter;
@@ -82,16 +84,42 @@ export function CoverLetterPreview({
           mode={mode}
           hoveredId={hoveredId}
           onHover={setHoveredId}
-          className="p-1"
+          className="group/paragraph p-1"
         >
-          <EditableText
-            id={paragraph.id}
-            text={paragraph.text}
-            onSave={onEditField}
-            mode={mode}
-            multiline
-            as="p"
-          />
+          {mode === "edit" ? (
+            <div className="flex items-start justify-between gap-1">
+              <EditableText
+                id={paragraph.id}
+                text={paragraph.text}
+                onSave={onEditField}
+                mode={mode}
+                multiline
+                as="p"
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveParagraph(paragraph.id);
+                }}
+                aria-label="Remove paragraph"
+                title="Remove paragraph"
+                className="shrink-0 text-(--danger) opacity-0 transition-opacity hover:cursor-pointer group-hover/paragraph:opacity-100 focus-visible:opacity-100"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <EditableText
+              id={paragraph.id}
+              text={paragraph.text}
+              onSave={onEditField}
+              mode={mode}
+              multiline
+              as="p"
+            />
+          )}
         </Selectable>
       ))}
 

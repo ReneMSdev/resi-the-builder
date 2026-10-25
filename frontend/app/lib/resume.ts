@@ -269,3 +269,48 @@ export function editLink(
     },
   };
 }
+
+// Removes sections, entries, bullets, skill groups, skill items and links by id, along
+// with anything nested inside them. Used by the Edit-mode remove buttons and by the
+// removals /revise returns. Only the document passed in changes (never the profile).
+export function applyRemovals(resume: Resume, ids: string[]): Resume {
+  if (ids.length === 0) return resume;
+  const gone = new Set(ids);
+  return {
+    ...resume,
+    meta: { ...resume.meta, links: resume.meta.links?.filter((l) => !gone.has(l.id)) },
+    sections: resume.sections
+      .filter((section) => !gone.has(section.id))
+      .map((section) => ({
+        ...section,
+        entries: section.entries
+          ?.filter((entry) => !gone.has(entry.id))
+          .map((entry) =>
+            !entry.bullets
+              ? entry
+              : { ...entry, bullets: entry.bullets.filter((b) => !gone.has(b.id)) }
+          ),
+        groups: section.groups
+          ?.filter((group) => !gone.has(group.id))
+          .map((group) => ({ ...group, items: group.items.filter((i) => !gone.has(i.id)) })),
+      })),
+  };
+}
+
+export function applyCoverLetterRemovals(coverLetter: CoverLetter, ids: string[]): CoverLetter {
+  if (ids.length === 0) return coverLetter;
+  const gone = new Set(ids);
+  return { ...coverLetter, paragraphs: coverLetter.paragraphs.filter((p) => !gone.has(p.id)) };
+}
+
+// Every `id` anywhere in a document, for dropping selections that no longer exist.
+export function collectIds(value: unknown, into: Set<string> = new Set()): Set<string> {
+  if (Array.isArray(value)) {
+    value.forEach((v) => collectIds(v, into));
+  } else if (value && typeof value === "object") {
+    const id = (value as { id?: unknown }).id;
+    if (typeof id === "string") into.add(id);
+    Object.values(value).forEach((v) => collectIds(v, into));
+  }
+  return into;
+}

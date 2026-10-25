@@ -18,7 +18,7 @@ def test_revise_profile_success(client, mock_llm, minimal_profile):
     )
 
     assert resp.status_code == 200
-    assert resp.json() == {"updates": [{"id": "summary_backend_1", "text": "Revised summary."}]}
+    assert resp.json() == {"updates": [{"id": "summary_backend_1", "text": "Revised summary."}], "removals": []}
 
 
 def test_revise_profile_relays_role_type_group_expansion_from_model(

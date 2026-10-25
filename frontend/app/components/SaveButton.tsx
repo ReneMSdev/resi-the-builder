@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Application, CoverLetter, JobDescription, Resume } from '../types'
 import { SaveIcon } from './icons'
 import { showToast } from './Toast'
@@ -51,7 +51,7 @@ export function SaveButton({
     // Defense in depth: the trigger button already short-circuits before the
     // popover ever opens in demo mode, so this should be unreachable — kept
     // as a second guard against ever hitting the network in demo mode.
-    if (demoMode) return
+    if (demoMode || saveState.state === 'saving') return
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiUrl) {
       setSaveState({ state: 'error', message: 'NEXT_PUBLIC_API_URL is not set.' })
@@ -91,6 +91,48 @@ export function SaveButton({
     }
   }
 
+
+  function openPrompt() {
+    if (demoMode) {
+      showToast("Saving isn't available in this demo")
+      return
+    }
+    setName(initialName)
+    setSaveState({ state: 'prompting' })
+  }
+
+  // The shortcut handler is registered once; these refs give it the latest render's
+  // state and functions (including the latest resume/cover letter props).
+  const latest = useRef({ handleConfirm, openPrompt, saveState, isUpdate })
+  useLayoutEffect(() => {
+    latest.current = { handleConfirm, openPrompt, saveState, isUpdate }
+  })
+
+  // Cmd+S (Ctrl+S elsewhere): update an already-saved application right away, or open
+  // the Save popover for a new one (pressing it again there confirms).
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 's') return
+      e.preventDefault()
+      const { saveState, isUpdate, openPrompt } = latest.current
+      if (saveState.state === 'saving') return
+      if (saveState.state === 'prompting') {
+        latest.current.handleConfirm()
+        return
+      }
+      if (!isUpdate) {
+        openPrompt()
+        return
+      }
+      // Inline edits commit when their field loses focus; blur first so text still
+      // being typed is included, then save once React has re-rendered with it.
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+      setTimeout(() => latest.current.handleConfirm(), 0)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <div
       ref={containerRef}
@@ -98,14 +140,8 @@ export function SaveButton({
     >
       <button
         type='button'
-        onClick={() => {
-          if (demoMode) {
-            showToast("Saving isn't available in this demo")
-            return
-          }
-          setName(initialName)
-          setSaveState({ state: 'prompting' })
-        }}
+        onClick={openPrompt}
+        title={isUpdate ? 'Update (⌘S / Ctrl+S)' : 'Save (⌘S / Ctrl+S)'}
         className='flex items-center gap-1.5 rounded border border-(--border) px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:cursor-pointer hover:bg-(--accent-soft)'
       >
         <SaveIcon className='h-4 w-4 shrink-0' />
@@ -129,6 +165,15 @@ export function SaveButton({
                 type='text'
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleConfirm()
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault()
+                    setSaveState({ state: 'idle' })
+                  }
+                }}
                 placeholder='Untitled application'
                 maxLength={APPLICATION_NAME_MAX}
                 autoFocus

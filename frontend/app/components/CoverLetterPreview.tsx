@@ -1,5 +1,7 @@
 "use client";
 
+import { CopyButton } from "./CopyButton";
+import { coverLetterToText } from "../lib/plainText";
 import { useState } from "react";
 import { CoverLetter } from "../types";
 import { Selectable } from "./Selectable";
@@ -28,12 +30,13 @@ export function CoverLetterPreview({
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded bg-(--surface) p-8 text-sm text-foreground shadow-sm ${
+      className={`relative flex flex-col gap-3 rounded bg-(--surface) p-8 text-sm text-foreground shadow-sm ${
         mode === "edit"
           ? "border-2 border-(--edit)"
           : "border border-(--border)"
       }`}
     >
+      <CopyButton getText={() => coverLetterToText(coverLetter)} label="Copy cover letter as text" />
       {(meta.date.text || mode === "edit") && (
         <p className="text-right text-xs text-(--muted)">
           <EditableText

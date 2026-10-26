@@ -1,5 +1,7 @@
 "use client";
 
+import { CopyButton } from "./CopyButton";
+import { resumeToText } from "../lib/plainText";
 import { useState } from "react";
 import { Resume } from "../types";
 import { Selectable } from "./Selectable";
@@ -58,12 +60,13 @@ export function ResumePreview({
 
   return (
     <div
-      className={`flex flex-col gap-1 rounded border bg-(--surface) p-8 text-foreground shadow-sm ${
+      className={`relative flex flex-col gap-1 rounded border bg-(--surface) p-8 text-foreground shadow-sm ${
         mode === "edit"
           ? "border-2 border-(--edit)"
           : "border border-(--border)"
       }`}
     >
+      <CopyButton getText={() => resumeToText(resume)} label="Copy resume as text" />
       <h2 className="text-center text-xl font-bold">
         <EditableText
           id={resume.meta.name.id}

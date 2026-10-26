@@ -368,3 +368,35 @@ export function applyCoverLetterAdditions(
   }
   return { ...coverLetter, paragraphs };
 }
+
+export type SkillsReplace = { section: string; groups: { label: string; items: string[] }[] };
+
+// Swaps in a skills section's complete new group list from /revise "skills_replace".
+// Existing group ids are reused when a label matches (and item ids when text matches
+// within that group); everything else gets a new id.
+export function applySkillsReplace(resume: Resume, replace: SkillsReplace | null): Resume {
+  if (!replace) return resume;
+  const norm = (t: string) => t.trim().toLowerCase();
+  return {
+    ...resume,
+    sections: resume.sections.map((section) => {
+      if (section.id !== replace.section || section.type !== "skills") return section;
+      const unused = [...(section.groups ?? [])];
+      const groups = replace.groups.map(({ label, items }) => {
+        const matchIndex = unused.findIndex((g) => norm(g.label) === norm(label));
+        const previous = matchIndex === -1 ? null : unused.splice(matchIndex, 1)[0];
+        const previousItems = [...(previous?.items ?? [])];
+        return {
+          id: previous?.id ?? `skill_${crypto.randomUUID()}`,
+          label,
+          items: items.map((text) => {
+            const i = previousItems.findIndex((it) => norm(it.text) === norm(text));
+            const reused = i === -1 ? null : previousItems.splice(i, 1)[0];
+            return { id: reused?.id ?? crypto.randomUUID(), text };
+          }),
+        };
+      });
+      return { ...section, groups };
+    }),
+  };
+}

@@ -142,6 +142,18 @@ class ReviseAddition(BaseModel):
     text: str
 
 
+class SkillsReplaceGroup(BaseModel):
+    label: str
+    items: list[str]
+
+
+class SkillsReplace(BaseModel):
+    """The complete new list of skill groups for one skills section, in order. Used for
+    structural changes (adding, removing, renaming, reordering groups)."""
+    section: str
+    groups: list[SkillsReplaceGroup]
+
+
 class ReviseResponse(BaseModel):
     updates: list[ReviseUpdate]
     # IDs to delete from the document sent with the request (resume/cover letter only;
@@ -149,6 +161,8 @@ class ReviseResponse(BaseModel):
     removals: list[str] = []
     # New bullets/paragraphs to insert (resume/cover letter only), filtered the same way.
     additions: list[ReviseAddition] = []
+    # Whole-section skills restructure (resume only), validated before it's returned.
+    skills_replace: Optional[SkillsReplace] = None
 
 
 class RenderRequest(BaseModel):

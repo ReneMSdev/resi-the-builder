@@ -9,6 +9,7 @@ from app.services.revise_scope import (
     cover_letter_update_scope,
     filter_additions_and_unknown_updates,
     filter_removals,
+    filter_skills_replace,
     resume_addition_anchors,
     resume_removable_ids,
     resume_update_scope,
@@ -40,6 +41,7 @@ def revise(req: ReviseRequest):
             result = revise_profile(req.profile.model_dump(), req.selected_ids, req.instruction)
             result["removals"] = []  # profile revisions never remove or add anything
             result["additions"] = []
+            result["skills_replace"] = None
         elif req.cover_letter is not None:
             cover_letter = req.cover_letter.model_dump()
             result = revise_cover_letter(
@@ -57,6 +59,7 @@ def revise(req: ReviseRequest):
                 cover_letter_update_scope(cover_letter, req.selected_ids),
                 lambda ids: cover_letter_removable_ids(cover_letter, ids),
             )
+            result["skills_replace"] = None
         else:
             resume = req.resume.model_dump()
             result = revise_resume(resume, req.selected_ids, req.instruction, req.job_description)
@@ -72,6 +75,7 @@ def revise(req: ReviseRequest):
                 resume_update_scope(resume, req.selected_ids),
                 lambda ids: resume_removable_ids(resume, ids),
             )
+            result = filter_skills_replace(result, resume, req.selected_ids)
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except RuntimeError as e:

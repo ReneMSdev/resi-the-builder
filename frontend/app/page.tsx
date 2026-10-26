@@ -37,7 +37,9 @@ import {
   applyCoverLetterRemovals,
   applyAdditions,
   applyCoverLetterAdditions,
+  applySkillsReplace,
   type RevisionAddition,
+  type SkillsReplace,
   collectIds,
 } from './lib/resume'
 import { responseError } from './lib/api'
@@ -590,15 +592,27 @@ export default function Home() {
         updates: { id: string; text: string }[]
         removals?: string[]
         additions?: RevisionAddition[]
+        skills_replace?: SkillsReplace | null
       } = await res.json()
       const removals = data.removals ?? []
       const additions = data.additions ?? []
-      const changed = data.updates.length > 0 || removals.length > 0 || additions.length > 0
+      const skillsReplace = data.skills_replace ?? null
+      const changed =
+        data.updates.length > 0 ||
+        removals.length > 0 ||
+        additions.length > 0 ||
+        skillsReplace !== null
 
       if (tab === 'resume' && resumeState.state === 'success') {
         if (changed) {
           const next = applyRemovals(
-            applyAdditions(applyRevisionUpdates(resumeState.resume, data.updates), additions),
+            applyAdditions(
+              applySkillsReplace(
+                applyRevisionUpdates(resumeState.resume, data.updates),
+                skillsReplace,
+              ),
+              additions,
+            ),
             removals,
           )
           pushResumeHistory(resumeState.resume)

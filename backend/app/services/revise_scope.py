@@ -165,3 +165,89 @@ def resume_update_scope(resume: dict, selected_ids: list[str]) -> set[str]:
 
 def cover_letter_update_scope(cover_letter: dict, selected_ids: list[str]) -> set[str]:
     return all_ids(cover_letter) if not selected_ids else set(selected_ids)
+
+
+MAX_SKILL_GROUPS = 15
+MAX_ITEMS_PER_GROUP = 40
+
+
+def _clean_groups(groups) -> list[dict] | None:
+    """Normalized [{label, items}] or None if the shape is invalid."""
+    if not isinstance(groups, list) or not 1 <= len(groups) <= MAX_SKILL_GROUPS:
+        return None
+    cleaned = []
+    for g in groups:
+        if not isinstance(g, dict):
+            return None
+        label, items = g.get("label"), g.get("items")
+        if not isinstance(label, str) or not label.strip() or not isinstance(items, list):
+            return None
+        if not all(isinstance(i, str) for i in items):
+            return None
+        items = [i.strip() for i in items if i.strip()]
+        if not items or len(items) > MAX_ITEMS_PER_GROUP:
+            return None
+        cleaned.append({"label": label.strip(), "items": items})
+    return cleaned
+
+
+def _group_signature(label: str, items: list[str]) -> tuple:
+    return (label.strip().casefold(), tuple(i.strip().casefold() for i in items))
+
+
+def filter_skills_replace(result: dict, resume: dict, selected_ids: list[str]) -> dict:
+    """Validate a whole-section skills replace. Allowed for a skills section that is in
+    scope: the whole document, the section itself, or one of its groups. When only some
+    groups are selected, every unselected group must come back unchanged. Updates and
+    removals aimed at that section's groups are dropped either way, so a structural edit is
+    never half-applied or applied positionally. An invalid replace leaves the section as
+    it was."""
+    replace = result.get("skills_replace")
+    result["skills_replace"] = None
+    if not isinstance(replace, dict):
+        return result
+
+    skills_sections = [s for s in resume.get("sections", []) or [] if s.get("type") == "skills"]
+    section = next((s for s in skills_sections if s.get("id") == replace.get("section")), None)
+    if section is None and len(skills_sections) == 1:
+        # A wrong section id with only one skills section: that's the one meant.
+        section = skills_sections[0]
+    if section is None:
+        # Unresolvable: still drop per-group edits in every skills section, so a structural
+        # request can't fall back to positional updates.
+        ids = {i for s in skills_sections for g in s.get("groups", []) or []
+               for i in [g["id"], *(it["id"] for it in g.get("items", []) or [])]}
+        result["updates"] = [u for u in result.get("updates", []) if u.get("id") not in ids]
+        result["removals"] = [r for r in result.get("removals", []) if r not in ids]
+        return result
+
+    group_ids = {g["id"] for g in section.get("groups", []) or []}
+    item_ids = {i["id"] for g in section.get("groups", []) or [] for i in g.get("items", []) or []}
+    section_ids = group_ids | item_ids | {section["id"]}
+    # Whatever happens to the replace, don't also apply per-group edits to this section.
+    result["updates"] = [u for u in result.get("updates", []) if u.get("id") not in section_ids]
+    result["removals"] = [r for r in result.get("removals", []) if r not in group_ids | item_ids]
+
+    selected = set(selected_ids)
+    whole = not selected_ids
+    selected_groups = group_ids & selected
+    if not (whole or section["id"] in selected or selected_groups):
+        return result
+
+    groups = _clean_groups(replace.get("groups"))
+    if groups is None:
+        return result
+
+    if not (whole or section["id"] in selected):
+        # Only some groups selected: the others must survive unchanged.
+        new_sigs = [_group_signature(g["label"], g["items"]) for g in groups]
+        for g in section.get("groups", []) or []:
+            if g["id"] in selected_groups:
+                continue
+            sig = _group_signature(g["label"], [i["text"] for i in g.get("items", []) or []])
+            if sig not in new_sigs:
+                return result
+            new_sigs.remove(sig)
+
+    result["skills_replace"] = {"section": section["id"], "groups": groups}
+    return result

@@ -180,7 +180,8 @@ Each selected ID refers to something in the resume JSON:
   the instruction across ALL groups belonging to that section, and return one update per
   group using each group's OWN id, following the same comma-separated-string convention
   described above for a single skill group ID. The section id itself must not appear in
-  "updates".
+  "updates". (To change the categories themselves, see "Skills restructuring"
+  below.)
 
 An EMPTY selected IDs list means the user selected nothing and wants the instruction
 applied to the WHOLE resume: the summary, every bullet in every entry, and every skill
@@ -210,7 +211,22 @@ instruction.
 
 Never move text into a different item's ID to make room for new content, and never invent
 IDs: every update must be a revision of that same item, using an ID that exists in the
-resume JSON. If something can only be done by adding an item, use "additions".
+resume JSON. If something can only be done by adding an item, use "additions" (for new
+skill categories, use "skills_replace" instead).
+
+Skills restructuring: when the instruction changes the skill CATEGORIES themselves (adding,
+removing, renaming, merging, splitting or reordering groups, or replacing the Skills
+section with a new set of categories), return "skills_replace":
+{"section": <skills section id>, "groups": [{"label": "...", "items": ["...", "..."]}]}
+with the COMPLETE new list of groups in the order they should appear; each group's
+"items" is a list of separate skill strings (not one comma-joined string). Use 1 to 15
+groups with 1 to 40 items each and a non-empty label; anything outside that is rejected. Allowed when
+the skills section or any of its groups is in scope (or for a whole-resume request); when
+only some groups were selected, include every unselected group exactly as it is now. When
+you return "skills_replace", do not also return updates or removals for that section's
+groups. For changes that only touch the items inside existing groups, use the normal
+per-group updates instead and leave "skills_replace" as null. Never write one category's
+items into a different group's ID.
 
 Rules:
 - Only touch the text of the exact IDs implied above (or, for an empty selection, the
@@ -240,16 +256,19 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
     { "id": "skill_devops", "text": "Docker, GitHub Actions CI/CD, Terraform, Linux, Kubernetes" }
   ],
   "removals": [],
-  "additions": []
+  "additions": [],
+  "skills_replace": null
 }
 
 If none of the selected IDs have anything to revise (e.g. every selected id was an
 education/certifications section or entry with no bullets), return
-{"updates": [], "removals": [], "additions": []}. Always include all three keys, even when
-a list is empty. For a removal request, e.g. the user selected "sec_projects" and asked to
-remove it, return {"updates": [], "removals": ["sec_projects"], "additions": []}. To split
+{"updates": [], "removals": [], "additions": [], "skills_replace": null}. Always include
+all four keys (use null for "skills_replace" when not restructuring skills). For a removal request, e.g. the user selected "sec_projects" and asked to
+remove it, return {"updates": [], "removals": ["sec_projects"], "additions": [],
+"skills_replace": null}. To split
 bullet "b_x" in two, return {"updates": [{"id": "b_x", "text": "first part"}],
-"removals": [], "additions": [{"after": "b_x", "text": "second part"}]}.
+"removals": [], "additions": [{"after": "b_x", "text": "second part"}],
+"skills_replace": null}.
 """
 
 
@@ -538,6 +557,7 @@ def _normalize_revise_result(result: dict) -> dict:
     result.setdefault("updates", [])
     result.setdefault("removals", [])
     result.setdefault("additions", [])
+    result.setdefault("skills_replace", None)
     return result
 
 

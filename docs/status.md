@@ -21,7 +21,7 @@ names are trimmed and limited to 120 characters. `live` tests are skipped unless
 
 | Check | Result | Evidence |
 |---|---|---|
-| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 103 passed, 4 deselected, 19 warnings (107f7bb + uncommitted revise additions and JSON-parsing fix, 2026-10-25) |
+| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 118 passed, 4 deselected, 19 warnings (58ca2b4 + uncommitted skills restructuring, 2026-10-25) |
 | `live` guard | working | `env -u RUN_LIVE .venv/bin/pytest -m live`: 3 skipped, 86 deselected (9126568 + uncommitted section removal / whole-document revise, 2026-10-24) |
 | `slow` test (PDF export) | **mixed** | Not run this session. On 2026-10-04 it passed in both verifier-subagent runs and failed (500 after ~30s) in both main-session runs; LibreOffice is installed. Likely the main session's sandbox; unconfirmed until run in a normal terminal |
 | Prompt caching (real API) | working | 2 real `generate` calls with the current API key and profile (3fb114a, 2026-10-25, $0.15): the resume call wrote 11,961 tokens to the cache; the cover letter for the same job read 10,511 of its 12,975 prompt tokens (81%) from it. Input cost 24% lower than uncached over the 2 calls (48% over 4 calls on 2026-10-16) |

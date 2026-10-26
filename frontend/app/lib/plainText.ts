@@ -59,7 +59,17 @@ export function coverLetterToText(coverLetter: CoverLetter): string {
     subject ? `Re: ${subject}` : "",
     coverLetter.salutation.text.trim(),
     ...coverLetter.paragraphs.map((p) => p.text.trim()),
-    joinNonEmpty([coverLetter.sign_off.text, meta.name.text], "\n"),
+    joinNonEmpty(
+      [
+        coverLetter.sign_off.text,
+        meta.name.text,
+        joinNonEmpty(
+          [meta.email.text, meta.phone.text, ...(meta.links ?? []).map((l) => l.url)],
+          " | "
+        ),
+      ],
+      "\n"
+    ),
   ]
     .filter(Boolean)
     .join("\n\n");

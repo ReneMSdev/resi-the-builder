@@ -155,6 +155,12 @@ export function CoverLetterPreview({
               { id: meta.phone.id, text: meta.phone.text, placeholder: "Phone" },
             ]}
           />
+          {(meta.links ?? []).map((link) => (
+            <span key={link.id}>
+              {" | "}
+              {link.url}
+            </span>
+          ))}
         </p>
       </div>
     </div>

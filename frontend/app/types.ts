@@ -54,6 +54,8 @@ export type CoverLetterMeta = {
   date: IdText;
   company: IdText;
   role: IdText;
+  // LinkedIn and website, copied from the profile when the letter is generated.
+  links?: { id: string; label: string; url: string }[];
 };
 
 export type Paragraph = { id: string; text: string };

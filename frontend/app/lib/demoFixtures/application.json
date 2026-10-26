@@ -309,7 +309,19 @@
       "role": {
         "id": "cl_meta_role",
         "text": "Software Engineer"
-      }
+      },
+      "links": [
+        {
+          "id": "link_linkedin",
+          "label": "LinkedIn",
+          "url": "linkedin.com/in/renemsdev"
+        },
+        {
+          "id": "link_website",
+          "label": "Website",
+          "url": "renemsdev.com"
+        }
+      ]
     },
     "salutation": {
       "id": "cl_salutation",

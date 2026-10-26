@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from app.models import GenerateRequest, GenerateResponse
 from app.services.llm import generate_resume, generate_cover_letter
 from app.services.resume_order import sort_dated_sections
+from app.services.cover_letter_links import add_cover_letter_links
 from app.routes.llm_errors import anthropic_http_exception
 
 router = APIRouter()
@@ -28,6 +29,8 @@ def generate(req: GenerateRequest):
         if req.type == "cover_letter":
             result = generate_cover_letter(profile, req.job_description, req.additional_context)
             cleaned_jd = result.pop("cleaned_job_description", None)
+            # LinkedIn and website from the profile, added in code rather than by the model.
+            result = add_cover_letter_links(result, profile)
             return {"cover_letter": result, "cleaned_job_description": cleaned_jd}
         else:
             result = generate_resume(profile, req.job_description, req.additional_context)

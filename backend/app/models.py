@@ -94,6 +94,9 @@ class CoverLetterMeta(BaseModel):
     date: IdText
     company: IdText
     role: IdText
+    # Copied from the profile at generation time (LinkedIn and website), not written by
+    # the model. Older saved letters may not have them.
+    links: list[Link] = []
 
 
 class Paragraph(BaseModel):

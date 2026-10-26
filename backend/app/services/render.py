@@ -178,6 +178,7 @@ def render_cover_letter_docx(cover_letter: dict, output_path: str) -> str:
     name_run.bold = True
 
     contact_parts = [p for p in (_t(meta.get("email")), _t(meta.get("phone"))) if p]
+    contact_parts += [l.get("url", "") for l in meta.get("links", []) or [] if l.get("url")]
     if contact_parts:
         contact_p = doc.add_paragraph()
         contact_run = contact_p.add_run(" | ".join(contact_parts))

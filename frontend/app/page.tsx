@@ -10,6 +10,7 @@ import { DownloadButtons } from './components/DownloadButtons'
 import { SaveButton } from './components/SaveButton'
 import { SavedTab } from './components/SavedTab'
 import { RenameModal } from './components/RenameModal'
+import { CopyButton } from './components/CopyButton'
 import { ToastContainer, showToast } from './components/Toast'
 import { HamburgerMenu } from './components/HamburgerMenu'
 import { ProfileView } from './components/ProfileView'
@@ -903,7 +904,11 @@ export default function Home() {
                   {resumeReady || coverLetterReady ? (
                     <div className='flex flex-col gap-2'>
                       <p className='text-xs text-(--muted)'>Job description (reference)</p>
-                      <div className='whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 text-sm text-foreground'>
+                      <div className='relative whitespace-pre-wrap rounded border border-(--border) bg-(--surface) p-3 pr-10 text-sm text-foreground'>
+                        <CopyButton
+                          getText={() => cleanedJobDescription || jobDescription}
+                          label='Copy job description'
+                        />
                         {cleanedJobDescription || jobDescription}
                       </div>
                     </div>

@@ -314,3 +314,57 @@ export function collectIds(value: unknown, into: Set<string> = new Set()): Set<s
   }
   return into;
 }
+
+export type RevisionAddition = { after: string; text: string };
+
+// Inserts new items from /revise "additions", in order. `after` is a bullet id (insert
+// right after it) or an entry id (append to its bullets); several additions after the
+// same anchor keep their order.
+export function applyAdditions(resume: Resume, additions: RevisionAddition[]): Resume {
+  if (additions.length === 0) return resume;
+  return {
+    ...resume,
+    sections: resume.sections.map((section) => ({
+      ...section,
+      entries: section.entries?.map((entry) => {
+        const bullets = [...(entry.bullets ?? [])];
+        let changed = false;
+        // Last item inserted per anchor (by id, since positions shift as items are
+        // inserted), so repeated anchors stay in order.
+        const lastInserted = new Map<string, string>();
+        for (const { after, text } of additions) {
+          if (after === entry.id) {
+            bullets.push({ id: crypto.randomUUID(), text });
+            changed = true;
+            continue;
+          }
+          const target = lastInserted.get(after) ?? after;
+          const index = bullets.findIndex((b) => b.id === target);
+          if (index === -1) continue;
+          const bullet = { id: crypto.randomUUID(), text };
+          bullets.splice(index + 1, 0, bullet);
+          lastInserted.set(after, bullet.id);
+          changed = true;
+        }
+        return changed ? { ...entry, bullets } : entry;
+      }),
+    })),
+  };
+}
+
+export function applyCoverLetterAdditions(
+  coverLetter: CoverLetter,
+  additions: RevisionAddition[]
+): CoverLetter {
+  if (additions.length === 0) return coverLetter;
+  const paragraphs = [...coverLetter.paragraphs];
+  const lastInserted = new Map<string, string>();
+  for (const { after, text } of additions) {
+    const index = paragraphs.findIndex((p) => p.id === (lastInserted.get(after) ?? after));
+    if (index === -1) continue;
+    const paragraph = { id: crypto.randomUUID(), text };
+    paragraphs.splice(index + 1, 0, paragraph);
+    lastInserted.set(after, paragraph.id);
+  }
+  return { ...coverLetter, paragraphs };
+}

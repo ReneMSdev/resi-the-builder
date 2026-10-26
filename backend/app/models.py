@@ -135,11 +135,20 @@ class ReviseUpdate(BaseModel):
     text: str
 
 
+class ReviseAddition(BaseModel):
+    """A new item to insert. `after` is a bullet ID (insert right after it) or an entry ID
+    (append to its bullets) in a resume, or a paragraph ID in a cover letter."""
+    after: str
+    text: str
+
+
 class ReviseResponse(BaseModel):
     updates: list[ReviseUpdate]
     # IDs to delete from the document sent with the request (resume/cover letter only;
     # always empty for profile revisions). Filtered server-side to the selection's scope.
     removals: list[str] = []
+    # New bullets/paragraphs to insert (resume/cover letter only), filtered the same way.
+    additions: list[ReviseAddition] = []
 
 
 class RenderRequest(BaseModel):

@@ -21,11 +21,11 @@ names are trimmed and limited to 120 characters. `live` tests are skipped unless
 
 | Check | Result | Evidence |
 |---|---|---|
-| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 89 passed, 4 deselected, 19 warnings (973ed94 + uncommitted certification/education ordering, 2026-10-24) |
+| Tests (default set) | passing | `cd backend && .venv/bin/pytest`: 103 passed, 4 deselected, 19 warnings (107f7bb + uncommitted revise additions and JSON-parsing fix, 2026-10-25) |
 | `live` guard | working | `env -u RUN_LIVE .venv/bin/pytest -m live`: 3 skipped, 86 deselected (9126568 + uncommitted section removal / whole-document revise, 2026-10-24) |
 | `slow` test (PDF export) | **mixed** | Not run this session. On 2026-10-04 it passed in both verifier-subagent runs and failed (500 after ~30s) in both main-session runs; LibreOffice is installed. Likely the main session's sandbox; unconfirmed until run in a normal terminal |
 | Prompt caching (real API) | working | 2 real `generate` calls with the current API key and profile (3fb114a, 2026-10-25, $0.15): the resume call wrote 11,961 tokens to the cache; the cover letter for the same job read 10,511 of its 12,975 prompt tokens (81%) from it. Input cost 24% lower than uncached over the 2 calls (48% over 4 calls on 2026-10-16) |
-| Revise removals / whole-document (real API) | working | 4 real `/revise` calls on a saved resume (2026-10-24, $0.13): no removals on a reword-only whole-resume request; exactly the two technician entries removed when asked; a single-bullet request touched only that bullet; a section-scoped removal stayed inside the section. Saved resume and `profile.json` unchanged |
+| Revise removals / whole-document (real API) | working | 4 real `/revise` calls on a saved resume (2026-10-24, $0.13): no removals on a reword-only whole-resume request; exactly the two technician entries removed when asked; a single-bullet request touched only that bullet; a section-scoped removal stayed inside the section. Saved resume and `profile.json` unchanged. Split request (2026-10-25, $0.03): one bullet selected, the model returned a single valid JSON object updating that bullet with the first part and adding the second part right after it; no other bullets touched |
 | `live` tests | **unverified** | Not run: they spend real tokens |
 
 **Known issues:** `datetime.utcnow()` is deprecated in Python 3.13 and used twice in

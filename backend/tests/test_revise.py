@@ -40,7 +40,7 @@ def test_revise_resume_success(client, mock_llm, minimal_resume):
     )
 
     assert resp.status_code == 200
-    assert resp.json() == {"updates": [{"id": "b_1", "text": "Revised bullet text."}], "removals": []}
+    assert resp.json() == {"updates": [{"id": "b_1", "text": "Revised bullet text."}], "removals": [], "additions": []}
 
 
 def test_revise_cover_letter_success(client, mock_llm, minimal_cover_letter):
@@ -56,7 +56,7 @@ def test_revise_cover_letter_success(client, mock_llm, minimal_cover_letter):
     )
 
     assert resp.status_code == 200
-    assert resp.json() == {"updates": [{"id": "p1", "text": "Revised paragraph text."}], "removals": []}
+    assert resp.json() == {"updates": [{"id": "p1", "text": "Revised paragraph text."}], "removals": [], "additions": []}
 
 
 def test_revise_relays_entry_level_expansion_from_model(client, mock_llm, minimal_resume):
@@ -101,7 +101,7 @@ def test_revise_normalizes_bare_object_to_empty_updates(client, mock_llm, minima
     )
 
     assert resp.status_code == 200
-    assert resp.json() == {"updates": [], "removals": []}
+    assert resp.json() == {"updates": [], "removals": [], "additions": []}
 
 
 def test_revise_returns_502_on_malformed_model_json(client, mock_llm, minimal_resume):

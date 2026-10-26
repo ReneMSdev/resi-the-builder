@@ -34,6 +34,9 @@ import {
   editLink,
   applyRemovals,
   applyCoverLetterRemovals,
+  applyAdditions,
+  applyCoverLetterAdditions,
+  type RevisionAddition,
   collectIds,
 } from './lib/resume'
 import { responseError } from './lib/api'
@@ -582,15 +585,19 @@ export default function Home() {
         throw await responseError(res)
       }
 
-      const data: { updates: { id: string; text: string }[]; removals?: string[] } =
-        await res.json()
+      const data: {
+        updates: { id: string; text: string }[]
+        removals?: string[]
+        additions?: RevisionAddition[]
+      } = await res.json()
       const removals = data.removals ?? []
-      const changed = data.updates.length > 0 || removals.length > 0
+      const additions = data.additions ?? []
+      const changed = data.updates.length > 0 || removals.length > 0 || additions.length > 0
 
       if (tab === 'resume' && resumeState.state === 'success') {
         if (changed) {
           const next = applyRemovals(
-            applyRevisionUpdates(resumeState.resume, data.updates),
+            applyAdditions(applyRevisionUpdates(resumeState.resume, data.updates), additions),
             removals,
           )
           pushResumeHistory(resumeState.resume)
@@ -600,7 +607,10 @@ export default function Home() {
       } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
         if (changed) {
           const next = applyCoverLetterRemovals(
-            applyCoverLetterUpdates(coverLetterState.coverLetter, data.updates),
+            applyCoverLetterAdditions(
+              applyCoverLetterUpdates(coverLetterState.coverLetter, data.updates),
+              additions,
+            ),
             removals,
           )
           pushClHistory(coverLetterState.coverLetter)

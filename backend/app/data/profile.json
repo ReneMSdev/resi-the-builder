@@ -490,7 +490,7 @@
             },
             {
               "id": "b_rb_5",
-              "text": "Added cost and safety guardrails: a 50-call daily API cap, a 20K-character input limit, and an 89-test mocked pytest suite where any real Claude API call fails the test; live tests run only with an explicit opt-in flag.",
+              "text": "Added cost and safety guardrails: a 50-call daily API cap, a 20K-character input limit, and a 103-test mocked pytest suite where any real Claude API call fails the test; live tests run only with an explicit opt-in flag.",
               "tags": [
                 "testing",
                 "pytest",

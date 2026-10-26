@@ -52,7 +52,8 @@ def test_resume_removals_are_filtered_to_selection(client, mock_llm, minimal_res
     assert resp.status_code == 200
     body = resp.json()
     assert body["removals"] == ["sec_experience"]
-    assert body["updates"] == [{"id": "summary", "text": "Kept."}]
+    # b_1 is removed, and the summary is outside the selected section, so both are dropped.
+    assert body["updates"] == []
 
 
 def test_resume_whole_document_sends_empty_selection(client, mock_llm, minimal_resume):

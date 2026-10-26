@@ -4,9 +4,14 @@ from fastapi import APIRouter, HTTPException
 from app.models import ReviseRequest, ReviseResponse
 from app.services.llm import revise_resume, revise_cover_letter, revise_profile
 from app.services.revise_scope import (
+    cover_letter_addition_anchors,
     cover_letter_removable_ids,
+    cover_letter_update_scope,
+    filter_additions_and_unknown_updates,
     filter_removals,
+    resume_addition_anchors,
     resume_removable_ids,
+    resume_update_scope,
 )
 from app.routes.llm_errors import anthropic_http_exception
 
@@ -33,7 +38,8 @@ def revise(req: ReviseRequest):
             # profile editing isn't job-tailoring, and revise_profile doesn't accept
             # the parameter at all, so there's no path for it to leak into the prompt.
             result = revise_profile(req.profile.model_dump(), req.selected_ids, req.instruction)
-            result["removals"] = []  # profile revisions never remove anything
+            result["removals"] = []  # profile revisions never remove or add anything
+            result["additions"] = []
         elif req.cover_letter is not None:
             cover_letter = req.cover_letter.model_dump()
             result = revise_cover_letter(
@@ -44,12 +50,26 @@ def revise(req: ReviseRequest):
                 cover_letter_removable_ids(cover_letter, req.selected_ids),
                 lambda ids: cover_letter_removable_ids(cover_letter, ids),
             )
+            result = filter_additions_and_unknown_updates(
+                result,
+                cover_letter,
+                cover_letter_addition_anchors(cover_letter, req.selected_ids),
+                cover_letter_update_scope(cover_letter, req.selected_ids),
+                lambda ids: cover_letter_removable_ids(cover_letter, ids),
+            )
         else:
             resume = req.resume.model_dump()
             result = revise_resume(resume, req.selected_ids, req.instruction, req.job_description)
             result = filter_removals(
                 result,
                 resume_removable_ids(resume, req.selected_ids),
+                lambda ids: resume_removable_ids(resume, ids),
+            )
+            result = filter_additions_and_unknown_updates(
+                result,
+                resume,
+                resume_addition_anchors(resume, req.selected_ids),
+                resume_update_scope(resume, req.selected_ids),
                 lambda ids: resume_removable_ids(resume, ids),
             )
     except ValueError as e:

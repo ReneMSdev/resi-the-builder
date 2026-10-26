@@ -198,14 +198,29 @@ each of its bullets, and a section rather than each of its entries. Never remove
 summary, meta fields or entry fields. An ID listed in "removals" must not also appear in
 "updates".
 
+Additions: return an "additions" list ONLY when the instruction asks to add a bullet or to
+split one bullet into several. Each addition is {"after": <id>, "text": <new bullet text>}
+where "after" is a bullet ID (the new bullet goes right after it) or an entry ID (the new
+bullet goes at the end of that entry's bullets). Only bullets in job/project-style entries
+can be added (not education, certifications or skills), and only within the selection (or
+anywhere for a whole-resume request). To split a bullet, update the original bullet with
+the first part and add the rest as additions after it, in order. Added text follows the
+same no-fabrication rule as updates: use only facts already in the resume or stated in the
+instruction.
+
+Never move text into a different item's ID to make room for new content, and never invent
+IDs: every update must be a revision of that same item, using an ID that exists in the
+resume JSON. If something can only be done by adding an item, use "additions".
+
 Rules:
 - Only touch the text of the exact IDs implied above (or, for an empty selection, the
   whole-resume scope described above). Never modify, rewrite, or return anything for IDs
   outside that scope.
 - Do not fabricate new facts, numbers, skills, or experience not already present in the
   resume JSON's existing content. Only rephrase/restructure what's already there — the
-  one exception is a skill group/section instruction that explicitly names a new skill to
-  add (e.g. "add Kubernetes to this list"), since the user is directly supplying that fact.
+  exceptions are facts the user states directly in the instruction: a skill group/section
+  instruction that explicitly names a new skill to add (e.g. "add Kubernetes to this
+  list"), or a request to add a bullet about something the instruction describes.
 - Preserve the existing tone/voice of the resume unless the instruction says otherwise.
 - Writing style: never use em dashes or en dashes as punctuation in revised text (use a
   comma, period, or parentheses instead) — this doesn't affect the "dates" field's
@@ -224,14 +239,17 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
     { "id": "b_salo_2", "text": "revised text here" },
     { "id": "skill_devops", "text": "Docker, GitHub Actions CI/CD, Terraform, Linux, Kubernetes" }
   ],
-  "removals": []
+  "removals": [],
+  "additions": []
 }
 
 If none of the selected IDs have anything to revise (e.g. every selected id was an
 education/certifications section or entry with no bullets), return
-{"updates": [], "removals": []}. Always include both keys, even when a list is empty.
-For a removal request, e.g. the user selected "sec_projects" and asked to remove it,
-return {"updates": [], "removals": ["sec_projects"]}.
+{"updates": [], "removals": [], "additions": []}. Always include all three keys, even when
+a list is empty. For a removal request, e.g. the user selected "sec_projects" and asked to
+remove it, return {"updates": [], "removals": ["sec_projects"], "additions": []}. To split
+bullet "b_x" in two, return {"updates": [{"id": "b_x", "text": "first part"}],
+"removals": [], "additions": [{"after": "b_x", "text": "second part"}]}.
 """
 
 
@@ -440,6 +458,17 @@ removable, and only within the selection (or any paragraph for a whole-letter re
 Never remove the salutation, sign-off or meta fields. An ID listed in "removals" must not
 also appear in "updates".
 
+Additions: return an "additions" list ONLY when the instruction asks to add a paragraph or
+to split one paragraph into several. Each addition is {"after": <paragraph id>, "text":
+<new paragraph text>}; the new paragraph goes right after that paragraph. Only within the
+selection (or after any paragraph for a whole-letter request). To split a paragraph,
+update the original with the first part and add the rest after it, in order. Added text
+must not fabricate facts.
+
+Never move text into a different item's ID to make room for new content, and never invent
+IDs: every update must be a revision of that same item, using an ID that exists in the
+cover letter JSON. If something can only be done by adding a paragraph, use "additions".
+
 Rules:
 - Only touch the text of the exact IDs selected (or, for an empty selection, the
   whole-letter scope described above). Never modify, rewrite, or return anything outside
@@ -460,11 +489,13 @@ Return ONLY valid JSON matching this exact structure (no markdown fences, no pre
   "updates": [
     { "id": "p2", "text": "revised text here" }
   ],
-  "removals": []
+  "removals": [],
+  "additions": []
 }
 
-If none of the selected IDs have anything to revise, return {"updates": [], "removals": []}.
-Always include both keys, even when a list is empty.
+If none of the selected IDs have anything to revise, return
+{"updates": [], "removals": [], "additions": []}. Always include all three keys, even when a
+list is empty.
 """
 
 
@@ -483,14 +514,20 @@ def _extract_json(text: str) -> dict:
         return json.loads(text)
     except json.JSONDecodeError as e:
         # No fence, but there may still be a JSON object embedded in surrounding
-        # prose — fall back to the outermost {...} before giving up.
+        # prose, or followed by extra text (e.g. an explanation, or a second object).
+        # Parse the first complete object starting at the first "{" and ignore the
+        # rest, rather than slicing to the last "}", which breaks on trailing content.
+        decoder = json.JSONDecoder()
         start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end > start:
+        while start != -1:
             try:
-                return json.loads(text[start:end + 1])
+                obj, _ = decoder.raw_decode(text, start)
+                if isinstance(obj, dict):
+                    return obj
             except json.JSONDecodeError:
                 pass
+            # A "{" in leading prose isn't the object; try the next one.
+            start = text.find("{", start + 1)
         raise ValueError(f"Model did not return valid JSON: {e}\nRaw output:\n{text[:500]}")
 
 
@@ -500,6 +537,7 @@ def _normalize_revise_result(result: dict) -> dict:
     revise — don't rely on prompt wording alone to guarantee this shape."""
     result.setdefault("updates", [])
     result.setdefault("removals", [])
+    result.setdefault("additions", [])
     return result
 
 

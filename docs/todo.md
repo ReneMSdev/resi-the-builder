@@ -9,13 +9,6 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
-- [ ] Confirm `pytest -m slow` (PDF export) passes in a normal terminal. On 2026-10-04 it
-      passed in both verifier-subagent runs and failed (500) in both main-session runs,
-      probably a sandbox limit.
-- [ ] Add rename to the Saved applications line in `README.md` ("save, reload, and update").
-- [ ] Remove the stale "Known gaps" bullet in `frontend/STATUS_FRONTEND.md` about
-      `docs/architecture.md` listing `public/demo/*` assets. That was already fixed in ce76b6d.
-
 - [ ] A manual edit or remove made while an AI revise is still running is overwritten when
       the response arrives (`handleRevise` applies its result to the document captured at
       request time). Pre-existing, but removals make it easier to hit. Apply the response to
@@ -34,6 +27,10 @@
 
 ## Done recently
 <!-- /wrapup moves finished items here with a date. Keep about the last 10. -->
+- [x] Doc cleanup: rename added to the README's Saved applications line; stale demo-assets
+      "Known gaps" bullet removed from `frontend/STATUS_FRONTEND.md` (2026-10-30)
+- [x] `pytest -m slow` (PDF export) passes in a normal terminal: 1 passed in 18.19s, run by
+      the user at a712a63. The earlier main-session failures were the sandbox (2026-10-30)
 - [x] Saved-application timestamps: backend writes explicit UTC (`+00:00`) instead of
       deprecated `utcnow()`; the Saved list reads offset-less timestamps as UTC, so times no
       longer show shifted by the UTC offset (2026-10-30)

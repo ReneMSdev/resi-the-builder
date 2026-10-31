@@ -22,8 +22,8 @@ disabled there.
 - **Profile editing** — revise the master profile the same way, with an explicit "Apply to
   Profile" write step.
 - **Export** — formatted `.docx`, or `.pdf` via headless LibreOffice.
-- **Saved applications** — save, reload, and update a full package (job description,
-  resume, cover letter) per job.
+- **Saved applications** — save, reload, update, and rename a full package (job
+  description, resume, cover letter) per job.
 - **Auto Apply** — assembles a Claude-in-Chrome prompt from a saved package that fills out
   a job site's application form. Fill-only: it never submits.
 

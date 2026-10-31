@@ -250,10 +250,6 @@ mechanism; this is the per-feature behavioral detail that file doesn't cover.
   add/remove, etc.) — not duplicated here.
 - The Resume Link-patching gap and Revise expected-duration estimate above are
   implementation-state notes worth knowing, not formally tracked elsewhere.
-- `docs/architecture.md`'s demo-mode diagram still lists `public/demo/*.docx`/`*.pdf` as
-  served static assets — stale since "Downloads no longer serve real files in demo
-  mode" (downloads now toast instead, and those 4 files were deleted). Worth a
-  follow-up edit to `docs/architecture.md` itself.
 
 ## Lessons learned (worth checking before repeating the underlying mistake)
 

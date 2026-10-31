@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { Application, ApplicationSummary, CoverLetter, Profile, Resume } from './types'
 import { ResumePreview } from './components/ResumePreview'
@@ -270,6 +270,30 @@ export default function Home() {
   const [profileHistory, setProfileHistory] = useState<Profile[]>([])
   const [profileOpenIds, setProfileOpenIds] = useState<Set<string>>(new Set())
 
+  // A revise response is applied to the document as it is when the response arrives,
+  // not as it was when the request went out, so edits made while it ran survive. These
+  // refs mirror the latest committed documents for that. The generation counters go up
+  // whenever a document is replaced wholesale (Generate, loading a saved application,
+  // Generate for a new job); a response whose generation no longer matches is discarded.
+  const resumeStateRef = useRef(resumeState)
+  const coverLetterStateRef = useRef(coverLetterState)
+  const profileStateRef = useRef(profileState)
+  useLayoutEffect(() => {
+    resumeStateRef.current = resumeState
+    coverLetterStateRef.current = coverLetterState
+    profileStateRef.current = profileState
+  }, [resumeState, coverLetterState, profileState])
+  const resumeGeneration = useRef(0)
+  const coverLetterGeneration = useRef(0)
+  const profileGeneration = useRef(0)
+
+  function latestProfile() {
+    const current = profileStateRef.current
+    return current.state === 'success'
+      ? { profile: current.profile, generation: profileGeneration.current }
+      : null
+  }
+
   const selectedIds = tab === 'resume' ? resumeSelectedIds : clSelectedIds
   const setSelectedIds = tab === 'resume' ? setResumeSelectedIds : setClSelectedIds
   const reviseState = tab === 'resume' ? resumeReviseState : clReviseState
@@ -337,9 +361,11 @@ export default function Home() {
 
   async function handleGenerate(kind: 'resume' | 'cover_letter') {
     if (kind === 'resume') {
+      resumeGeneration.current += 1
       setResumeState({ state: 'loading' })
       setResumeSelectedIds(new Set())
     } else {
+      coverLetterGeneration.current += 1
       setCoverLetterState({ state: 'loading' })
       setClSelectedIds(new Set())
     }
@@ -566,6 +592,14 @@ export default function Home() {
       return
     }
 
+    // Tab, generation, and revise-state setter are fixed for this request; the response
+    // applies to this tab's document even if the user switches tabs meanwhile.
+    const generation =
+      tab === 'resume' ? resumeGeneration.current : coverLetterGeneration.current
+    const isStale = () =>
+      generation !==
+      (tab === 'resume' ? resumeGeneration.current : coverLetterGeneration.current)
+
     setReviseState({ state: 'loading' })
 
     try {
@@ -594,6 +628,9 @@ export default function Home() {
         additions?: RevisionAddition[]
         skills_replace?: SkillsReplace | null
       } = await res.json()
+      // The document was replaced while this ran; don't apply to an unrelated one, and
+      // leave revise state alone (the replacement already reset it).
+      if (isStale()) return
       const removals = data.removals ?? []
       const additions = data.additions ?? []
       const skillsReplace = data.skills_replace ?? null
@@ -603,38 +640,43 @@ export default function Home() {
         additions.length > 0 ||
         skillsReplace !== null
 
-      if (tab === 'resume' && resumeState.state === 'success') {
+      // Applied to the latest document, so edits made during the request are kept; ids
+      // the user removed meanwhile are no-ops in every apply function.
+      const currentResume = resumeStateRef.current
+      const currentCoverLetter = coverLetterStateRef.current
+      if (tab === 'resume' && currentResume.state === 'success') {
         if (changed) {
           const next = applyRemovals(
             applyAdditions(
               applySkillsReplace(
-                applyRevisionUpdates(resumeState.resume, data.updates),
+                applyRevisionUpdates(currentResume.resume, data.updates),
                 skillsReplace,
               ),
               additions,
             ),
             removals,
           )
-          pushResumeHistory(resumeState.resume)
+          pushResumeHistory(currentResume.resume)
           setResumeState({ state: 'success', resume: next })
           setResumeSelectedIds((prev) => keepExistingIds(prev, next))
         }
-      } else if (tab === 'cover_letter' && coverLetterState.state === 'success') {
+      } else if (tab === 'cover_letter' && currentCoverLetter.state === 'success') {
         if (changed) {
           const next = applyCoverLetterRemovals(
             applyCoverLetterAdditions(
-              applyCoverLetterUpdates(coverLetterState.coverLetter, data.updates),
+              applyCoverLetterUpdates(currentCoverLetter.coverLetter, data.updates),
               additions,
             ),
             removals,
           )
-          pushClHistory(coverLetterState.coverLetter)
+          pushClHistory(currentCoverLetter.coverLetter)
           setCoverLetterState({ state: 'success', coverLetter: next })
           setClSelectedIds((prev) => keepExistingIds(prev, next))
         }
       }
       setReviseState({ state: 'idle' })
     } catch (err: unknown) {
+      if (isStale()) return
       const message = err instanceof Error ? err.message : String(err)
       setReviseState({ state: 'error', message })
     }
@@ -684,6 +726,8 @@ export default function Home() {
   }
 
   function handleLoadApplication(application: Application, targetTab: Tab) {
+    resumeGeneration.current += 1
+    coverLetterGeneration.current += 1
     setLoadedApplication({ id: application.id, name: application.name })
     setJobDescription(application.job_description.raw)
     setCleanedJobDescription(application.job_description.cleaned)
@@ -706,6 +750,9 @@ export default function Home() {
   }
 
   function handleGenerateForNewJob() {
+    resumeGeneration.current += 1
+    coverLetterGeneration.current += 1
+    profileGeneration.current += 1
     setLoadedApplication(null)
     setDemoHasGenerated(false)
     // Re-populate the canned JD rather than resetting to blank in demo mode —
@@ -887,6 +934,7 @@ export default function Home() {
                 <ProfileView
                   profile={profileState.profile}
                   onProfileChange={(profile) => setProfileState({ state: 'success', profile })}
+                  latestProfile={latestProfile}
                   previewMode={profilePreviewMode}
                   setPreviewMode={setProfilePreviewMode}
                   selectedIds={profileSelectedIds}

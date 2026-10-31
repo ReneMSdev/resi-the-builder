@@ -73,6 +73,7 @@ function ModeToggle({
 export function ProfileView({
   profile,
   onProfileChange,
+  latestProfile,
   previewMode,
   setPreviewMode,
   selectedIds,
@@ -86,6 +87,9 @@ export function ProfileView({
 }: {
   profile: Profile
   onProfileChange: (profile: Profile) => void
+  // The profile as it is right now plus its generation (bumped when it's replaced
+  // wholesale), read when a revise response arrives; null if it isn't loaded.
+  latestProfile: () => { profile: Profile; generation: number } | null
   previewMode: PreviewMode
   setPreviewMode: Dispatch<SetStateAction<PreviewMode>>
   selectedIds: Set<string>
@@ -176,6 +180,9 @@ export function ProfileView({
       return
     }
 
+    const generation = latestProfile()?.generation
+    const isStale = () => latestProfile()?.generation !== generation
+
     setReviseState({ state: 'loading' })
 
     try {
@@ -195,12 +202,17 @@ export function ProfileView({
 
       const data: { updates: { id: string; text: string }[] } = await res.json()
 
+      // Applied to the latest profile (this component may have unmounted on a tab
+      // switch, and edits made meanwhile must survive); discarded if it was replaced.
+      const current = latestProfile()
+      if (!current || current.generation !== generation) return
       if (data.updates.length > 0) {
-        pushHistory(profile)
-        onProfileChange(applyProfileRevisionUpdates(profile, data.updates))
+        pushHistory(current.profile)
+        onProfileChange(applyProfileRevisionUpdates(current.profile, data.updates))
       }
       setReviseState({ state: 'idle' })
     } catch (err: unknown) {
+      if (isStale()) return
       const message = err instanceof Error ? err.message : String(err)
       setReviseState({ state: 'error', message })
     }

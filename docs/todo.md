@@ -9,10 +9,13 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
-- [ ] A manual edit or remove made while an AI revise is still running is overwritten when
-      the response arrives (`handleRevise` applies its result to the document captured at
-      request time). Pre-existing, but removals make it easier to hit. Apply the response to
-      the latest document instead, or disable editing while a revise runs.
+- [ ] Manually test the revise latest-document fix (test script in the 2026-10-30 manager
+      session: removal survives + one undo, inline edit, removed target, cover letter, tab
+      switch, replaced document, profile). Lint/tsc/verifier passed; UI untested.
+- [ ] Revise polish: skip the undo entry when a response changes nothing (all targets were
+      deleted mid-request); fix the `page.tsx` comment that says "the replacement already
+      reset it" (true for Generate only because its button hides once a document exists; a
+      future "Regenerate" button would leave revise stuck at loading).
 
 ## Later
 <!-- Ideas and deferred scope. It's fine for items to sit here. -->
@@ -27,6 +30,9 @@
 
 ## Done recently
 <!-- /wrapup moves finished items here with a date. Keep about the last 10. -->
+- [x] Revise responses apply to the latest document, so manual edits made mid-request
+      survive; responses for a replaced document are discarded; same fix for Profile
+      (2026-10-30, UI untested)
 - [x] Doc cleanup: rename added to the README's Saved applications line; stale demo-assets
       "Known gaps" bullet removed from `frontend/STATUS_FRONTEND.md` (2026-10-30)
 - [x] `pytest -m slow` (PDF export) passes in a normal terminal: 1 passed in 18.19s, run by

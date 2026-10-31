@@ -213,3 +213,18 @@ gitignored saved files and the fixtures.
 local time, so every Saved-list time was off by the UTC offset. Reading offset-less strings
 as UTC fixes old saves and the demo without touching user data. The default application
 name still shows UTC time; left as is.
+
+## 2026-10-30: Revise responses apply to the latest document
+
+**Decision:** When a `/revise` response arrives, it is applied to the document as it is
+then (via refs synced in `useLayoutEffect`), not the copy captured at request time, and that
+latest document is what goes on the undo stack. A per-document generation counter, bumped
+on Generate, loading a saved application and Generate for new job, discards responses for a
+document that was replaced mid-request. Same for Profile revise. On conflict, a user's
+removal wins (missing ids are no-ops, orphaned additions are dropped); for text both touched,
+the AI's text wins, including whole skills groups/sections.
+**Alternatives:** Disable editing while a revise runs; per-field change detection that skips
+AI updates to text the user edited meanwhile.
+**Why:** Keeps the editor usable during a revise without losing hand edits. The user asked
+for the rewrite, so the AI winning on the same text is acceptable. Field-level conflict
+detection wasn't worth the complexity for a rare case.

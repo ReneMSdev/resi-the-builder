@@ -60,6 +60,18 @@ most sections here went through several iterations that aren't narrated individu
   `{id, text}` items (new ids each time — per-item ids aren't preserved across a
   group rewrite); empty text after trim deletes the group entirely rather than
   leaving an empty one.
+- **Edits during an in-flight revise survive.** The response is applied to the
+  document as it is when the response arrives (read from refs mirroring the latest
+  committed state in `page.tsx`; Profile reads it via the `latestProfile` prop), and
+  that latest document is what goes on the undo stack, so one undo reverts only the
+  AI change. It targets the tab the request was sent from, even after a tab switch.
+  Ids the user removed meanwhile are no-ops in every apply function, and an addition
+  whose anchor is gone is dropped; where the user and the AI changed the same text,
+  the AI's text wins (including a skill group update or `skills_replace`, which can
+  bring back items the user removed from that group/section). Per-document
+  generation counters bump on Generate, loading a saved application, and Generate
+  for new job; a response (or error) for a replaced document is discarded without
+  touching revise state.
 - **Known latent gap**: `applyRevisionUpdates` (Resume) has no code path to patch a
   `Link`'s label — unreachable today only because `ResumePreview` never makes links
   individually selectable, so nothing can currently trigger it. Profile's equivalent

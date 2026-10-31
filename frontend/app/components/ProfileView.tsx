@@ -21,6 +21,7 @@ import {
   addSummaryItem,
   removeSummaryItem,
 } from '../lib/profile'
+import { sameDocument } from '../lib/resume'
 import { responseError } from '../lib/api'
 
 type PreviewMode = 'select' | 'edit'
@@ -206,9 +207,12 @@ export function ProfileView({
       // switch, and edits made meanwhile must survive); discarded if it was replaced.
       const current = latestProfile()
       if (!current || current.generation !== generation) return
-      if (data.updates.length > 0) {
+      // Only an actual change gets an undo entry; updates aimed at items removed
+      // meanwhile leave the profile as it was.
+      const next = applyProfileRevisionUpdates(current.profile, data.updates)
+      if (!sameDocument(next, current.profile)) {
         pushHistory(current.profile)
-        onProfileChange(applyProfileRevisionUpdates(current.profile, data.updates))
+        onProfileChange(next)
       }
       setReviseState({ state: 'idle' })
     } catch (err: unknown) {

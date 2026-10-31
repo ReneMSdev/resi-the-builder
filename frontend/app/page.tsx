@@ -41,6 +41,7 @@ import {
   type RevisionAddition,
   type SkillsReplace,
   collectIds,
+  sameDocument,
 } from './lib/resume'
 import { responseError } from './lib/api'
 
@@ -629,46 +630,48 @@ export default function Home() {
         skills_replace?: SkillsReplace | null
       } = await res.json()
       // The document was replaced while this ran; don't apply to an unrelated one, and
-      // leave revise state alone (the replacement already reset it).
+      // leave revise state alone. Loading an application and Generate for new job reset
+      // it themselves. handleGenerate does not: it's only safe because a document's
+      // Generate button is hidden once that document exists (showResumeButton /
+      // showCoverLetterButton = !ready), so no revise can be in flight when it runs. A
+      // future "Regenerate while ready" button must reset this tab's revise state too.
       if (isStale()) return
       const removals = data.removals ?? []
       const additions = data.additions ?? []
       const skillsReplace = data.skills_replace ?? null
-      const changed =
-        data.updates.length > 0 ||
-        removals.length > 0 ||
-        additions.length > 0 ||
-        skillsReplace !== null
 
       // Applied to the latest document, so edits made during the request are kept; ids
-      // the user removed meanwhile are no-ops in every apply function.
+      // the user removed meanwhile are no-ops in every apply function. History and
+      // state only change if the result actually differs (compared structurally, since
+      // the apply functions copy), so a response that only touched removed items
+      // doesn't leave an undo entry that does nothing.
       const currentResume = resumeStateRef.current
       const currentCoverLetter = coverLetterStateRef.current
       if (tab === 'resume' && currentResume.state === 'success') {
-        if (changed) {
-          const next = applyRemovals(
-            applyAdditions(
-              applySkillsReplace(
-                applyRevisionUpdates(currentResume.resume, data.updates),
-                skillsReplace,
-              ),
-              additions,
+        const next = applyRemovals(
+          applyAdditions(
+            applySkillsReplace(
+              applyRevisionUpdates(currentResume.resume, data.updates),
+              skillsReplace,
             ),
-            removals,
-          )
+            additions,
+          ),
+          removals,
+        )
+        if (!sameDocument(next, currentResume.resume)) {
           pushResumeHistory(currentResume.resume)
           setResumeState({ state: 'success', resume: next })
           setResumeSelectedIds((prev) => keepExistingIds(prev, next))
         }
       } else if (tab === 'cover_letter' && currentCoverLetter.state === 'success') {
-        if (changed) {
-          const next = applyCoverLetterRemovals(
-            applyCoverLetterAdditions(
-              applyCoverLetterUpdates(currentCoverLetter.coverLetter, data.updates),
-              additions,
-            ),
-            removals,
-          )
+        const next = applyCoverLetterRemovals(
+          applyCoverLetterAdditions(
+            applyCoverLetterUpdates(currentCoverLetter.coverLetter, data.updates),
+            additions,
+          ),
+          removals,
+        )
+        if (!sameDocument(next, currentCoverLetter.coverLetter)) {
           pushClHistory(currentCoverLetter.coverLetter)
           setCoverLetterState({ state: 'success', coverLetter: next })
           setClSelectedIds((prev) => keepExistingIds(prev, next))

@@ -2,22 +2,18 @@
 
 ## Now
 <!-- What's actively being worked on. Keep this to a few items. -->
-- [ ] First real Auto Apply trial against an actual job posting (the work history is now
-      restructured). Log findings in `docs/automation-notes.md`, including whether the
-      `/render` → disk → upload handoff works. Regenerate any Auto Apply prompt copied before
-      2026-10-24, since those use the old `/applications` URL.
 
 ## Next
 <!-- Planned soon, in priority order. -->
-- [ ] Revise polish: skip the undo entry when a response changes nothing (all targets were
-      deleted mid-request); fix the `page.tsx` comment that says "the replacement already
-      reset it" (true for Generate only because its button hides once a document exists; a
-      future "Regenerate" button would leave revise stuck at loading).
 - [ ] Give `.claude/agents/qa.md` a `tools:` allowlist (no Edit/Write) so "never edits code"
       isn't prompt-only. Check that the Chrome MCP tools and Skill still load with it.
 
 ## Later
 <!-- Ideas and deferred scope. It's fine for items to sit here. -->
+- [ ] First real Auto Apply trial against an actual job posting. Back-burnered by the user
+      on 2026-10-30. Log findings in `docs/automation-notes.md`, including whether the
+      `/render` → disk → upload handoff works. Regenerate any Auto Apply prompt copied before
+      2026-10-24, since those use the old `/applications` URL.
 - [ ] Field-level conflict handling for revise: since bc8469e, mid-request edits elsewhere
       survive, but if the user edits the same text the AI rewrites, the AI's text wins
       (including whole skills groups). Compare against the sent text and skip or flag. Revisit
@@ -33,6 +29,9 @@
 
 ## Done recently
 <!-- /wrapup moves finished items here with a date. Keep about the last 10. -->
+- [x] Revise polish: no undo entry when a response changes nothing (structural compare via
+      `sameDocument`; resume, cover letter, profile); stale-generation comment explains the
+      Generate-button invariant. Lint/tsc pass; not browser-tested (2026-10-30)
 - [x] Live search on the Saved list (case-insensitive name match; × / "Show all" / Escape
       clear; resets on leaving the tab). Browser-tested via Claude in Chrome: 10/10 passed,
       Live and Demo, no console errors (f1eeece, 2026-10-30)

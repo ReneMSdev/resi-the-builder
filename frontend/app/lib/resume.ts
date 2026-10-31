@@ -303,6 +303,12 @@ export function applyCoverLetterRemovals(coverLetter: CoverLetter, ids: string[]
   return { ...coverLetter, paragraphs: coverLetter.paragraphs.filter((p) => !gone.has(p.id)) };
 }
 
+// Structural equality for a resume, cover letter, or profile. The apply functions copy
+// even when nothing matches, so a reference check can't tell whether anything changed.
+export function sameDocument(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 // Every `id` anywhere in a document, for dropping selections that no longer exist.
 export function collectIds(value: unknown, into: Set<string> = new Set()): Set<string> {
   if (Array.isArray(value)) {

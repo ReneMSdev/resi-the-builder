@@ -4,8 +4,8 @@ _Last verified: 2026-10-30 at bdd77fb_
 
 The project is feature-complete. The real app runs locally (Next.js + FastAPI + Anthropic
 API), and a mocked, frontend-only demo is on Vercel. The work history in `profile.json` was
-restructured and checked claim by claim (`docs/work-history-review.md`). Next step: the
-first real Auto Apply trial against an actual job posting.
+restructured and checked claim by claim (`docs/work-history-review.md`). The first real
+Auto Apply trial is on hold (moved to Later in `docs/todo.md` on 2026-10-30).
 
 ## Backend
 

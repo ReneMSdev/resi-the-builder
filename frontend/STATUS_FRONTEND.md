@@ -64,7 +64,9 @@ most sections here went through several iterations that aren't narrated individu
   document as it is when the response arrives (read from refs mirroring the latest
   committed state in `page.tsx`; Profile reads it via the `latestProfile` prop), and
   that latest document is what goes on the undo stack, so one undo reverts only the
-  AI change. It targets the tab the request was sent from, even after a tab switch.
+  AI change. If the result is structurally identical to the current document (e.g.
+  every change targeted items removed meanwhile), nothing is pushed or set
+  (`sameDocument` in `lib/resume.ts`). It targets the tab the request was sent from, even after a tab switch.
   Ids the user removed meanwhile are no-ops in every apply function, and an addition
   whose anchor is gone is dropped; where the user and the AI changed the same text,
   the AI's text wins (including a skill group update or `skills_replace`, which can

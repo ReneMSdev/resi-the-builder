@@ -73,6 +73,11 @@ user's planning context here never mixes with a worker's task-execution context.
   (what changed, which checks passed) and the files or diff to look at. If it refutes a claim,
   send the worker back to fix it rather than reporting done. Small tasks can wait for
   `/wrapup`, which runs the verifier anyway (ask the user to run it).
+- **Browser tests go to the `qa` subagent** (`.claude/agents/qa.md`), only when the user asks
+  for one, or when you propose one for a risky async or visual change and the user agrees.
+  It never edits code. Give it the change, a numbered test script with expected results,
+  and a revise-call cap. Don't edit files the running dev servers serve while it runs: hot
+  reload can wipe app state mid-test.
 - **Maintain `docs/todo.md`** as the single running backlog for deferred scope, infra not yet
   started, and known soft spots surfaced along the way. Update it as things get resolved or new
   deferrals come up — don't let this kind of cross-cutting decision live only in chat history.

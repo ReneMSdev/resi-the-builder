@@ -5,8 +5,12 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
-- [ ] Give `.claude/agents/qa.md` a `tools:` allowlist (no Edit/Write) so "never edits code"
-      isn't prompt-only. Check that the Chrome MCP tools and Skill still load with it.
+- [ ] Confirm the `qa` agent's `tools:` allowlist works in a fresh session. Added
+      2026-10-30 (`Read, Grep, Glob, Bash, Skill, ToolSearch, mcp__claude-in-chrome__*`, syntax
+      per the Claude Code sub-agents docs), but a smoke test in the same session still had
+      Edit/Write/Agent, probably because the definition was cached before the edit (unconfirmed).
+      Chrome tools loaded fine via ToolSearch. If a fresh session still has Edit/Write, report
+      via `/feedback`. Bash can still write files; only a `permissions.deny` rule would block that.
 
 ## Later
 <!-- Ideas and deferred scope. It's fine for items to sit here. -->

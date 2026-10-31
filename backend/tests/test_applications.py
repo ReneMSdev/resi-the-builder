@@ -365,3 +365,48 @@ def test_default_name_is_capped_at_120_characters(
 
     assert resp.status_code == 200
     assert len(resp.json()["name"]) == 120
+
+
+def test_new_timestamps_are_explicit_utc(client, tmp_applications, minimal_resume):
+    from datetime import datetime, timedelta
+
+    created = client.post(
+        "/job-applications",
+        json={"job_description": {"raw": "A JD."}, "resume": minimal_resume},
+    ).json()
+    assert created["created_at"].endswith("+00:00")
+    assert datetime.fromisoformat(created["created_at"]).utcoffset() == timedelta(0)
+
+    updated = client.put(
+        f"/job-applications/{created['id']}",
+        json={"job_description": {"raw": "A JD."}, "resume": minimal_resume},
+    ).json()
+    assert updated["updated_at"].endswith("+00:00")
+    assert updated["created_at"] == created["created_at"]
+
+
+def test_legacy_offsetless_created_at_still_supported(client, tmp_applications, minimal_resume):
+    # Files saved before timestamps carried an offset are not migrated.
+    import json
+
+    legacy = client.post(
+        "/job-applications",
+        json={"name": "Legacy", "job_description": {"raw": "A JD."}},
+    ).json()
+    meta_path = tmp_applications / legacy["id"] / "meta.json"
+    meta = json.loads(meta_path.read_text())
+    meta["created_at"] = "2020-01-02T03:04:05.123456"
+    meta_path.write_text(json.dumps(meta))
+
+    newer = client.post(
+        "/job-applications",
+        json={"name": "Newer", "job_description": {"raw": "A JD."}},
+    ).json()
+
+    # Blank rename with no cover letter falls back to the date-based default name.
+    resp = client.patch(f"/job-applications/{legacy['id']}", json={"name": " "})
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Application — 2020-01-02 03:04"
+
+    ids = [item["id"] for item in client.get("/job-applications").json()]
+    assert ids == [newer["id"], legacy["id"]]

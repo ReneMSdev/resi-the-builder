@@ -1,7 +1,7 @@
 import json
 import shutil
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Response
@@ -50,7 +50,7 @@ def create_application(req: CreateApplicationRequest):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     item_id = str(uuid.uuid4())
-    created_at = datetime.utcnow().isoformat()
+    created_at = datetime.now(timezone.utc).isoformat()
 
     resume_dict = req.resume.model_dump() if req.resume else None
     cover_letter_dict = req.cover_letter.model_dump() if req.cover_letter else None
@@ -178,7 +178,7 @@ def update_application(item_id: str, req: CreateApplicationRequest):
     if not name:
         name = _default_name(cover_letter_dict, existing_meta["created_at"])
 
-    updated_at = datetime.utcnow().isoformat()
+    updated_at = datetime.now(timezone.utc).isoformat()
 
     # Not atomic — a failure partway through can leave some files updated and others
     # not. Acceptable for a local single-user tool; the folder is never deleted on

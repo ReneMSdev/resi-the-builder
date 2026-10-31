@@ -131,6 +131,9 @@ most sections here went through several iterations that aren't narrated individu
   Description tab. Delete uses an inline Confirm/Cancel row rather than
   `window.confirm` (which blocks browser automation and is generally a worse
   confirmation pattern anyway).
+- Card timestamps (`formatDate` in `SavedTab.tsx`) treat an offset-less ISO string
+  as UTC (old saved files and the demo fixtures store naive UTC); strings with `Z`
+  or a `±HH:MM` offset parse unchanged. Shown in the browser's local time.
 - **"Current Application" top-bar button** appears whenever `loadedApplication` is
   set — real app only, via an explicit Saved-tab load or a completed Save. In demo
   mode it *also* appears once either Generate button has succeeded, via a separate

@@ -200,3 +200,16 @@ A date range sorts by its end date. Experience and projects keep the model's ord
 convention. A fixed rule is predictable and free, unlike an AI call per reorder. It
 overrides the model's relevance-based ordering for these two sections, which the user
 accepted. Resumes generated before this change keep their old order.
+
+## 2026-10-30: Saved-application timestamps are explicit UTC; offset-less ones read as UTC
+
+**Decision:** The backend writes `created_at`/`updated_at` with
+`datetime.now(timezone.utc).isoformat()` (ending in `+00:00`) instead of the deprecated
+`datetime.utcnow()`. The Saved list's `formatDate` treats a timestamp with no timezone
+designator as UTC. Existing saved files and the demo fixtures are not migrated.
+**Alternatives:** Backend change only (old saves keep showing shifted times); migrating the
+gitignored saved files and the fixtures.
+**Why:** `utcnow()` is deprecated, and its offset-less strings were parsed by `new Date()` as
+local time, so every Saved-list time was off by the UTC offset. Reading offset-less strings
+as UTC fixes old saves and the demo without touching user data. The default application
+name still shows UTC time; left as is.

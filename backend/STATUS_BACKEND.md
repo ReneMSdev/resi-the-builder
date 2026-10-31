@@ -1,6 +1,6 @@
 # Resume Builder — Backend Log
 
-_Last updated: 2026-10-04_
+_Last updated: 2026-10-30_
 
 Dated log of backend work, oldest first. Backend workers add a new dated section **at the
 end** after verified work and update the line above. The project-wide current state is in
@@ -1415,3 +1415,17 @@ These two closing sections were stale (the frontend was finished, and the Cloudf
 was decided against). Open items now live in `docs/todo.md`. The original text is in git
 history at c102d0d.
 
+
+## Saved-application timestamps are explicit UTC (2026-10-30)
+
+`app/routes/applications.py` replaced both `datetime.utcnow().isoformat()` calls (create's
+`created_at`, update's `updated_at`) with `datetime.now(timezone.utc).isoformat()`. New
+timestamps end in `+00:00`, so the frontend's `new Date(iso)` no longer reads them as local
+time. Existing saved files keep their offset-less strings and are not migrated:
+`datetime.fromisoformat` in `_default_name_uncapped` reads both forms, and the list's text
+sort still orders them correctly since the date/time prefix is the same shape. The
+`utcnow` deprecation warnings are gone. Two new tests in `tests/test_applications.py`:
+new create/update timestamps carry a UTC offset, and a legacy offset-less `created_at`
+still produces the date-based default name and sorts below a newer item.
+Full suite: 125 passed, 4 deselected, 1 warning (was 123 passed, 19 warnings; the one
+left is starlette/anyio's `BlockingPortal` deprecation).

@@ -12,9 +12,6 @@
 - [ ] Confirm `pytest -m slow` (PDF export) passes in a normal terminal. On 2026-10-04 it
       passed in both verifier-subagent runs and failed (500) in both main-session runs,
       probably a sandbox limit.
-- [ ] Replace deprecated `datetime.utcnow()` (2 uses in `backend/app/routes/applications.py`)
-      with `datetime.now(timezone.utc)` (the file imports the `datetime` class, so
-      `datetime.UTC` won't work).
 - [ ] Add rename to the Saved applications line in `README.md` ("save, reload, and update").
 - [ ] Remove the stale "Known gaps" bullet in `frontend/STATUS_FRONTEND.md` about
       `docs/architecture.md` listing `public/demo/*` assets. That was already fixed in ce76b6d.
@@ -37,6 +34,9 @@
 
 ## Done recently
 <!-- /wrapup moves finished items here with a date. Keep about the last 10. -->
+- [x] Saved-application timestamps: backend writes explicit UTC (`+00:00`) instead of
+      deprecated `utcnow()`; the Saved list reads offset-less timestamps as UTC, so times no
+      longer show shifted by the UTC offset (2026-10-30)
 - [x] Moved `architecture.md` and `automation-notes.md` into `docs/` and switched all `docs/`
       names to lowercase, here and in the global config (6553aa6, 06fbbac, 2026-10-04)
 - [x] Work-history review: per-project claim checks and measurements logged in

@@ -24,8 +24,11 @@ type AutoApplyState =
   | { state: 'ready'; prompt: string }
   | { state: 'error'; message: string }
 
+// Older saved files and the demo fixtures store naive UTC timestamps with no offset;
+// JS would read those as local time, so treat an offset-less string as UTC.
 function formatDate(iso: string) {
-  const d = new Date(iso)
+  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(iso)
+  const d = new Date(hasZone ? iso : `${iso}Z`)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleDateString(undefined, {
     year: 'numeric',

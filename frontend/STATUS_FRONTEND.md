@@ -143,6 +143,16 @@ most sections here went through several iterations that aren't narrated individu
   Description tab. Delete uses an inline Confirm/Cancel row rather than
   `window.confirm` (which blocks browser automation and is generally a worse
   confirmation pattern anyway).
+- Search box at the top of the list (only when there's at least one saved
+  application): live, case-insensitive, trimmed substring match on `name`
+  (`matchesSearch` in `lib/savedSearch.ts`). While filtering, a results line reads
+  "N of M matching 'q' · Show all" (N counts true matches only, not the kept-visible
+  items described below), or "No applications match 'q' · Show all" when no card is shown.
+  Cleared by the in-box ✕, "Show all", or Escape in the box. Query is local state, so
+  it resets when the Saved tab remounts (`page.tsx` only renders `SavedTab` while
+  the tab is active). An item renamed during a search stays visible until the query
+  changes; an item with an open Auto Apply panel, delete confirm, rename modal, or
+  in-flight load/delete also stays visible even if it stops matching.
 - Card timestamps (`formatDate` in `SavedTab.tsx`) treat an offset-less ISO string
   as UTC (old saved files and the demo fixtures store naive UTC); strings with `Z`
   or a `±HH:MM` offset parse unchanged. Shown in the browser's local time.

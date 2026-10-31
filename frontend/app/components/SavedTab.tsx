@@ -10,6 +10,7 @@ import { showToast } from './Toast'
 import { DemoCapabilityBanner } from './DemoCapabilityBanner'
 import { RenameModal } from './RenameModal'
 import { responseError } from '../lib/api'
+import { matchesSearch } from '../lib/savedSearch'
 
 type ListState =
   | { state: 'loading' }
@@ -67,6 +68,23 @@ export function SavedTab({
   const [copied, setCopied] = useState(false)
   const autoApplyPopoverRef = useRef<HTMLDivElement>(null)
 
+  // Live search over names. Local state, so it resets whenever the Saved tab remounts.
+  // `keptVisibleIds` holds items renamed during a search so they don't vanish
+  // mid-interaction; it's cleared whenever the query changes.
+  const [query, setQuery] = useState('')
+  const [keptVisibleIds, setKeptVisibleIds] = useState<Set<string>>(new Set())
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  function changeQuery(next: string) {
+    setQuery(next)
+    setKeptVisibleIds(new Set())
+  }
+
+  function clearSearch() {
+    changeQuery('')
+    searchInputRef.current?.focus()
+  }
+
   function startRename(item: ApplicationSummary) {
     if (demoMode) {
       showToast("Renaming isn't available in this demo")
@@ -77,6 +95,9 @@ export function SavedTab({
 
   function handleRenamed(summary: ApplicationSummary) {
     onRenamed?.(summary)
+    if (query.trim()) {
+      setKeptVisibleIds((prev) => new Set(prev).add(summary.id))
+    }
     setListState((prev) =>
       prev.state === 'success'
         ? {
@@ -279,9 +300,70 @@ export function SavedTab({
     return <p className='text-sm text-(--muted)'>No saved applications yet.</p>
   }
 
+  const trimmedQuery = query.trim()
+  const filtering = trimmedQuery !== ''
+  // Items with an open panel (Auto Apply, delete confirm, rename, in-flight action)
+  // stay visible even if they stop matching, so the panel doesn't vanish under the user.
+  const visibleItems = listState.items.filter(
+    (item) =>
+      matchesSearch(item.name, query) ||
+      keptVisibleIds.has(item.id) ||
+      item.id === autoApplyId ||
+      item.id === confirmingId ||
+      item.id === renamingItem?.id ||
+      item.id === pendingId,
+  )
+  // N counts real matches only; kept-visible items aren't matches.
+  const matchCount = listState.items.filter((item) => matchesSearch(item.name, query)).length
+  const showAllButton = (
+    <button
+      type='button'
+      onClick={clearSearch}
+      className='font-medium text-(--accent) hover:cursor-pointer hover:underline'
+    >
+      Show all
+    </button>
+  )
+
   return (
     <div className='flex flex-col gap-2'>
-      {listState.items.map((item) => {
+      <div className='relative'>
+        <input
+          ref={searchInputRef}
+          type='search'
+          value={query}
+          onChange={(e) => changeQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && query) {
+              e.preventDefault()
+              changeQuery('')
+            }
+          }}
+          placeholder='Search saved applications...'
+          aria-label='Search saved applications'
+          className='w-full rounded border border-(--border) bg-background px-2 py-1.5 pr-8 text-sm text-foreground [&::-webkit-search-cancel-button]:hidden'
+        />
+        {query && (
+          <button
+            type='button'
+            onClick={clearSearch}
+            aria-label='Clear search'
+            title='Clear search'
+            className='absolute right-2 top-1/2 -translate-y-1/2 text-(--muted) hover:cursor-pointer hover:text-foreground'
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      {filtering && (
+        <p className='text-xs text-(--muted)' aria-live='polite'>
+          {visibleItems.length === 0
+            ? `No applications match '${trimmedQuery}'`
+            : `${matchCount} of ${listState.items.length} matching '${trimmedQuery}'`}{' '}
+          · {showAllButton}
+        </p>
+      )}
+      {visibleItems.map((item) => {
         const isPending = pendingId === item.id
         const isAutoApplyOpen = autoApplyId === item.id
         return (

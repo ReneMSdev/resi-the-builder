@@ -228,3 +228,33 @@ AI updates to text the user edited meanwhile.
 **Why:** Keeps the editor usable during a revise without losing hand edits. The user asked
 for the rewrite, so the AI winning on the same text is acceptable. Field-level conflict
 detection wasn't worth the complexity for a rare case.
+
+## 2026-10-30: Saved list search filters live, client-side
+
+**Decision:** A search box at the top of the Saved list filters as you type, matching the
+name case-insensitively anywhere in it (query trimmed). Three ways to clear it: a × in the box,
+a "N of M matching 'q' · Show all" line, and Escape. N counts true matches only. The search
+resets when you leave the Saved tab. An item renamed so it no longer matches, or one with an
+open panel (Auto Apply, delete confirm, rename), stays visible until the query changes or the
+panel closes.
+**Alternatives:** Enter to apply; a backend search endpoint; keeping the query across tab
+switches; hiding renamed items immediately.
+**Why:** The user chose live filtering, resetting on tab leave, and keeping renamed items
+visible. The list is already fetched whole and is small, so filtering in the browser needs no
+API change. Keeping items with open panels visible stops a panel from vanishing mid-use.
+
+## 2026-10-30: A `qa` subagent for browser tests
+
+**Decision:** Browser testing with Claude in Chrome goes to a dedicated `qa` agent
+(`.claude/agents/qa.md`) that runs a test script and reports PASS/FAIL/INCONCLUSIVE with
+evidence, and never edits code. It runs only when the user asks or agrees to the manager's
+proposal for a risky async or visual change. Its hard rules: no Save/Update/Cmd+S, no Apply to
+Profile, no Generate unless allowed, a revise-call cap, and only "Justworks — Testing
+application" may be renamed or deleted, backed up first and recreated after.
+**Alternatives:** Writing each test prompt from scratch (as done twice on 2026-10-30); a
+`/qa-startup` command for a user-driven window.
+**Why:** The two ad-hoc test prompts were mostly the same setup and safety rules. Keeping
+those rules in one file means a forgotten line in a prompt can't touch real saved
+applications or the master profile. An agent fits better than a startup command because the
+manager starts it in the background. The user still tests UI by default; the agent makes
+browser checks safer, not the default.

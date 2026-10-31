@@ -9,9 +9,6 @@
 
 ## Next
 <!-- Planned soon, in priority order. -->
-- [ ] Manually test the revise latest-document fix (test script in the 2026-10-30 manager
-      session: removal survives + one undo, inline edit, removed target, cover letter, tab
-      switch, replaced document, profile). Lint/tsc/verifier passed; UI untested.
 - [ ] Revise polish: skip the undo entry when a response changes nothing (all targets were
       deleted mid-request); fix the `page.tsx` comment that says "the replacement already
       reset it" (true for Generate only because its button hides once a document exists; a
@@ -30,9 +27,15 @@
 
 ## Done recently
 <!-- /wrapup moves finished items here with a date. Keep about the last 10. -->
+- [x] Live search on the Saved list (case-insensitive name match; × / "Show all" / Escape
+      clear; resets on leaving the tab). Browser-tested via Claude in Chrome: 10/10 passed,
+      Live and Demo, no console errors (2026-10-30)
+- [x] `qa` subagent for browser tests (`.claude/agents/qa.md`) (2026-10-30)
 - [x] Revise responses apply to the latest document, so manual edits made mid-request
       survive; responses for a replaced document are discarded; same fix for Profile
-      (2026-10-30, UI untested)
+      (2026-10-30). Browser-tested via Claude in Chrome at bc8469e: 7/7 scenarios passed
+      (removal survives + stepwise undo, inline edit, removed target, cover letter, tab switch,
+      replaced document, profile), 7 real revise calls
 - [x] Doc cleanup: rename added to the README's Saved applications line; stale demo-assets
       "Known gaps" bullet removed from `frontend/STATUS_FRONTEND.md` (2026-10-30)
 - [x] `pytest -m slow` (PDF export) passes in a normal terminal: 1 passed in 18.19s, run by
